@@ -1,0 +1,103 @@
+﻿<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+  <div>
+    <h1 style="font-size: 1.75rem; font-weight: 700;">Cursos Institucionais</h1>
+    <p style="color: var(--text-muted);">Gestão acadêmica de cursos e matrizes curriculares</p>
+  </div>
+  <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('cursos.gerenciar')) { %>
+    <a href="#modal-novo-curso" class="btn btn-primary" onclick="document.getElementById('modal-novo-curso').style.display='block'; document.getElementById('nome-curso').focus(); return false;">
+      + Novo Curso
+    </a>
+  <% } %>
+</div>
+
+<!-- TABELA ACESSÍVEL DE CURSOS -->
+<div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
+  <table style="width: 100%; border-collapse: collapse; text-align: left;" aria-label="Lista de Cursos da Instituição">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
+        <th scope="col" style="padding: 1rem;">Código</th>
+        <th scope="col" style="padding: 1rem;">Nome do Curso</th>
+        <th scope="col" style="padding: 1rem;">Departamento</th>
+        <th scope="col" style="padding: 1rem;">Modalidade</th>
+        <th scope="col" style="padding: 1rem;">Duração</th>
+        <th scope="col" style="padding: 1rem;">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (courses.length === 0) { %>
+        <tr>
+          <td colspan="6" style="padding: 2rem; text-align: center; color: var(--text-muted);">
+            Nenhum curso cadastrado no momento.
+          </td>
+        </tr>
+      <% } else { %>
+        <% courses.forEach(c => { %>
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 1rem; font-weight: 600;"><code><%= c.code %></code></td>
+            <td style="padding: 1rem;"><%= c.name %></td>
+            <td style="padding: 1rem; color: var(--text-secondary);"><%= c.department_name %></td>
+            <td style="padding: 1rem;"><%= c.modality %></td>
+            <td style="padding: 1rem;"><%= c.duration_semesters %> semestres</td>
+            <td style="padding: 1rem;">
+              <a href="/academico/cursos/<%= c.id %>" class="btn" style="border: 1px solid var(--border-color); padding: 0.375rem 0.75rem; font-size: 0.875rem;">
+                Ver Matriz Curricular
+              </a>
+            </td>
+          </tr>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<!-- MODAL ACESSÍVEL DE CADASTRO -->
+<div id="modal-novo-curso" role="dialog" aria-modal="true" aria-labelledby="modal-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
+  <div class="auth-card" style="margin: 3rem auto; max-width: 500px;">
+    <h2 id="modal-titulo" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">Cadastrar Novo Curso</h2>
+    <form action="/academico/cursos" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <div class="form-group">
+        <label for="nome-curso" class="form-label">Nome do Curso <span class="required-indicator">*</span></label>
+        <input type="text" id="nome-curso" name="name" class="form-input" required placeholder="Ex: Ciência da Computação">
+      </div>
+
+      <div class="form-group">
+        <label for="codigo-curso" class="form-label">Código <span class="required-indicator">*</span></label>
+        <input type="text" id="codigo-curso" name="code" class="form-input" required placeholder="Ex: CC-BAC">
+      </div>
+
+      <div class="form-group">
+        <label for="depto-curso" class="form-label">Departamento Responsável <span class="required-indicator">*</span></label>
+        <select id="depto-curso" name="departmentId" class="form-input" required>
+          <% departments.forEach(d => { %>
+            <option value="<%= d.id %>"><%= d.name %> (<%= d.code %>)</option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="modalidade-curso" class="form-label">Modalidade <span class="required-indicator">*</span></label>
+        <select id="modalidade-curso" name="modality" class="form-input" required>
+          <option value="PRESENCIAL">Presencial</option>
+          <option value="EAD">EAD</option>
+          <option value="HIBRIDO">Híbrido</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="duracao-curso" class="form-label">Duração (Semestres) <span class="required-indicator">*</span></label>
+        <input type="number" id="duracao-curso" name="durationSemesters" class="form-input" required value="8" min="1" max="16">
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
+        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-novo-curso').style.display='none';">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+          Salvar Curso
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

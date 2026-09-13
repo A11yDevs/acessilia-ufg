@@ -1,0 +1,66 @@
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h1 style="font-size: 1.75rem; font-weight: 700;">Logs de Auditoria e Segurança</h1>
+    <p style="color: var(--text-muted);">Trilha cronológica imutável de eventos e ações críticas realizadas no sistema</p>
+  </div>
+  <div>
+    <a href="/relatorios/auditoria.csv" class="btn btn-primary" download>
+      📥 Exportar Relatório em CSV
+    </a>
+  </div>
+</div>
+
+<!-- TABELA DE LOGS DE AUDITORIA -->
+<div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
+  <table style="width: 100%; border-collapse: collapse; text-align: left;" aria-label="Histórico de Auditoria">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
+        <th scope="col" style="padding: 1rem;">Data/Hora</th>
+        <th scope="col" style="padding: 1rem;">Usuário</th>
+        <th scope="col" style="padding: 1rem;">Ação</th>
+        <th scope="col" style="padding: 1rem;">Recurso</th>
+        <th scope="col" style="padding: 1rem;">ID Recurso</th>
+        <th scope="col" style="padding: 1rem;">Endereço IP</th>
+        <th scope="col" style="padding: 1rem;">Detalhes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (logs.length === 0) { %>
+        <tr>
+          <td colspan="7" style="padding: 2rem; text-align: center; color: var(--text-muted);">
+            Nenhum registro de auditoria encontrado.
+          </td>
+        </tr>
+      <% } else { %>
+        <% logs.forEach(log => { %>
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 1rem; font-size: 0.875rem; color: var(--text-muted);">
+              <%= new Date(log.created_at).toLocaleString('pt-BR') %>
+            </td>
+            <td style="padding: 1rem; font-weight: 600;">
+              <%= log.user_name || 'Sistema' %>
+              <% if (log.user_email) { %>
+                <br><span style="font-size: 0.75rem; color: var(--text-muted);"><%= log.user_email %></span>
+              <% } %>
+            </td>
+            <td style="padding: 1rem;">
+              <code><%= log.action %></code>
+            </td>
+            <td style="padding: 1rem; color: var(--text-secondary);">
+              <%= log.resource %>
+            </td>
+            <td style="padding: 1rem;">
+              <%= log.resource_id || '-' %>
+            </td>
+            <td style="padding: 1rem; font-size: 0.875rem; color: var(--text-muted);">
+              <%= log.ip_address || '-' %>
+            </td>
+            <td style="padding: 1rem; font-size: 0.75rem; max-width: 250px; overflow-wrap: break-word;">
+              <%= log.details_json || '-' %>
+            </td>
+          </tr>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,33 @@
+﻿services:
+  acessilia-ufg:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: acessilia_ufg_web
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DATABASE_PATH=/app/database/database.sqlite
+      - SESSION_SECRET=${SESSION_SECRET:-acessilia_ufg_session_secret_min_32_characters_prod!}
+      - COOKIE_SECRET=${COOKIE_SECRET:-acessilia_ufg_cookie_secret_min_32_characters_prod!}
+      - BOT_ACESS_API_URL=${BOT_ACESS_API_URL:-https://www.acessilia1.inf.ufg.br}
+      - BOT_ACESS_API_KEY=${BOT_ACESS_API_KEY:-}
+    volumes:
+      - acessilia_data:/app/database
+      - acessilia_uploads:/app/public/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  acessilia_data:
+    name: acessilia_ufg_db_data
+  acessilia_uploads:
+    name: acessilia_ufg_uploads

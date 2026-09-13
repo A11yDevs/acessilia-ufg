@@ -1,0 +1,98 @@
+﻿<div style="margin-bottom: 2rem;">
+  <a href="/academico/cursos" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">
+    &larr; Voltar para Lista de Cursos
+  </a>
+  <h1 style="font-size: 1.75rem; font-weight: 700; margin-top: 0.5rem;">
+    <%= course.name %> (<%= course.code %>)
+  </h1>
+  <p style="color: var(--text-muted);">
+    Departamento: <%= course.department_name %> | Modalidade: <%= course.modality %> | Duração: <%= course.duration_semesters %> semestres
+  </p>
+</div>
+
+<!-- MATRIZ CURRICULAR (DISCIPLINAS DO CURSO) -->
+<section aria-labelledby="sec-matriz">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2 id="sec-matriz" style="font-size: 1.25rem; font-weight: 600;">Matriz Curricular</h2>
+    <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('cursos.gerenciar')) { %>
+      <a href="#modal-vincular-disciplina" class="btn btn-primary" onclick="document.getElementById('modal-vincular-disciplina').style.display='block'; return false;">
+        + Adicionar Disciplina à Matriz
+      </a>
+    <% } %>
+  </div>
+
+  <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; text-align: left;" aria-describedby="sec-matriz">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
+          <th scope="col" style="padding: 1rem;">Semestre Recomendado</th>
+          <th scope="col" style="padding: 1rem;">Código da Disciplina</th>
+          <th scope="col" style="padding: 1rem;">Nome da Disciplina</th>
+          <th scope="col" style="padding: 1rem;">Carga Horária</th>
+          <th scope="col" style="padding: 1rem;">Caráter</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (courseSubjects.length === 0) { %>
+          <tr>
+            <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">
+              Nenhuma disciplina vinculada a este curso ainda.
+            </td>
+          </tr>
+        <% } else { %>
+          <% courseSubjects.forEach(cs => { %>
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 1rem; font-weight: 700; color: var(--color-primary);"><%= cs.recommended_semester %>º Semestre</td>
+              <td style="padding: 1rem;"><code><%= cs.subject_code %></code></td>
+              <td style="padding: 1rem; font-weight: 500;"><%= cs.subject_name %></td>
+              <td style="padding: 1rem;"><%= cs.workload_hours %> horas</td>
+              <td style="padding: 1rem;">
+                <span class="role-tag" style="background: <%= cs.is_mandatory ? 'var(--color-primary)' : 'var(--text-muted)' %>;">
+                  <%= cs.is_mandatory ? 'Obrigatória' : 'Optativa' %>
+                </span>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- MODAL VINCULAR DISCIPLINA -->
+<div id="modal-vincular-disciplina" role="dialog" aria-modal="true" aria-labelledby="modal-vinc-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
+  <div class="auth-card" style="margin: 3rem auto; max-width: 500px;">
+    <h2 id="modal-vinc-titulo" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">Adicionar Disciplina ao Curso</h2>
+    <form action="/academico/cursos/<%= course.id %>/disciplinas" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <div class="form-group">
+        <label for="sel-disciplina" class="form-label">Disciplina do Catálogo <span class="required-indicator">*</span></label>
+        <select id="sel-disciplina" name="subjectId" class="form-input" required>
+          <% allSubjects.forEach(s => { %>
+            <option value="<%= s.id %>"><%= s.name %> (<%= s.code %> - <%= s.workload_hours %>h)</option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="sem-recomendado" class="form-label">Semestre Recomendado <span class="required-indicator">*</span></label>
+        <input type="number" id="sem-recomendado" name="recommendedSemester" class="form-input" required value="1" min="1" max="<%= course.duration_semesters %>">
+      </div>
+
+      <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+        <input type="checkbox" id="check-obrigatoria" name="isMandatory" value="1" checked style="width: 20px; height: 20px;">
+        <label for="check-obrigatoria" style="font-weight: 500;">Disciplina Obrigatória na Matriz</label>
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
+        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-vincular-disciplina').style.display='none';">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+          Vincular Disciplina
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

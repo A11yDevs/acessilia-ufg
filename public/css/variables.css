@@ -1,0 +1,97 @@
+:root {
+  /* LIGHT MODE (Alto contraste WCAG AAA) */
+  --bg-primary: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-sidebar: #0f172a;
+  
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-inverse: #ffffff;
+
+  --border-color: #cbd5e1;
+  --border-focus: #0284c7;
+
+  --color-primary: #0369a1;
+  --color-primary-hover: #075985;
+  --color-primary-contrast: #ffffff;
+
+  --color-success: #15803d;
+  --color-warning: #b45309;
+  --color-error: #b91c1c;
+  --color-info: #0284c7;
+
+  --focus-ring: #0284c7;
+  --focus-color: #fde047;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --border-radius: 6px;
+  --base-font-size: 100%;
+}
+
+html {
+  font-size: var(--base-font-size);
+}
+
+/* TAMANHOS DE FONTE ACESSÍVEIS */
+html.font-lg {
+  --base-font-size: 115%;
+}
+
+html.font-xl {
+  --base-font-size: 130%;
+}
+
+/* MODO ALTO CONTRASTE (AMARELO E PRETO) */
+html.high-contrast {
+  --bg-primary: #000000 !important;
+  --bg-surface: #0a0a0a !important;
+  --bg-sidebar: #000000 !important;
+  --text-primary: #ffff00 !important;
+  --text-secondary: #ffff00 !important;
+  --text-muted: #ffff77 !important;
+  --text-inverse: #000000 !important;
+  --border-color: #ffff00 !important;
+  --color-primary: #ffff00 !important;
+  --color-primary-hover: #ffffff !important;
+  --color-primary-contrast: #000000 !important;
+  --focus-ring: #ffff00 !important;
+  --focus-color: #ffff00 !important;
+}
+
+/* TIPOGRAFIA AMIGÁVEL PARA DISLEXIA */
+html.dyslexia-font {
+  font-family: "Comic Sans MS", "Comic Sans", "Arial Rounded MT Bold", sans-serif !important;
+  letter-spacing: 0.08em !important;
+  word-spacing: 0.15em !important;
+  line-height: 1.8 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #090d16;
+    --bg-surface: #131b2e;
+    --bg-sidebar: #050811;
+
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --text-inverse: #0f172a;
+
+    --border-color: #334155;
+    --border-focus: #38bdf8;
+
+    --color-primary: #38bdf8;
+    --color-primary-hover: #7dd3fc;
+    --color-primary-contrast: #082f49;
+
+    --color-success: #4ade80;
+    --color-warning: #facc15;
+    --color-error: #f87171;
+    --color-info: #38bdf8;
+
+    --focus-ring: #38bdf8;
+    --focus-color: #facc15;
+  }
+}

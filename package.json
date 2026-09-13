@@ -1,0 +1,39 @@
+{
+  "name": "painel-bot-acess",
+  "version": "1.0.0",
+  "description": "Painel Institucional Web para Gestao de Acessibilidade Academica e Integracao com bot-acess",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate": "node database/migrate.js",
+    "seed": "node database/seed.js",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "fastify",
+    "sqlite",
+    "education"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/csrf-protection": "^8.0.1",
+    "@fastify/formbody": "^9.0.0",
+    "@fastify/helmet": "^13.1.1",
+    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/session": "^11.1.2",
+    "@fastify/static": "^10.1.3",
+    "@fastify/view": "^12.0.0",
+    "argon2": "^0.45.1",
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^17.4.2",
+    "ejs": "^6.0.1",
+    "fastify": "^5.12.4",
+    "zod": "^4.6.4"
+  }
+}

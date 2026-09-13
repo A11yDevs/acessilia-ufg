@@ -1,0 +1,109 @@
+﻿<div style="margin-bottom: 2rem;">
+  <h1 style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary);">
+    Olá, <%= user.socialName || user.name %>!
+  </h1>
+  <p style="color: var(--text-muted); margin-top: 0.25rem;">
+    Perfil atual: <strong><%= user.roleName %></strong>
+  </p>
+</div>
+
+<!-- CARDS CONTEXTUAIS BASEADOS NO PAPEL RBAC -->
+<section aria-labelledby="sec-resumo" style="margin-bottom: 2.5rem;">
+  <h2 id="sec-resumo" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">Visão Geral</h2>
+
+  <div class="dashboard-grid">
+    <% if (user.roleCode === 'ADMINISTRADOR') { %>
+      <div class="stat-card">
+        <div class="stat-card-title">Usuários Cadastrados</div>
+        <div class="stat-card-value"><%= stats.totalUsers || 0 %></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Cursos Ativos</div>
+        <div class="stat-card-value"><%= stats.totalCourses || 0 %></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Materiais na Plataforma</div>
+        <div class="stat-card-value"><%= stats.totalMaterials || 0 %></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Revisões Concluídas</div>
+        <div class="stat-card-value"><%= stats.approvedMaterials || 0 %></div>
+      </div>
+    <% } else if (user.roleCode === 'PROFESSOR') { %>
+      <div class="stat-card">
+        <div class="stat-card-title">Meus Materiais Enviados</div>
+        <div class="stat-card-value"><%= stats.myMaterials || 0 %></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Aguardando Processamento</div>
+        <div class="stat-card-value"><%= stats.pendingJobs || 0 %></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Materiais Aprovados</div>
+        <div class="stat-card-value"><%= stats.myApprovedMaterials || 0 %></div>
+      </div>
+    <% } else if (user.roleCode === 'REVISOR') { %>
+      <div class="stat-card">
+        <div class="stat-card-title">Revisões Pendentes</div>
+        <div class="stat-card-value"><%= stats.pendingReviews || 0 %></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Em Análise Técnica</div>
+        <div class="stat-card-value"><%= stats.inProgressReviews || 0 %></div>
+      </div>
+    <% } else { %>
+      <div class="stat-card">
+        <div class="stat-card-title">Materiais Acessíveis da Turma</div>
+        <div class="stat-card-value"><%= stats.availableMaterials || 0 %></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-title">Minhas Solicitações</div>
+        <div class="stat-card-value"><%= stats.myRequests || 0 %></div>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<!-- REGISTROS RECENTES / AUDITORIA DE SEGURANÇA -->
+<% if (user.roleCode === 'ADMINISTRADOR' && recentLogs && recentLogs.length > 0) { %>
+<section aria-labelledby="sec-auditoria">
+  <h2 id="sec-auditoria" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">
+    Atividades e Auditoria Recente
+  </h2>
+
+  <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; text-align: left;" aria-describedby="sec-auditoria">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
+          <th scope="col" style="padding: 0.875rem 1rem;">Data/Hora</th>
+          <th scope="col" style="padding: 0.875rem 1rem;">Usuário</th>
+          <th scope="col" style="padding: 0.875rem 1rem;">Ação</th>
+          <th scope="col" style="padding: 0.875rem 1rem;">Recurso</th>
+          <th scope="col" style="padding: 0.875rem 1rem;">IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% recentLogs.forEach(log => { %>
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 0.875rem 1rem; font-size: 0.875rem; color: var(--text-muted);">
+              <%= new Date(log.created_at).toLocaleString('pt-BR') %>
+            </td>
+            <td style="padding: 0.875rem 1rem; font-weight: 500;">
+              <%= log.user_name || 'Sistema' %>
+            </td>
+            <td style="padding: 0.875rem 1rem;">
+              <code><%= log.action %></code>
+            </td>
+            <td style="padding: 0.875rem 1rem; color: var(--text-secondary);">
+              <%= log.resource %>
+            </td>
+            <td style="padding: 0.875rem 1rem; font-size: 0.875rem; color: var(--text-muted);">
+              <%= log.ip_address || '-' %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+<% } %>

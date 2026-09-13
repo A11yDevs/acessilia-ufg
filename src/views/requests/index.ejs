@@ -1,0 +1,120 @@
+﻿<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+  <div>
+    <h1 style="font-size: 1.75rem; font-weight: 700;">Solicitações de Acessibilidade</h1>
+    <p style="color: var(--text-muted);">Canal direto para solicitar adaptação e formatos assistivos de materiais</p>
+  </div>
+  <% if (user.roleCode === 'ALUNO' || user.permissions.includes('solicitacoes.criar')) { %>
+    <a href="#modal-nova-solicitacao" class="btn btn-primary" onclick="document.getElementById('modal-nova-solicitacao').style.display='block'; document.getElementById('sel-mat-solic').focus(); return false;">
+      + Nova Solicitação
+    </a>
+  <% } %>
+</div>
+
+<!-- TABELA DE SOLICITAÇÕES -->
+<div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
+  <table style="width: 100%; border-collapse: collapse; text-align: left;" aria-label="Lista de Solicitações de Acessibilidade">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
+        <th scope="col" style="padding: 1rem;">Material Acadêmico</th>
+        <th scope="col" style="padding: 1rem;">Disciplina</th>
+        <% if (user.roleCode !== 'ALUNO') { %>
+          <th scope="col" style="padding: 1rem;">Solicitante</th>
+        <% } %>
+        <th scope="col" style="padding: 1rem;">Prioridade</th>
+        <th scope="col" style="padding: 1rem;">Status</th>
+        <th scope="col" style="padding: 1rem;">Data/Hora</th>
+        <th scope="col" style="padding: 1rem;">Observações / Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (requestsList.length === 0) { %>
+        <tr>
+          <td colspan="7" style="padding: 2rem; text-align: center; color: var(--text-muted);">
+            Nenhuma solicitação de acessibilidade registrada no momento.
+          </td>
+        </tr>
+      <% } else { %>
+        <% requestsList.forEach(r => { %>
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 1rem; font-weight: 600;"><%= r.material_title %></td>
+            <td style="padding: 1rem;"><%= r.subject_name %></td>
+            <% if (user.roleCode !== 'ALUNO') { %>
+              <td style="padding: 1rem; color: var(--text-secondary);"><%= r.requester_name %></td>
+            <% } %>
+            <td style="padding: 1rem;">
+              <span class="role-tag" style="background: <%= r.priority === 'URGENTE' ? 'var(--color-error)' : (r.priority === 'ALTA' ? 'var(--color-warning)' : 'var(--color-primary)') %>;">
+                <%= r.priority %>
+              </span>
+            </td>
+            <td style="padding: 1rem;">
+              <span class="role-tag" style="background: <%= r.status === 'CONCLUIDA' ? 'var(--color-success)' : 'var(--text-muted)' %>;">
+                <%= r.status %>
+              </span>
+            </td>
+            <td style="padding: 1rem; font-size: 0.875rem; color: var(--text-muted);">
+              <%= new Date(r.created_at).toLocaleString('pt-BR') %>
+            </td>
+            <td style="padding: 1rem;">
+              <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('solicitacoes.gerenciar')) { %>
+                <form action="/solicitacoes/<%= r.id %>/status" method="POST" style="display: inline-flex; gap: 0.25rem;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <select name="status" class="form-input" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onchange="this.form.submit()">
+                    <option value="SOLICITADA" <%= r.status === 'SOLICITADA' ? 'selected' : '' %>>SOLICITADA</option>
+                    <option value="EM_ATENDIMENTO" <%= r.status === 'EM_ATENDIMENTO' ? 'selected' : '' %>>EM ATENDIMENTO</option>
+                    <option value="PROCESSANDO" <%= r.status === 'PROCESSANDO' ? 'selected' : '' %>>PROCESSANDO</option>
+                    <option value="EM_REVISAO" <%= r.status === 'EM_REVISAO' ? 'selected' : '' %>>EM REVISÃO</option>
+                    <option value="CONCLUIDA" <%= r.status === 'CONCLUIDA' ? 'selected' : '' %>>CONCLUÍDA</option>
+                  </select>
+                </form>
+              <% } else { %>
+                <span style="font-size: 0.875rem; color: var(--text-muted);"><%= r.specific_notes || '-' %></span>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<!-- MODAL NOVA SOLICITAÇÃO -->
+<div id="modal-nova-solicitacao" role="dialog" aria-modal="true" aria-labelledby="modal-solic-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
+  <div class="auth-card" style="margin: 3rem auto; max-width: 500px;">
+    <h2 id="modal-solic-titulo" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">Solicitar Acessibilidade</h2>
+    <form action="/solicitacoes" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <div class="form-group">
+        <label for="sel-mat-solic" class="form-label">Material Acadêmico Necessário <span class="required-indicator">*</span></label>
+        <select id="sel-mat-solic" name="materialId" class="form-input" required>
+          <% availableMaterials.forEach(m => { %>
+            <option value="<%= m.id %>"><%= m.title %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="sel-prio-solic" class="form-label">Prioridade da Demanda <span class="required-indicator">*</span></label>
+        <select id="sel-prio-solic" name="priority" class="form-input" required>
+          <option value="NORMAL">Normal (Estudo contínuo)</option>
+          <option value="ALTA">Alta (Trabalho/Atividade avaliativa próxima)</option>
+          <option value="URGENTE">Urgente (Prova / Avaliação iminente)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="notes-solic" class="form-label">Formato ou Necessidade Assistiva Específica</label>
+        <textarea id="notes-solic" name="specificNotes" class="form-input" rows="3" placeholder="Ex: Preciso de transcrição textual de imagens e navegação por títulos para leitor NVDA..."></textarea>
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
+        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-nova-solicitacao').style.display='none';">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+          Enviar Solicitação
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

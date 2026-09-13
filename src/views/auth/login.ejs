@@ -1,0 +1,81 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar no Sistema — Painel BOT-ACESS</title>
+  <link rel="stylesheet" href="/public/css/reset.css">
+  <link rel="stylesheet" href="/public/css/variables.css">
+  <link rel="stylesheet" href="/public/css/components.css">
+  <link rel="stylesheet" href="/public/css/layout.css">
+</head>
+<body>
+  <a href="#conteudo-login" class="skip-link">Pular para o formulário de login</a>
+
+  <main id="conteudo-login" class="auth-wrapper" role="main">
+    <div class="auth-card">
+      <header class="auth-header">
+        <h1>BOT-ACESS</h1>
+        <p>Painel Institucional de Acessibilidade</p>
+      </header>
+
+      <% if (errorMessage) { %>
+        <div class="alert alert-error" role="alert" aria-live="assertive">
+          <strong>Atenção:</strong> <%= errorMessage %>
+        </div>
+      <% } %>
+
+      <form action="/login" method="POST" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <div class="form-group">
+          <label for="email" class="form-label">
+            E-mail Institucional
+            <span class="required-indicator" aria-hidden="true">*</span>
+            <span class="sr-only">(campo obrigatório)</span>
+          </label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            class="form-input"
+            autocomplete="email"
+            required
+            aria-required="true"
+            value="<%= previousEmail || '' %>"
+            placeholder="exemplo@acessilia.ufg.br"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">
+            Senha
+            <span class="required-indicator" aria-hidden="true">*</span>
+            <span class="sr-only">(campo obrigatório)</span>
+          </label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="form-input"
+            autocomplete="current-password"
+            required
+            aria-required="true"
+            placeholder="Digite sua senha"
+          >
+        </div>
+
+        <div style="margin-top: 1.75rem;">
+          <button type="submit" class="btn btn-primary" style="width: 100%;">
+            Entrar no Painel
+          </button>
+        </div>
+      </form>
+
+      <footer style="margin-top: 2rem; text-align: center; font-size: 0.875rem; color: var(--text-muted);">
+        <p>Acessibilidade em conformidade com WCAG 2.2</p>
+      </footer>
+    </div>
+  </main>
+</body>
+</html>

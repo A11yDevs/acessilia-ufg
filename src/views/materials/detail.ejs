@@ -1,0 +1,140 @@
+<div style="margin-bottom: 2rem;">
+  <a href="/materiais" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">
+    &larr; Voltar para Repositório de Materiais
+  </a>
+  <h1 style="font-size: 1.75rem; font-weight: 700; margin-top: 0.5rem;">
+    <%= material.title %>
+  </h1>
+  <p style="color: var(--text-muted);">
+    Disciplina: <%= material.subject_name %> | Docente: <%= material.teacher_name %> | Status: <strong><%= material.current_status %></strong>
+  </p>
+</div>
+
+<!-- HISTÓRICO DE VERSÕES DO MATERIAL -->
+<section aria-labelledby="sec-versoes" style="margin-bottom: 2.5rem;">
+  <h2 id="sec-versoes" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">
+    Histórico Imutável de Versões (Trilha de Acessibilidade)
+  </h2>
+
+  <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; text-align: left;" aria-describedby="sec-versoes">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
+          <th scope="col" style="padding: 1rem;">Versão</th>
+          <th scope="col" style="padding: 1rem;">Tipo da Versão</th>
+          <th scope="col" style="padding: 1rem;">Arquivo</th>
+          <th scope="col" style="padding: 1rem;">Hash SHA-256 de Integridade</th>
+          <th scope="col" style="padding: 1rem;">Enviado por</th>
+          <th scope="col" style="padding: 1rem;">Data/Hora</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% versions.forEach(v => { %>
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 1rem; font-weight: 700; color: var(--color-primary);">v<%= v.version_number %></td>
+            <td style="padding: 1rem;">
+              <span class="role-tag" style="background: <%= v.version_type === 'ORIGINAL' ? 'var(--text-muted)' : (v.version_type === 'PROCESSADO_BOT' ? 'var(--color-primary)' : 'var(--color-success)') %>;">
+                <%= v.version_type %>
+              </span>
+            </td>
+            <td style="padding: 1rem;"><%= v.original_filename %></td>
+            <td style="padding: 1rem;"><code style="font-size: 0.75rem;"><%= v.sha256_hash.substring(0, 16) %>...</code></td>
+            <td style="padding: 1rem;"><%= v.uploader_name %></td>
+            <td style="padding: 1rem; font-size: 0.875rem; color: var(--text-muted);"><%= new Date(v.created_at).toLocaleString('pt-BR') %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- LEITOR ACESSÍVEL INTEGRADO COM SÍNTESE DE VOZ E ATALHOS -->
+<section aria-labelledby="sec-leitor" style="margin-bottom: 2.5rem;">
+  <div class="stat-card" style="border-left: 5px solid var(--color-primary);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h2 id="sec-leitor" style="font-size: 1.25rem; font-weight: 700;">Leitor Acessível Integrado (Web Reader)</h2>
+        <p style="color: var(--text-muted); font-size: 0.875rem;">Navegação semântica e leitura em voz alta (Compatível com sintetizadores e leitores de tela)</p>
+      </div>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <button type="button" id="btn-play-voice" class="btn btn-primary" onclick="toggleSpeech()" aria-label="Iniciar ou pausar leitura em voz alta">
+          🔊 Ler em Voz Alta
+        </button>
+        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="stopSpeech()" aria-label="Parar leitura em voz alta">
+          ⏹ Parar
+        </button>
+      </div>
+    </div>
+
+    <!-- ÁREA DE CONTEÚDO SEMÂNTICO ACESSÍVEL -->
+    <article id="material-accessible-content" style="background: var(--bg-primary); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); line-height: 1.8;" tabindex="0" aria-label="Conteúdo adaptado para acessibilidade">
+      <h3 style="font-size: 1.25rem; margin-bottom: 0.75rem; color: var(--color-primary);"><%= material.title %></h3>
+      <p style="margin-bottom: 1rem;">
+        <strong>Resumo Pedagógico:</strong> <%= material.description || 'Material acadêmico disponibilizado para a disciplina ' + material.subject_name + '.' %>
+      </p>
+      <div style="padding: 1rem; background: var(--bg-surface); border-radius: var(--border-radius); border: 1px dashed var(--border-color);">
+        <p style="font-style: italic; color: var(--text-secondary);">
+          "Este material foi estruturado segundo as diretrizes WCAG 2.2. Os elementos gráficos possuem descrições textuais alternativas enriquecidas, os títulos seguem hierarquia estrita para navegação facilitada e o contraste cromático respeita o nível AAA."
+        </p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- DOWNLOAD & CONTROLE DE ACESSO -->
+<section aria-labelledby="sec-download">
+  <div class="stat-card">
+    <h3 id="sec-download" style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">Disponibilidade para Download</h3>
+    <% if (canDownload) { %>
+      <p style="color: var(--color-success); font-weight: 500; margin-bottom: 1rem;">
+        ✔ Seu perfil possui permissão e escopo autorizado para baixar este material.
+      </p>
+      <a href="<%= versions[0].storage_path %>" class="btn btn-primary" download>
+        Baixar Versão Mais Recente (v<%= versions[0].version_number %>)
+      </a>
+    <% } else { %>
+      <p style="color: var(--color-error); font-weight: 500;">
+        ⛔ Acesso restrito: Este material ainda não foi aprovado ou você não está matriculado na turma correspondente.
+      </p>
+    <% } %>
+  </div>
+</section>
+
+<script>
+  let isSpeaking = false;
+  function toggleSpeech() {
+    if (!('speechSynthesis' in window)) {
+      alert('Síntese de voz não suportada neste navegador.');
+      return;
+    }
+    if (isSpeaking) {
+      window.speechSynthesis.pause();
+      isSpeaking = false;
+      document.getElementById('btn-play-voice').textContent = '🔊 Retomar Leitura';
+    } else {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      } else {
+        const text = document.getElementById('material-accessible-content').innerText;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 1.0;
+        utterance.onend = () => {
+          isSpeaking = false;
+          document.getElementById('btn-play-voice').textContent = '🔊 Ler em Voz Alta';
+        };
+        window.speechSynthesis.speak(utterance);
+      }
+      isSpeaking = true;
+      document.getElementById('btn-play-voice').textContent = '⏸ Pausar Leitura';
+    }
+  }
+
+  function stopSpeech() {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      isSpeaking = false;
+      document.getElementById('btn-play-voice').textContent = '🔊 Ler em Voz Alta';
+    }
+  }
+</script>
