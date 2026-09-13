@@ -40,6 +40,12 @@
               <span>Cursos</span>
             </a>
           </li>
+          <li>
+            <a href="/academico/disciplinas" class="nav-link" <%= currentPath.startsWith('/academico/disciplinas') ? 'aria-current="page"' : '' %>>
+              <span aria-hidden="true">📖</span>
+              <span>Disciplinas</span>
+            </a>
+          </li>
           <% } %>
 
           <% if (user && (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('materiais.visualizar'))) { %>

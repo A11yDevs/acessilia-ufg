@@ -6,6 +6,7 @@ database/backups/
 uploads/*
 !uploads/.gitkeep
 logs/
+scratch/
 .env
 .DS_Store
 Thumbs.db

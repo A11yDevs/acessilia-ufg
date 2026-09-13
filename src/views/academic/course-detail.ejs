@@ -1,4 +1,4 @@
-﻿<div style="margin-bottom: 2rem;">
+<div style="margin-bottom: 2rem;">
   <a href="/academico/cursos" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">
     &larr; Voltar para Lista de Cursos
   </a>
@@ -67,7 +67,12 @@
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
       <div class="form-group">
-        <label for="sel-disciplina" class="form-label">Disciplina do Catálogo <span class="required-indicator">*</span></label>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+          <label for="sel-disciplina" class="form-label" style="margin: 0;">Disciplina do Catálogo <span class="required-indicator">*</span></label>
+          <a href="/academico/disciplinas" target="_blank" style="font-size: 0.8125rem; color: var(--color-primary); text-decoration: none; font-weight: 500;">
+            + Cadastrar Nova Disciplina ↗
+          </a>
+        </div>
         <select id="sel-disciplina" name="subjectId" class="form-input" required>
           <% allSubjects.forEach(s => { %>
             <option value="<%= s.id %>"><%= s.name %> (<%= s.code %> - <%= s.workload_hours %>h)</option>

@@ -86,4 +86,46 @@ export async function academicWebRoutes(fastify, opts) {
     );
     return reply.redirect(`/academico/cursos/${courseId}`);
   });
+
+  // Listagem de Disciplinas
+  fastify.get('/academico/disciplinas', {
+    preHandler: [fastify.requirePermission('cursos.visualizar')]
+  }, async (request, reply) => {
+    const subjects = await academicService.listSubjects();
+    const departments = academicRepository.listDepartments();
+    const csrfToken = reply.generateCsrf();
+
+    return reply.view('layouts/base.ejs', {
+      title: 'Catálogo de Disciplinas',
+      headerTitle: 'Disciplinas da Instituição',
+      currentPath: '/academico/disciplinas',
+      csrfToken,
+      user: request.user,
+      body: await fastify.view('academic/subjects.ejs', {
+        subjects,
+        departments,
+        user: request.user,
+        csrfToken
+      })
+    });
+  });
+
+  // Criação de Nova Disciplina
+  fastify.post('/academico/disciplinas', {
+    preHandler: [fastify.requirePermission('cursos.gerenciar'), fastify.csrfProtection]
+  }, async (request, reply) => {
+    const { departmentId, code, name, description, workloadHours } = request.body || {};
+    try {
+      await academicService.createSubject({
+        departmentId: parseInt(departmentId, 10),
+        code,
+        name,
+        description: description || null,
+        workloadHours: parseInt(workloadHours, 10)
+      }, request.user);
+      return reply.redirect('/academico/disciplinas');
+    } catch (err) {
+      return reply.status(400).send({ error: err.message });
+    }
+  });
 }
