@@ -53,6 +53,7 @@ export async function academicWebRoutes(fastify, opts) {
 
     const courseSubjects = await academicService.getCourseSubjects(course.id);
     const allSubjects = await academicService.listSubjects();
+    const departments = academicRepository.listDepartments();
     const csrfToken = reply.generateCsrf();
 
     return reply.view('layouts/base.ejs', {
@@ -65,6 +66,7 @@ export async function academicWebRoutes(fastify, opts) {
         course,
         courseSubjects,
         allSubjects,
+        departments,
         user: request.user,
         csrfToken
       })
@@ -114,7 +116,7 @@ export async function academicWebRoutes(fastify, opts) {
   fastify.post('/academico/disciplinas', {
     preHandler: [fastify.requirePermission('cursos.gerenciar'), fastify.csrfProtection]
   }, async (request, reply) => {
-    const { departmentId, code, name, description, workloadHours } = request.body || {};
+    const { departmentId, code, name, description, workloadHours, redirectUrl } = request.body || {};
     try {
       await academicService.createSubject({
         departmentId: parseInt(departmentId, 10),
@@ -123,7 +125,7 @@ export async function academicWebRoutes(fastify, opts) {
         description: description || null,
         workloadHours: parseInt(workloadHours, 10)
       }, request.user);
-      return reply.redirect('/academico/disciplinas');
+      return reply.redirect(redirectUrl || '/academico/disciplinas');
     } catch (err) {
       return reply.status(400).send({ error: err.message });
     }

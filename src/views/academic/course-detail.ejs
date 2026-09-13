@@ -12,13 +12,18 @@
 
 <!-- MATRIZ CURRICULAR (DISCIPLINAS DO CURSO) -->
 <section aria-labelledby="sec-matriz">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
     <h2 id="sec-matriz" style="font-size: 1.25rem; font-weight: 600;">Matriz Curricular</h2>
-    <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('cursos.gerenciar')) { %>
-      <a href="#modal-vincular-disciplina" class="btn btn-primary" onclick="document.getElementById('modal-vincular-disciplina').style.display='block'; return false;">
-        + Adicionar Disciplina à Matriz
-      </a>
-    <% } %>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('cursos.gerenciar')) { %>
+        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-nova-disciplina-curso').style.display='block'; document.getElementById('nome-disc-curso').focus();">
+          + Cadastrar Nova Disciplina
+        </button>
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('modal-vincular-disciplina').style.display='block';">
+          + Adicionar Disciplina à Matriz
+        </button>
+      <% } %>
+    </div>
   </div>
 
   <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
@@ -96,6 +101,55 @@
         </button>
         <button type="submit" class="btn btn-primary">
           Vincular Disciplina
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL CADASTRAR NOVA DISCIPLINA DIRETAMENTE NO CURSO -->
+<div id="modal-nova-disciplina-curso" role="dialog" aria-modal="true" aria-labelledby="modal-disc-curso-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
+  <div class="auth-card" style="margin: 3rem auto; max-width: 500px;">
+    <h2 id="modal-disc-curso-titulo" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">Cadastrar Nova Disciplina</h2>
+    <form action="/academico/disciplinas" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="redirectUrl" value="/academico/cursos/<%= course.id %>">
+
+      <div class="form-group">
+        <label for="sel-departamento-curso" class="form-label">Departamento Acadêmico <span class="required-indicator">*</span></label>
+        <select id="sel-departamento-curso" name="departmentId" class="form-input" required>
+          <% departments.forEach(d => { %>
+            <option value="<%= d.id %>" <%= d.id === course.department_id ? 'selected' : '' %>><%= d.name %> (<%= d.code %>)</option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="codigo-disc-curso" class="form-label">Código da Disciplina <span class="required-indicator">*</span></label>
+        <input type="text" id="codigo-disc-curso" name="code" class="form-input" required placeholder="Ex: INF-A11Y" style="text-transform: uppercase;">
+      </div>
+
+      <div class="form-group">
+        <label for="nome-disc-curso" class="form-label">Nome da Disciplina <span class="required-indicator">*</span></label>
+        <input type="text" id="nome-disc-curso" name="name" class="form-input" required placeholder="Ex: Acessibilidade e Inclusão Digital">
+      </div>
+
+      <div class="form-group">
+        <label for="ch-disc-curso" class="form-label">Carga Horária (Horas) <span class="required-indicator">*</span></label>
+        <input type="number" id="ch-disc-curso" name="workloadHours" class="form-input" required value="64" min="16" max="256">
+      </div>
+
+      <div class="form-group">
+        <label for="desc-disc-curso" class="form-label">Ementa / Descrição (Opcional)</label>
+        <textarea id="desc-disc-curso" name="description" class="form-input" rows="3" placeholder="Descrição dos tópicos e ementa..."></textarea>
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
+        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-nova-disciplina-curso').style.display='none';">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+          Salvar e Retornar ao Curso
         </button>
       </div>
     </form>
