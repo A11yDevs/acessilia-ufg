@@ -74,36 +74,51 @@ export const userRepository = {
   },
 
   getUiPreferences(userId) {
-    const row = db.prepare('SELECT * FROM user_ui_preferences WHERE user_id = ?').get(userId);
-    return row || {
-      contrast_mode: 'normal',
-      font_size: 'normal',
-      dyslexia_font: 0,
-      preferred_download_format: 'html'
-    };
+    try {
+      const row = db.prepare('SELECT * FROM user_ui_preferences WHERE user_id = ?').get(userId);
+      return row || {
+        contrast_mode: 'normal',
+        font_size: 'normal',
+        dyslexia_font: 0,
+        preferred_download_format: 'html'
+      };
+    } catch (err) {
+      // Se a tabela ainda não foi criada, retorna preferências padrão sem quebrar a requisição
+      return {
+        contrast_mode: 'normal',
+        font_size: 'normal',
+        dyslexia_font: 0,
+        preferred_download_format: 'html'
+      };
+    }
   },
 
   saveUiPreferences(userId, { contrastMode, fontSize, dyslexiaFont, preferredDownloadFormat }) {
-    const stmt = db.prepare(`
-      INSERT INTO user_ui_preferences (user_id, contrast_mode, font_size, dyslexia_font, preferred_download_format, updated_at)
-      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(user_id) DO UPDATE SET
-        contrast_mode = COALESCE(?, contrast_mode),
-        font_size = COALESCE(?, font_size),
-        dyslexia_font = COALESCE(?, dyslexia_font),
-        preferred_download_format = COALESCE(?, preferred_download_format),
-        updated_at = CURRENT_TIMESTAMP
-    `);
-    return stmt.run(
-      userId,
-      contrastMode || 'normal',
-      fontSize || 'normal',
-      dyslexiaFont ? 1 : 0,
-      preferredDownloadFormat || 'html',
-      contrastMode,
-      fontSize,
-      dyslexiaFont !== undefined ? (dyslexiaFont ? 1 : 0) : null,
-      preferredDownloadFormat
-    );
+    try {
+      const stmt = db.prepare(`
+        INSERT INTO user_ui_preferences (user_id, contrast_mode, font_size, dyslexia_font, preferred_download_format, updated_at)
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id) DO UPDATE SET
+          contrast_mode = COALESCE(?, contrast_mode),
+          font_size = COALESCE(?, font_size),
+          dyslexia_font = COALESCE(?, dyslexia_font),
+          preferred_download_format = COALESCE(?, preferred_download_format),
+          updated_at = CURRENT_TIMESTAMP
+      `);
+      return stmt.run(
+        userId,
+        contrastMode || 'normal',
+        fontSize || 'normal',
+        dyslexiaFont ? 1 : 0,
+        preferredDownloadFormat || 'html',
+        contrastMode,
+        fontSize,
+        dyslexiaFont !== undefined ? (dyslexiaFont ? 1 : 0) : null,
+        preferredDownloadFormat
+      );
+    } catch (err) {
+      console.warn('[USER REPO] Falha ao salvar preferencias de UI:', err.message);
+      return null;
+    }
   }
 };
