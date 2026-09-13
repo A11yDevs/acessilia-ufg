@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="<%= (locals.user && user.uiPreferences) ? `${user.uiPreferences.contrast_mode === 'high' ? 'high-contrast' : ''} ${user.uiPreferences.font_size !== 'normal' ? user.uiPreferences.font_size : ''} ${user.uiPreferences.dyslexia_font ? 'dyslexia-font' : ''}`.trim() : '' %>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -80,6 +80,12 @@
             <a href="/auditoria" class="nav-link" <%= currentPath.startsWith('/auditoria') ? 'aria-current="page"' : '' %>>
               <span aria-hidden="true">🛡️</span>
               <span>Auditoria</span>
+            </a>
+          </li>
+          <li>
+            <a href="/monitoramento" class="nav-link" <%= currentPath.startsWith('/monitoramento') ? 'aria-current="page"' : '' %>>
+              <span aria-hidden="true">⚡</span>
+              <span>Monitoramento</span>
             </a>
           </li>
           <% } %>

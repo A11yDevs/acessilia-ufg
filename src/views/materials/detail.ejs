@@ -81,17 +81,80 @@
   </div>
 </section>
 
-<!-- DOWNLOAD & CONTROLE DE ACESSO -->
+<!-- PLAYER DE ÁUDIO NATIVO COM CONTROLE DE VELOCIDADE (AUDIOLIVRO ACESSÍVEL) -->
+<section aria-labelledby="sec-audioplayer" style="margin-bottom: 2.5rem;">
+  <div class="stat-card" style="border-left: 5px solid var(--color-success); background: var(--bg-surface);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h2 id="sec-audioplayer" style="font-size: 1.25rem; font-weight: 700;">🎧 Audiolivro Acessível (MP3 Sintetizado)</h2>
+        <p style="color: var(--text-muted); font-size: 0.875rem;">Reprodução de áudio gerada pelo motor com controle de cadência de voz</p>
+      </div>
+      <div id="audio-speed-control" role="group" aria-label="Controle de velocidade de reprodução" style="display: flex; gap: 0.25rem; align-items: center; background: rgba(0,0,0,0.04); padding: 0.25rem; border-radius: var(--border-radius);">
+        <span style="font-size: 0.75rem; font-weight: 600; padding: 0 0.5rem; color: var(--text-secondary);">Velocidade:</span>
+        <button type="button" class="btn btn-speed" onclick="setAudioSpeed(0.75)" aria-label="Velocidade 0.75x" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">0.75x</button>
+        <button type="button" class="btn btn-speed active" onclick="setAudioSpeed(1.0)" aria-label="Velocidade normal 1.0x" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 700;">1.0x</button>
+        <button type="button" class="btn btn-speed" onclick="setAudioSpeed(1.25)" aria-label="Velocidade 1.25x" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">1.25x</button>
+        <button type="button" class="btn btn-speed" onclick="setAudioSpeed(1.5)" aria-label="Velocidade 1.5x" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">1.5x</button>
+        <button type="button" class="btn btn-speed" onclick="setAudioSpeed(2.0)" aria-label="Velocidade 2.0x" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">2.0x</button>
+      </div>
+    </div>
+
+    <audio id="native-audio-player" controls preload="metadata" style="width: 100%; margin-top: 0.5rem; border-radius: var(--border-radius);" aria-label="Reprodutor de áudio acessível">
+      <source src="/public/audio/sample_acessivel.mp3" type="audio/mpeg">
+      Seu navegador não suporta o elemento de áudio.
+    </audio>
+    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+      💡 <em>Dica de acessibilidade por teclado: Pressione Espaço para Iniciar/Pausar e Setas Direita/Esquerda para avançar ou retroceder.</em>
+    </p>
+  </div>
+</section>
+
+<!-- DOWNLOAD & CONTROLE DE ACESSO MULTI-FORMATO -->
 <section aria-labelledby="sec-download">
   <div class="stat-card">
-    <h3 id="sec-download" style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">Disponibilidade para Download</h3>
+    <h3 id="sec-download" style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">Formatos Acessíveis Sob Demanda</h3>
     <% if (canDownload) { %>
-      <p style="color: var(--color-success); font-weight: 500; margin-bottom: 1rem;">
-        ✔ Seu perfil possui permissão e escopo autorizado para baixar este material.
+      <p style="color: var(--color-success); font-weight: 500; margin-bottom: 1.25rem;">
+        ✔ Acesso autorizado. Escolha o formato de sua preferência ou baixe o acervo unificado:
       </p>
-      <a href="<%= versions[0].storage_path %>" class="btn btn-primary" download>
-        Baixar Versão Mais Recente (v<%= versions[0].version_number %>)
-      </a>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <a href="<%= versions[0].storage_path %>" class="btn" style="border: 2px solid var(--color-primary); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
+          <span style="font-size: 1.5rem;" aria-hidden="true">🌐</span>
+          <strong style="margin-top: 0.25rem;">HTML Semântico</strong>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Para navegadores e leitores de tela</span>
+        </a>
+
+        <a href="<%= versions[0].storage_path %>?format=pdf_ua" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
+          <span style="font-size: 1.5rem;" aria-hidden="true">📄</span>
+          <strong style="margin-top: 0.25rem;">PDF/UA</strong>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">PDF universalmente acessível</span>
+        </a>
+
+        <a href="<%= versions[0].storage_path %>?format=docx" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
+          <span style="font-size: 1.5rem;" aria-hidden="true">📝</span>
+          <strong style="margin-top: 0.25rem;">DOCX (Word)</strong>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Editável e navegável por estilos</span>
+        </a>
+
+        <a href="<%= versions[0].storage_path %>?format=txt" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
+          <span style="font-size: 1.5rem;" aria-hidden="true">📃</span>
+          <strong style="margin-top: 0.25rem;">Texto Puro (TXT)</strong>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Linhas Braille e síntese rápida</span>
+        </a>
+
+        <a href="<%= versions[0].storage_path %>?format=mp3" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
+          <span style="font-size: 1.5rem;" aria-hidden="true">🎵</span>
+          <strong style="margin-top: 0.25rem;">Áudio MP3</strong>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Audiolivro narrado por IA</span>
+        </a>
+
+        <a href="<%= versions[0].storage_path %>?format=zip" class="btn btn-primary" style="display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
+          <span style="font-size: 1.5rem;" aria-hidden="true">📦</span>
+          <strong style="margin-top: 0.25rem;">Pacote Completo (.ZIP)</strong>
+          <span style="font-size: 0.75rem; opacity: 0.9;">Todos os formatos em 1 arquivo</span>
+        </a>
+      </div>
     <% } else { %>
       <p style="color: var(--color-error); font-weight: 500;">
         ⛔ Acesso restrito: Este material ainda não foi aprovado ou você não está matriculado na turma correspondente.
@@ -101,6 +164,23 @@
 </section>
 
 <script>
+  // CONTROLE DO PLAYER NATIVO DE ÁUDIO
+  function setAudioSpeed(speed) {
+    const player = document.getElementById('native-audio-player');
+    if (player) {
+      player.playbackRate = speed;
+      const announcer = document.getElementById('aria-status-announcer');
+      if (announcer) {
+        announcer.textContent = `Velocidade de reprodução alterada para ${speed} vezes`;
+      }
+      document.querySelectorAll('#audio-speed-control .btn-speed').forEach(btn => {
+        btn.style.fontWeight = 'normal';
+      });
+      event.target.style.fontWeight = 'bold';
+    }
+  }
+
+  // LEITOR POR SÍNTESE DO NAVEGADOR
   let isSpeaking = false;
   function toggleSpeech() {
     if (!('speechSynthesis' in window)) {

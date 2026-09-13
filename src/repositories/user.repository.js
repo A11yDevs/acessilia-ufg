@@ -1,4 +1,4 @@
-﻿import { db } from '../../database/connection.js';
+import { db } from '../../database/connection.js';
 
 export const userRepository = {
   findByEmail(email) {
@@ -71,5 +71,39 @@ export const userRepository = {
     `);
     const result = stmt.get();
     return result ? result.total : 0;
+  },
+
+  getUiPreferences(userId) {
+    const row = db.prepare('SELECT * FROM user_ui_preferences WHERE user_id = ?').get(userId);
+    return row || {
+      contrast_mode: 'normal',
+      font_size: 'normal',
+      dyslexia_font: 0,
+      preferred_download_format: 'html'
+    };
+  },
+
+  saveUiPreferences(userId, { contrastMode, fontSize, dyslexiaFont, preferredDownloadFormat }) {
+    const stmt = db.prepare(`
+      INSERT INTO user_ui_preferences (user_id, contrast_mode, font_size, dyslexia_font, preferred_download_format, updated_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id) DO UPDATE SET
+        contrast_mode = COALESCE(?, contrast_mode),
+        font_size = COALESCE(?, font_size),
+        dyslexia_font = COALESCE(?, dyslexia_font),
+        preferred_download_format = COALESCE(?, preferred_download_format),
+        updated_at = CURRENT_TIMESTAMP
+    `);
+    return stmt.run(
+      userId,
+      contrastMode || 'normal',
+      fontSize || 'normal',
+      dyslexiaFont ? 1 : 0,
+      preferredDownloadFormat || 'html',
+      contrastMode,
+      fontSize,
+      dyslexiaFont !== undefined ? (dyslexiaFont ? 1 : 0) : null,
+      preferredDownloadFormat
+    );
   }
 };

@@ -27,6 +27,8 @@ import { healthApiRoutes } from './routes/api/health.api.js';
 import { notificationsApiRoutes } from './routes/api/notifications.api.js';
 import { requestsWebRoutes } from './routes/web/requests.routes.js';
 import { reportsWebRoutes } from './routes/web/reports.routes.js';
+import { monitoringWebRoutes } from './routes/web/monitoring.routes.js';
+import { preferencesApiRoutes } from './routes/api/preferences.api.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -108,9 +110,11 @@ export async function buildApp(opts = {}) {
   await fastify.register(auditWebRoutes);
   await fastify.register(requestsWebRoutes);
   await fastify.register(reportsWebRoutes);
+  await fastify.register(monitoringWebRoutes);
   await fastify.register(webhookApiRoutes);
   await fastify.register(healthApiRoutes);
   await fastify.register(notificationsApiRoutes);
+  await fastify.register(preferencesApiRoutes);
 
   return fastify;
 }

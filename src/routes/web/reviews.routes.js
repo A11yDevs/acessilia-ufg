@@ -50,6 +50,40 @@ export async function reviewsWebRoutes(fastify, opts) {
     });
   });
 
+  // Tela de Análise Comparativa Lado a Lado (Diff Humano)
+  fastify.get('/revisoes/:id/analise', {
+    preHandler: [fastify.requirePermission('revisoes.avaliar')]
+  }, async (request, reply) => {
+    const reviewId = parseInt(request.params.id, 10);
+    const review = materialRepository.findReviewById(reviewId);
+    if (!review) return reply.status(404).send('Revisão não encontrada');
+
+    const version = materialRepository.findVersionById(review.material_version_id);
+    const material = materialRepository.findMaterialById(version.material_id);
+    const allVersions = materialRepository.getMaterialVersions(material.id);
+
+    const originalVersion = allVersions.find(v => v.version_type === 'ORIGINAL') || allVersions[allVersions.length - 1];
+    const accessibleVersion = allVersions.find(v => v.version_type !== 'ORIGINAL') || version;
+
+    const csrfToken = reply.generateCsrf();
+
+    return reply.view('layouts/base.ejs', {
+      title: `Revisão: ${material.title}`,
+      headerTitle: 'Análise Técnica Comparativa',
+      currentPath: '/revisoes',
+      csrfToken,
+      user: request.user,
+      body: await fastify.view('reviews/compare.ejs', {
+        material,
+        review,
+        originalVersion,
+        accessibleVersion,
+        user: request.user,
+        csrfToken
+      })
+    });
+  });
+
   // Concluir Revisão (Aprovar / Reprovar / Solicitar Correção)
   fastify.post('/revisoes/:id/concluir', {
     preHandler: [fastify.requirePermission('revisoes.aprovar'), fastify.csrfProtection]

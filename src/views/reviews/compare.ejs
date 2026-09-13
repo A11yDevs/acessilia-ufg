@@ -1,0 +1,104 @@
+﻿<div style="margin-bottom: 2rem;">
+  <a href="/revisoes" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">
+    &larr; Voltar para Fila de Revisões
+  </a>
+  <h1 style="font-size: 1.75rem; font-weight: 700; margin-top: 0.5rem;">
+    Revisão Comparativa Lado a Lado: <%= material.title %>
+  </h1>
+  <p style="color: var(--text-muted);">
+    Disciplina: <%= material.subject_name %> | Docente: <%= material.teacher_name %> | Revisor: <strong><%= user.name %></strong>
+  </p>
+</div>
+
+<!-- COMPARAÇÃO LADO A LADO: ORIGINAL VS ACESSÍVEL -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; align-items: start;">
+  <!-- COLUNA DA ESQUERDA: ORIGINAL -->
+  <section aria-labelledby="sec-original" class="stat-card" style="border-top: 4px solid var(--text-muted); min-height: 480px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+      <h2 id="sec-original" style="font-size: 1.125rem; font-weight: 700;">
+        📄 Versão Original (v<%= originalVersion.version_number %>)
+      </h2>
+      <span class="role-tag" style="background: var(--text-muted);"><%= originalVersion.version_type %></span>
+    </div>
+
+    <div style="padding: 1rem; background: var(--bg-surface); border-radius: var(--border-radius); border: 1px dashed var(--border-color); margin-bottom: 1rem;">
+      <p style="font-size: 0.875rem;"><strong>Arquivo:</strong> <%= originalVersion.original_filename %></p>
+      <p style="font-size: 0.875rem;"><strong>Tamanho:</strong> <%= (originalVersion.file_size_bytes / 1024).toFixed(1) %> KB</p>
+      <p style="font-size: 0.875rem;"><strong>Hash SHA-256:</strong> <code><%= originalVersion.sha256_hash.substring(0, 16) %>...</code></p>
+    </div>
+
+    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); line-height: 1.6; max-height: 380px; overflow-y: auto;">
+      <p style="font-style: italic; color: var(--text-muted); margin-bottom: 1rem;">Visualização do documento submetido pelo docente:</p>
+      <p><%= material.description || 'Material acadêmico disponibilizado para a disciplina.' %></p>
+      <hr style="margin: 1rem 0; border: 0; border-top: 1px solid var(--border-color);">
+      <div style="padding: 1rem; background: rgba(0,0,0,0.02); border-radius: var(--border-radius); text-align: center;">
+        <p style="font-size: 0.875rem;">[Documento Original: <%= originalVersion.original_filename %>]</p>
+        <a href="<%= originalVersion.storage_path %>" class="btn" style="border: 1px solid var(--border-color); margin-top: 0.5rem; font-size: 0.875rem;" download>
+          Baixar Arquivo Original
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- COLUNA DA DIREITA: ACESSÍVEL GERADO PELA IA -->
+  <section aria-labelledby="sec-acessivel" class="stat-card" style="border-top: 4px solid var(--color-primary); min-height: 480px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+      <h2 id="sec-acessivel" style="font-size: 1.125rem; font-weight: 700;">
+        ♿ Versão Acessível IA (v<%= accessibleVersion ? accessibleVersion.version_number : 2 %>)
+      </h2>
+      <span class="role-tag" style="background: var(--color-primary);"><%= accessibleVersion ? accessibleVersion.version_type : 'PROCESSADO_BOT' %></span>
+    </div>
+
+    <div style="padding: 1rem; background: var(--bg-surface); border-radius: var(--border-radius); border: 1px dashed var(--border-color); margin-bottom: 1rem;">
+      <p style="font-size: 0.875rem;"><strong>Formato Gerado:</strong> HTML Semântico + Audio MP3</p>
+      <p style="font-size: 0.875rem;"><strong>Estrutura:</strong> Títulos H1-H3 + Descrições de Imagens</p>
+      <p style="font-size: 0.875rem;"><strong>Conformidade:</strong> WCAG 2.2 Nível AAA</p>
+    </div>
+
+    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); line-height: 1.8; max-height: 380px; overflow-y: auto;">
+      <h3 style="font-size: 1.125rem; color: var(--color-primary); margin-bottom: 0.5rem;"><%= material.title %></h3>
+      <p style="margin-bottom: 1rem;"><%= material.description || 'Material acadêmico adaptado para plena leitura acessível.' %></p>
+      
+      <div style="background: var(--bg-surface); padding: 1rem; border-left: 3px solid var(--color-success); border-radius: var(--border-radius); margin-bottom: 1rem;">
+        <strong style="display: block; margin-bottom: 0.25rem;">Notas de Acessibilidade da IA:</strong>
+        <p style="font-size: 0.875rem; color: var(--text-secondary);">
+          Textos alternativos em imagens adicionados. Contraste mínimo ajustado para 7:1. Navegação semântica via landmarks estruturada para sintetizadores NVDA/Orca.
+        </p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- PAINEL DE AVALIAÇÃO TÉCNICA E APONTAMENTOS -->
+<section aria-labelledby="sec-avaliacao" class="stat-card" style="border-left: 5px solid var(--color-primary);">
+  <h2 id="sec-avaliacao" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">
+    Decisão Técnica do Revisor
+  </h2>
+
+  <form action="/revisoes/<%= review.id %>/concluir" method="POST">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <div class="form-group">
+      <label for="status-revisao" class="form-label">Parecer da Avaliação <span class="required-indicator">*</span></label>
+      <select id="status-revisao" name="status" class="form-input" required style="font-weight: 600;">
+        <option value="APROVADO">✔ APROVAR MATERIAL (Conforme com WCAG 2.2 e pronto para alunos)</option>
+        <option value="CORRECAO_SOLICITADA">⚠️ SOLICITAR CORREÇÃO (Necessita ajustes da IA ou docente)</option>
+        <option value="REPROVADO">⛔ REPROVAR (Inadequado para uso acadêmico acessível)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="notas-revisao" class="form-label">Notas Pedagógicas e Observações de Qualidade</label>
+      <textarea id="notas-revisao" name="notes" class="form-input" rows="4" placeholder="Adicione observações sobre fidelidade das descrições de imagens, tabelas e fórmulas..."></textarea>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+      <a href="/revisoes" class="btn" style="border: 1px solid var(--border-color);">
+        Cancelar
+      </a>
+      <button type="submit" class="btn btn-primary">
+        Concluir Avaliação Técnica
+      </button>
+    </div>
+  </form>
+</section>

@@ -1,0 +1,119 @@
+﻿<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h1 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem;">Monitoramento do Motor Acessilia</h1>
+    <p style="color: var(--text-muted);">Status em tempo real dos microsserviços de IA, fila de conversões assíncronas e integridade do banco de dados.</p>
+  </div>
+  <form action="/monitoramento/backup" method="POST" onsubmit="return confirm('Deseja iniciar um backup a quente do banco de dados agora?');">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+      <span aria-hidden="true">💾</span>
+      <span>Gerar Backup a Quente</span>
+    </button>
+  </form>
+</div>
+
+<!-- CARDS DE STATUS DO MOTOR ACESSILIA -->
+<section aria-labelledby="engine-health-heading" style="margin-bottom: 2.5rem;">
+  <h2 id="engine-health-heading" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">Motor de Inteligência Artificial</h2>
+  
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+    <div class="card" style="border-left: 4px solid <%= engineHealth.online ? '#10b981' : '#ef4444' %>;">
+      <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem;">Conexão da API REST</div>
+      <div style="font-size: 1.5rem; font-weight: 700; color: <%= engineHealth.online ? '#10b981' : '#ef4444' %>; display: flex; align-items: center; gap: 0.5rem;">
+        <span aria-hidden="true"><%= engineHealth.online ? '●' : '○' %></span>
+        <%= engineHealth.online ? 'Online & Operacional' : 'Inacessível / Offline' %>
+      </div>
+      <div style="margin-top: 0.5rem; font-size: 0.8125rem; word-break: break-all;">
+        <code><%= engineUrl %></code>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem;">Modelo de Visão e Linguagem</div>
+      <div style="font-size: 1.25rem; font-weight: 600;">
+        <%= (engineHealth.models && engineHealth.models.vlm) || 'Gemini 2.5 Pro / Flash' %>
+      </div>
+      <div style="margin-top: 0.5rem; font-size: 0.8125rem; color: var(--text-muted);">
+        Pipeline de Descrição de Imagens e Audiodescrição
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem;">Síntese de Voz (TTS)</div>
+      <div style="font-size: 1.25rem; font-weight: 600;">
+        <%= (engineHealth.tts && engineHealth.tts.engine) || 'Edge-TTS / Neural' %>
+      </div>
+      <div style="margin-top: 0.5rem; font-size: 0.8125rem; color: var(--text-muted);">
+        Geração de Audiolivros Acessíveis (MP3)
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ESTATÍSTICAS DA FILA E BASE LOCAL -->
+<section aria-labelledby="queue-stats-heading" style="margin-bottom: 2.5rem;">
+  <h2 id="queue-stats-heading" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">Fila de Processamento & Banco Local</h2>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 2rem; font-weight: 700; color: #f59e0b;"><%= stats.queuedJobs %></div>
+      <div style="font-size: 0.875rem; color: var(--text-muted);">Na Fila (Aguardando)</div>
+    </div>
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 2rem; font-weight: 700; color: #3b82f6;"><%= stats.processingJobs %></div>
+      <div style="font-size: 0.875rem; color: var(--text-muted);">Em Processamento</div>
+    </div>
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 2rem; font-weight: 700; color: #10b981;"><%= stats.completedJobs %></div>
+      <div style="font-size: 0.875rem; color: var(--text-muted);">Finalizados com Sucesso</div>
+    </div>
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 2rem; font-weight: 700; color: #ef4444;"><%= stats.failedJobs %></div>
+      <div style="font-size: 0.875rem; color: var(--text-muted);">Falhas de Conversão</div>
+    </div>
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 2rem; font-weight: 700;"><%= stats.dbSizeMb %> MB</div>
+      <div style="font-size: 0.875rem; color: var(--text-muted);">Tamanho SQLite</div>
+    </div>
+  </div>
+</section>
+
+<!-- BACKUPS RECENTES -->
+<section aria-labelledby="backups-heading">
+  <h2 id="backups-heading" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">Backups a Quente Recentes (SQLite Online Backup)</h2>
+
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <% if (backups.length === 0) { %>
+      <div style="padding: 2rem; text-align: center; color: var(--text-muted);">
+        Nenhum backup realizado ainda. Clique no botão acima para criar o primeiro backup.
+      </div>
+    <% } else { %>
+      <div class="table-responsive">
+        <table class="data-table" style="width: 100%; border-collapse: collapse; margin: 0;">
+          <thead>
+            <tr>
+              <th scope="col" style="padding: 0.75rem 1rem; text-align: left; border-bottom: 2px solid var(--border-color);">Arquivo</th>
+              <th scope="col" style="padding: 0.75rem 1rem; text-align: left; border-bottom: 2px solid var(--border-color);">Tamanho</th>
+              <th scope="col" style="padding: 0.75rem 1rem; text-align: left; border-bottom: 2px solid var(--border-color);">Data de Criação</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% backups.forEach(b => { %>
+              <tr>
+                <td style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+                  <code><%= b.name %></code>
+                </td>
+                <td style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+                  <%= b.size %>
+                </td>
+                <td style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+                  <%= new Date(b.created).toLocaleString('pt-BR') %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</section>

@@ -14,7 +14,7 @@ test('Testes de Módulos Acadêmicos, Matriz Flexível, Materiais e bot-acess', 
   const teacherActor = { id: 2, roleCode: 'PROFESSOR' };
   const studentActor = { id: 4, roleCode: 'ALUNO' };
 
-  let course, subject, newClass;
+  let course, subject, newClass, createdMaterial, createdVersion;
 
   await t.test('1. Criação de Curso e Disciplina no Departamento INF', async () => {
     const uniqueSuffix = Date.now();
@@ -67,7 +67,7 @@ test('Testes de Módulos Acadêmicos, Matriz Flexível, Materiais e bot-acess', 
   });
 
   await t.test('4. Upload de Material e Criação de Job Assíncrono com Idempotência', async () => {
-    const { material, version } = await materialService.uploadMaterial({
+    const uploadResult = await materialService.uploadMaterial({
       subjectId: subject.id,
       classId: newClass.id,
       title: 'Apostila de Leitores de Tela',
@@ -78,13 +78,16 @@ test('Testes de Módulos Acadêmicos, Matriz Flexível, Materiais e bot-acess', 
       fileBuffer: Buffer.from('TEST_PDF_BYTES')
     }, teacherActor);
 
-    assert.ok(material.id);
-    assert.equal(version.version_number, 1);
-    assert.equal(version.version_type, 'ORIGINAL');
+    createdMaterial = uploadResult.material;
+    createdVersion = uploadResult.version;
+
+    assert.ok(createdMaterial.id);
+    assert.equal(createdVersion.version_number, 1);
+    assert.equal(createdVersion.version_type, 'ORIGINAL');
 
     // Criação de Job com Idempotência
-    const job1 = await materialService.requestProcessing(version.id, teacherActor);
-    const job2 = await materialService.requestProcessing(version.id, teacherActor);
+    const job1 = await materialService.requestProcessing(createdVersion.id, teacherActor);
+    const job2 = await materialService.requestProcessing(createdVersion.id, teacherActor);
 
     // Mesma versão gera o mesmo idempotency_key e reusa o registro
     assert.equal(job1.id, job2.id);
@@ -92,8 +95,7 @@ test('Testes de Módulos Acadêmicos, Matriz Flexível, Materiais e bot-acess', 
   });
 
   await t.test('5. Integração com bot-acess e Geração da Versão v2 Processada', async () => {
-    const material = materialRepository.listMaterialsForUser(teacherActor)[0];
-    const latestVersion = materialRepository.getLatestVersion(material.id);
+    const latestVersion = materialRepository.getLatestVersion(createdMaterial.id);
     const job = await materialService.requestProcessing(latestVersion.id, teacherActor);
 
     // Dispara para bot-acess
@@ -107,24 +109,22 @@ test('Testes de Módulos Acadêmicos, Matriz Flexível, Materiais e bot-acess', 
     assert.equal(processedVersion.version_number, 2);
     assert.equal(processedVersion.version_type, 'PROCESSADO_BOT');
 
-    const updatedMaterial = materialRepository.findMaterialById(material.id);
+    const updatedMaterial = materialRepository.findMaterialById(createdMaterial.id);
     assert.equal(updatedMaterial.current_status, 'AGUARDANDO_REVISAO');
   });
 
   await t.test('6. Controle Fino de Download (Aluno só acessa se Aprovado)', async () => {
-    const material = materialRepository.listMaterialsForUser(teacherActor)[0];
-
     // Enquanto estiver em AGUARDANDO_REVISAO, aluno NÃO pode baixar
-    const canDownloadBefore = await materialService.canUserDownloadMaterial(studentActor, material.id);
+    const canDownloadBefore = await materialService.canUserDownloadMaterial(studentActor, createdMaterial.id);
     assert.equal(canDownloadBefore, false);
 
     // Revisor aprova
-    const latestVersion = materialRepository.getLatestVersion(material.id);
+    const latestVersion = materialRepository.getLatestVersion(createdMaterial.id);
     const review = await materialService.startReview(latestVersion.id, { id: 3, roleCode: 'REVISOR' });
     await materialService.finishReview(review.id, 'APROVADO', {}, { id: 3, roleCode: 'REVISOR' });
 
     // Após aprovação, aluno matriculado PODE baixar
-    const canDownloadAfter = await materialService.canUserDownloadMaterial(studentActor, material.id);
+    const canDownloadAfter = await materialService.canUserDownloadMaterial(studentActor, createdMaterial.id);
     assert.equal(canDownloadAfter, true);
   });
 

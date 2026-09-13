@@ -47,4 +47,33 @@ export async function reportsWebRoutes(fastify, opts) {
     reply.header('Content-Disposition', 'attachment; filename="relatorio_acessibilidade_materiais.csv"');
     return reply.send(csv);
   });
+
+  // Relatório de Conformidade Legal com a Lei Brasileira de Inclusão (LBI)
+  fastify.get('/relatorios/conformidade-lbi.html', {
+    preHandler: [fastify.requirePermission('auditoria.visualizar')]
+  }, async (request, reply) => {
+    const totalMaterials = db.prepare('SELECT COUNT(*) as count FROM materials').get().count;
+    const approvedMaterials = db.prepare("SELECT COUNT(*) as count FROM materials WHERE current_status IN ('APROVADO', 'PUBLICADO')").get().count;
+    const totalSubjectsCovered = db.prepare('SELECT COUNT(DISTINCT subject_id) as count FROM materials WHERE current_status IN (\'APROVADO\', \'PUBLICADO\')').get().count;
+    const totalRequests = db.prepare('SELECT COUNT(*) as count FROM accessibility_requests').get().count;
+
+    const sampleMaterials = db.prepare(`
+      SELECT m.id, m.created_at, m.title, s.name as subject_name, u.name as teacher_name, m.current_status
+      FROM materials m
+      JOIN subjects s ON s.id = m.subject_id
+      JOIN users u ON u.id = m.teacher_user_id
+      WHERE m.current_status IN ('APROVADO', 'PUBLICADO', 'AGUARDANDO_REVISAO')
+      ORDER BY m.created_at DESC
+      LIMIT 20
+    `).all();
+
+    return reply.view('reports/lbi-compliance.ejs', {
+      reportDate: new Date().toLocaleDateString('pt-BR', { dateStyle: 'full' }),
+      totalMaterials,
+      approvedMaterials,
+      totalSubjectsCovered,
+      totalRequests,
+      sampleMaterials
+    });
+  });
 }

@@ -16,23 +16,28 @@
     const isHigh = root.classList.contains('high-contrast');
     localStorage.setItem('a11y_contrast', isHigh ? 'high' : 'normal');
     announceA11y(`Modo alto contraste ${isHigh ? 'ativado' : 'desativado'}`);
+    syncPreferencesToServer();
   };
 
   window.changeFontSize = function(delta) {
     root.classList.remove('font-lg', 'font-xl');
     let msg = 'Tamanho da fonte normal';
+    let size = 'normal';
     if (delta === 1) {
       root.classList.add('font-lg');
       localStorage.setItem('a11y_font_size', 'font-lg');
       msg = 'Tamanho da fonte aumentado para médio';
+      size = 'font-lg';
     } else if (delta === 2) {
       root.classList.add('font-xl');
       localStorage.setItem('a11y_font_size', 'font-xl');
       msg = 'Tamanho da fonte aumentado para grande';
+      size = 'font-xl';
     } else {
       localStorage.removeItem('a11y_font_size');
     }
     announceA11y(msg);
+    syncPreferencesToServer();
   };
 
   window.toggleDyslexiaFont = function() {
@@ -40,7 +45,21 @@
     const isDyslexia = root.classList.contains('dyslexia-font');
     localStorage.setItem('a11y_dyslexia', isDyslexia ? 'true' : 'false');
     announceA11y(`Fonte amigável para dislexia ${isDyslexia ? 'ativada' : 'desativada'}`);
+    syncPreferencesToServer();
   };
+
+  function syncPreferencesToServer() {
+    try {
+      const contrastMode = root.classList.contains('high-contrast') ? 'high' : 'normal';
+      const fontSize = root.classList.contains('font-xl') ? 'font-xl' : (root.classList.contains('font-lg') ? 'font-lg' : 'normal');
+      const dyslexiaFont = root.classList.contains('dyslexia-font');
+      fetch('/api/v1/usuarios/preferencias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contrastMode, fontSize, dyslexiaFont })
+      }).catch(() => {});
+    } catch (_) {}
+  }
 
   function announceA11y(text) {
     const announcer = document.getElementById('aria-status-announcer');

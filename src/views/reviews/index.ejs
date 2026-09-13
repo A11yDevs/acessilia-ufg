@@ -54,6 +54,9 @@
                     </button>
                   </form>
                 <% } else if (m.current_status === 'EM_REVISAO' && m.active_review_id && (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('revisoes.aprovar'))) { %>
+                  <a href="/revisoes/<%= m.active_review_id %>/analise" class="btn btn-primary" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
+                    🔍 Avaliação Comparativa
+                  </a>
                   <form action="/revisoes/<%= m.active_review_id %>/concluir" method="POST" style="display: inline;">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <input type="hidden" name="status" value="APROVADO">

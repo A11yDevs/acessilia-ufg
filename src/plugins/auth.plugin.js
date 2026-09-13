@@ -1,4 +1,4 @@
-﻿import fp from 'fastify-plugin';
+import fp from 'fastify-plugin';
 
 async function authPlugin(fastify, opts) {
   // Decorador para verificar autenticacao ativa
@@ -10,6 +10,8 @@ async function authPlugin(fastify, opts) {
       }
       return reply.redirect('/login');
     }
+    const { userRepository } = await import('../repositories/user.repository.js');
+    user.uiPreferences = userRepository.getUiPreferences(user.id);
     request.user = user;
   });
 

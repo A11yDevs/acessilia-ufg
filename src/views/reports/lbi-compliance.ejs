@@ -1,0 +1,127 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Relatório Institucional de Conformidade Legal (LBI) — UFG</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: #1e293b; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    header { border-bottom: 3px solid #0f172a; padding-bottom: 1rem; margin-bottom: 2rem; }
+    h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+    .badge { display: inline-block; padding: 0.25rem 0.5rem; background: #0284c7; color: #fff; border-radius: 4px; font-size: 0.875rem; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+    th, td { border: 1px solid #cbd5e1; padding: 0.75rem; text-align: left; }
+    th { background: #f8fafc; font-weight: 600; }
+    .summary-box { background: #f1f5f9; padding: 1.25rem; border-radius: 6px; margin-bottom: 2rem; border-left: 5px solid #10b981; }
+    .footer { margin-top: 3rem; border-top: 1px solid #cbd5e1; padding-top: 1rem; font-size: 0.875rem; color: #64748b; text-align: center; }
+    @media print {
+      body { margin: 0; padding: 0; font-size: 12pt; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="display: flex; justify-content: space-between; margin-bottom: 1.5rem;">
+    <a href="/dashboard" style="color: #0284c7; text-decoration: none; font-weight: 600;">&larr; Voltar para Dashboard</a>
+    <button onclick="window.print()" style="padding: 0.5rem 1rem; background: #0f172a; color: white; border: none; border-radius: 4px; cursor: pointer;">
+      🖨 Imprimir / Salvar em PDF
+    </button>
+  </div>
+
+  <header>
+    <h1>UNIVERSIDADE FEDERAL DE GOIÁS — UFG</h1>
+    <p style="font-size: 1.125rem; font-weight: 600; color: #475569;">Relatório de Conformidade com a Lei Brasileira de Inclusão (Lei nº 13.146/2015)</p>
+    <p style="font-size: 0.875rem; color: #64748b;">Núcleo de Acessibilidade / Acessilia Gestor — Emitido em: <%= reportDate %></p>
+  </header>
+
+  <div class="summary-box">
+    <h2 style="font-size: 1.25rem; margin-top: 0;">Sumário Executivo de Atendimento</h2>
+    <p>Este relatório formaliza as ações de garantia de pleno acesso a materiais pedagógicos no âmbito dos cursos de graduação e pós-graduação, em conformidade com o <strong>Art. 28 da Lei 13.146/2015</strong> e as diretrizes internacionais <strong>WCAG 2.2 Nível AAA</strong>.</p>
+    
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 1rem; text-align: center;">
+      <div style="background: #fff; padding: 1rem; border-radius: 4px; border: 1px solid #e2e8f0;">
+        <strong style="font-size: 1.5rem; color: #0284c7;"><%= totalMaterials %></strong><br>
+        <span style="font-size: 0.75rem; color: #64748b;">Materiais Processados</span>
+      </div>
+      <div style="background: #fff; padding: 1rem; border-radius: 4px; border: 1px solid #e2e8f0;">
+        <strong style="font-size: 1.5rem; color: #10b981;"><%= approvedMaterials %></strong><br>
+        <span style="font-size: 0.75rem; color: #64748b;">Materiais Aprovados</span>
+      </div>
+      <div style="background: #fff; padding: 1rem; border-radius: 4px; border: 1px solid #e2e8f0;">
+        <strong style="font-size: 1.5rem; color: #8b5cf6;"><%= totalSubjectsCovered %></strong><br>
+        <span style="font-size: 0.75rem; color: #64748b;">Disciplinas Atendidas</span>
+      </div>
+      <div style="background: #fff; padding: 1rem; border-radius: 4px; border: 1px solid #e2e8f0;">
+        <strong style="font-size: 1.5rem; color: #f59e0b;"><%= totalRequests %></strong><br>
+        <span style="font-size: 0.75rem; color: #64748b;">Solicitações de Apoio</span>
+      </div>
+    </div>
+  </div>
+
+  <h2>1. Distribuição de Formatos Acessíveis Fornecidos</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Formato Disponibilizado</th>
+        <th>Finalidade de Tecnologia Assistiva</th>
+        <th>Nível de Conformidade</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>HTML Semântico</strong></td>
+        <td>Leitores de tela (NVDA, JAWS, Orca, TalkBack, VoiceOver)</td>
+        <td>WCAG 2.2 AAA</td>
+      </tr>
+      <tr>
+        <td><strong>PDF/UA (Universal Accessibility)</strong></td>
+        <td>Impressão acessível, preservação e visualizadores estruturados (ISO 14289-1)</td>
+        <td>PDF/UA-1</td>
+      </tr>
+      <tr>
+        <td><strong>Áudio MP3 (Audiolivro)</strong></td>
+        <td>Estudantes com deficiência visual e transtornos de aprendizagem</td>
+        <td>Narração com IA</td>
+      </tr>
+      <tr>
+        <td><strong>Texto Puro (TXT)</strong></td>
+        <td>Linhas Braille atualizáveis e sintetizadores leves</td>
+        <td>ANSI / UTF-8</td>
+      </tr>
+      <tr>
+        <td><strong>DOCX Acessível</strong></td>
+        <td>Editores com suporte a navegação por cabeçalhos e estilos</td>
+        <td>Acessível</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>2. Trilha de Auditoria e Amostragem de Materiais Adaptados</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Disciplina</th>
+        <th>Título do Material Pedagógico</th>
+        <th>Docente</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% sampleMaterials.forEach(m => { %>
+        <tr>
+          <td><%= new Date(m.created_at).toLocaleDateString('pt-BR') %></td>
+          <td><%= m.subject_name %></td>
+          <td><strong><%= m.title %></strong></td>
+          <td><%= m.teacher_name %></td>
+          <td><span class="badge"><%= m.current_status %></span></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <p>Acessilia Gestor — Sistema Institucional de Gestão de Acessibilidade Acadêmica</p>
+    <p>Documento autenticado digitalmente para comprovação de atendimento às diretrizes do MEC/INEP.</p>
+  </div>
+</body>
+</html>
