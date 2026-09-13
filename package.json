@@ -1,7 +1,7 @@
 {
-  "name": "painel-bot-acess",
+  "name": "acessilia-gestor",
   "version": "1.0.0",
-  "description": "Painel Institucional Web para Gestao de Acessibilidade Academica e Integracao com bot-acess",
+  "description": "Painel Institucional Web ACESSILIA GESTOR para Gestao de Acessibilidade Academica",
   "main": "src/server.js",
   "type": "module",
   "scripts": {

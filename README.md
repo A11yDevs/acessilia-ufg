@@ -1,6 +1,6 @@
-﻿# BOT-ACESS — Painel Institucional Web
+# ACESSILIA GESTOR — Painel Institucional Web
 
-Painel Institucional Web independente para gestão de acessibilidade acadêmica, cursos, turmas, docentes, discentes, materiais e integração desacoplada com a plataforma **bot-acess**.
+Painel Institucional Web independente para gestão de acessibilidade acadêmica, cursos, turmas, docentes, discentes, materiais e integração desacoplada com o motor de acessibilização **Acessilia**.
 
 ---
 
