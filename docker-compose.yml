@@ -1,4 +1,4 @@
-﻿services:
+services:
   acessilia-ufg:
     build:
       context: .
@@ -14,6 +14,7 @@
       - DATABASE_PATH=/app/database/database.sqlite
       - SESSION_SECRET=${SESSION_SECRET:-acessilia_ufg_session_secret_min_32_characters_prod!}
       - COOKIE_SECRET=${COOKIE_SECRET:-acessilia_ufg_cookie_secret_min_32_characters_prod!}
+      - COOKIE_SECURE=${COOKIE_SECURE:-auto}
       - BOT_ACESS_API_URL=${BOT_ACESS_API_URL:-https://www.acessilia1.inf.ufg.br}
       - BOT_ACESS_API_KEY=${BOT_ACESS_API_KEY:-}
     volumes:

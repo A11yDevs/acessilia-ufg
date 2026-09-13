@@ -34,6 +34,7 @@ const __dirname = path.dirname(__filename);
 export async function buildApp(opts = {}) {
   const fastify = Fastify({
     logger: env.NODE_ENV !== 'test',
+    trustProxy: true,
     ...opts
   });
 
@@ -56,10 +57,16 @@ export async function buildApp(opts = {}) {
     secret: env.COOKIE_SECRET
   });
 
+  // Determina se o cookie deve ter a flag secure
+  // Em produção com HTTPS direto ou atrás de reverse proxy (Nginx/Traefik com X-Forwarded-Proto)
+  const isCookieSecure = process.env.COOKIE_SECURE === 'true'
+    ? true
+    : (process.env.COOKIE_SECURE === 'false' ? false : 'auto');
+
   await fastify.register(fastifySession, {
     secret: env.SESSION_SECRET,
     cookie: {
-      secure: env.NODE_ENV === 'production',
+      secure: isCookieSecure,
       httpOnly: true,
       sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000
