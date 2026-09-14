@@ -119,37 +119,37 @@
       </p>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-        <a href="<%= versions[0].storage_path %>" class="btn" style="border: 2px solid var(--color-primary); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
+        <a href="/materiais/<%= material.id %>/download?format=html" class="btn" style="border: 2px solid var(--color-primary); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
           <span style="font-size: 1.5rem;" aria-hidden="true">🌐</span>
           <strong style="margin-top: 0.25rem;">HTML Semântico</strong>
           <span style="font-size: 0.75rem; color: var(--text-muted);">Para navegadores e leitores de tela</span>
         </a>
 
-        <a href="<%= versions[0].storage_path %>?format=pdf_ua" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
+        <a href="/materiais/<%= material.id %>/download?format=pdf_ua" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
           <span style="font-size: 1.5rem;" aria-hidden="true">📄</span>
           <strong style="margin-top: 0.25rem;">PDF/UA</strong>
           <span style="font-size: 0.75rem; color: var(--text-muted);">PDF universalmente acessível</span>
         </a>
 
-        <a href="<%= versions[0].storage_path %>?format=docx" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
+        <a href="/materiais/<%= material.id %>/download?format=docx" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
           <span style="font-size: 1.5rem;" aria-hidden="true">📝</span>
           <strong style="margin-top: 0.25rem;">DOCX (Word)</strong>
           <span style="font-size: 0.75rem; color: var(--text-muted);">Editável e navegável por estilos</span>
         </a>
 
-        <a href="<%= versions[0].storage_path %>?format=txt" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
+        <a href="/materiais/<%= material.id %>/download?format=txt" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
           <span style="font-size: 1.5rem;" aria-hidden="true">📃</span>
           <strong style="margin-top: 0.25rem;">Texto Puro (TXT)</strong>
           <span style="font-size: 0.75rem; color: var(--text-muted);">Linhas Braille e síntese rápida</span>
         </a>
 
-        <a href="<%= versions[0].storage_path %>?format=mp3" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
+        <a href="/materiais/<%= material.id %>/download?format=mp3" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
           <span style="font-size: 1.5rem;" aria-hidden="true">🎵</span>
           <strong style="margin-top: 0.25rem;">Áudio MP3</strong>
           <span style="font-size: 0.75rem; color: var(--text-muted);">Audiolivro narrado por IA</span>
         </a>
 
-        <a href="<%= versions[0].storage_path %>?format=zip" class="btn btn-primary" style="display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
+        <a href="/materiais/<%= material.id %>/download?format=zip" class="btn btn-primary" style="display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
           <span style="font-size: 1.5rem;" aria-hidden="true">📦</span>
           <strong style="margin-top: 0.25rem;">Pacote Completo (.ZIP)</strong>
           <span style="font-size: 0.75rem; opacity: 0.9;">Todos os formatos em 1 arquivo</span>

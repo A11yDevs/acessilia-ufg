@@ -1,0 +1,301 @@
+================================================================================
+                    ACESSILIA GESTOR — NAI / UFG
+         MAPA COMPLETO DE TODAS AS FUNÇÕES E RECURSOS IMPLEMENTADOS
+================================================================================
+Data de Atualização: Setembro de 2026
+Repositório: A11yDevs/acessilia-ufg
+Ambiente: UFG / NAI (Núcleo de Acessibilidade e Inclusão)
+Padrão de Acessibilidade: WCAG 2.2 Nível AAA / Lei Brasileira de Inclusão (LBI)
+
+Este documento descreve detalhadamente todas as funcionalidades, rotas,
+mecanismos de acessibilidade, integrações e componentes técnicos atualmente
+implementados e operacionais no sistema Acessilia Gestor.
+
+--------------------------------------------------------------------------------
+SUMÁRIO
+--------------------------------------------------------------------------------
+1. ACESSIBILIDADE DIGITAL E INTERFACE UNIVERSAL (WCAG 2.2 AAA)
+2. SEGURANÇA, AUTENTICAÇÃO E CONTROLE DE ACESSO (RBAC)
+3. PAINEL DE CONTROLE (DASHBOARD) E MÉTRICAS EXECUTIVAS
+4. GESTÃO DO ACERVO E MATERIAIS ACADÊMICOS
+5. LEITOR ACESSÍVEL WEB & AUDIOLIVRO INTEGRADO
+6. FLUXO DE REVISÃO TÉCNICA HUMANA (DIFF COMPARATIVO LADO A LADO)
+7. GESTÃO DE DEMANDAS E SOLICITAÇÕES DE ACESSIBILIDADE
+8. GESTÃO DA ESTRUTURA ACADÊMICA (CURSOS E DISCIPLINAS)
+9. ADMINISTRAÇÃO DE USUÁRIOS E PERFIS
+10. AUDITORIA, COMPLIANCE LEGAL (LBI) E RELATÓRIOS
+11. MONITORAMENTO DO MOTOR DE IA, FILA E BACKUP A QUENTE
+12. INTEGRAÇÃO COM O MOTOR ACESSILIA CORE (IA / OCR / TTS)
+13. ARQUITETURA DE REDE, PROXY REVERSO E PERSISTÊNCIA
+
+================================================================================
+1. ACESSIBILIDADE DIGITAL E INTERFACE UNIVERSAL (WCAG 2.2 AAA)
+================================================================================
+
+1.1. Barra Rápida de Acessibilidade Visual (Toolbar Superior):
+   - Função "A" (Normal): Redefine a tipografia da interface para o tamanho base de 16px.
+   - Função "A+" (Médio): Aplica a classe CSS `.font-lg` elevando o tamanho das fontes para 18px (112,5%) com redimensionamento proporcional de botões, inputs e menus.
+   - Função "A++" (Grande): Aplica a classe CSS `.font-xl` elevando as fontes para 20px (125%), garantindo legibilidade para usuários com baixa visão severa sem quebra de layout.
+   - Função "🌓 Contraste" (Alto Contraste): Alterna o modo escuro/alto contraste institucional (fundo preto `#000000`, textos e bordas em amarelo acessível `#ffff00` e destaques em ciano `#00ffff`), garantindo razão de contraste superior a 7:1.
+   - Função "📖 Dislexia" (Tipografia Amigável): Alterna para uma tipografia com peso na base dos caracteres, maior espaçamento entre letras (letter-spacing: 0.05em) e entrelinhas expandido (line-height: 1.8), reduzindo a fadiga visual e confusão de caracteres para estudantes com dislexia.
+
+1.2. Persistência Híbrida de Preferências do Usuário:
+   - Sincronização em dois níveis: As escolhas visuais do usuário são salvas imediatamente no LocalStorage do navegador (permitindo carregamento instantâneo sem flash de tema) e enviadas via API REST (`POST /api/v1/usuarios/preferencias`) para o banco de dados.
+   - Assim, quando o usuário loga a partir de qualquer computador da UFG ou celular, suas preferências de acessibilidade visual são restauradas automaticamente.
+
+1.3. Região de Anúncio Dinâmico (`aria-live="polite"`):
+   - Elemento `#aria-status-announcer` com atributos `aria-live="polite"` e `aria-atomic="true"`.
+   - Utilizado pela função JavaScript `announceA11y(text)` para sintetizar e anunciar mudanças de estado aos leitores de tela (NVDA, JAWS, TalkBack, Orca), como alterações de tamanho de fonte, mudanças de contraste, seleção de arquivos ou recebimento de avisos.
+
+1.4. Atalho de Teclado Skip Link (WCAG 2.4.1):
+   - Link invisível no topo da página que recebe foco imediato na primeira tecla [Tab].
+   - Ao pressionar [Enter], salta o menu de navegação e ancora diretamente no `#conteudo-principal` com foco programático (`tabindex="-1"`), poupando esforço de estudantes com deficiência motora ou visual.
+
+1.5. Indicador de Foco Visível Reforçado (WCAG 2.4.7):
+   - Todos os botões, links, selects, campos de texto e áreas arrastáveis possuem `outline` de foco com espessura de 3px em cor de alto contraste e deslocamento (`outline-offset: 2px`).
+
+1.6. Mensagens Toast e Alertas em Tempo Real Acessíveis:
+   - Notificações transitórias exibidas na base da tela com papéis semânticos `role="alert"` e `role="status"`.
+
+================================================================================
+2. SEGURANÇA, AUTENTICAÇÃO E CONTROLE DE ACESSO (RBAC)
+================================================================================
+
+2.1. Criptografia de Senhas de Última Geração (Argon2id):
+   - Todas as senhas dos usuários são protegidas usando o algoritmo de hash Argon2id (vencedor da Password Hashing Competition), oferecendo imunidade contra ataques por GPU, tabelas arco-íris e hardware dedicado (ASIC).
+
+2.2. Proteção Anti-Força Bruta e Limite de Taxa (Rate Limiter):
+   - O endpoint `/login` possui rastreamento por IP e e-mail. Tentativas consecutivas inválidas resultam em bloqueio temporal gradual com mensagem de alerta acessível.
+
+2.3. Controle de Acesso Baseado em Papéis (RBAC Fino):
+   - Papéis suportados no sistema:
+     * ADMINISTRADOR: Gestão total de usuários, cursos, auditoria, monitoramento e backups.
+     * GESTOR_ACESSIBILIDADE: Gestão do fluxo do acervo, relatórios executivos e supervisão técnica.
+     * PROFESSOR: Envio de materiais para suas turmas e acompanhamento de processamento.
+     * REVISOR: Análise comparativa humana de acessibilidade, aprovação e devolução para correção.
+     * ALUNO: Acesso a materiais aprovados em multi-formato e abertura de solicitações ao NAI.
+   - Permissões granulares implementadas via middleware `fastify.requirePermission('modulo.acao')`.
+
+2.4. Regra da Proteção do Último Administrador:
+   - O sistema bloqueia a desativação ou alteração de papel do último administrador ativo da base, garantindo que o sistema nunca fique sem governança.
+
+2.5. Proteção contra CSRF (Cross-Site Request Forgery):
+   - Todos os formulários `POST` (envio de material, revisão, cadastro, backup) exigem e validam um token criptográfico gerado por sessão (`_csrf`).
+
+================================================================================
+3. PAINEL DE CONTROLE (DASHBOARD) E MÉTRICAS EXECUTIVAS
+================================================================================
+
+3.1. Dashboard Contextual Personalizado por Perfil:
+   - Administrador/Gestor: Cobertura percentual de acessibilidade, acervo total, cursos, disciplinas e fila de revisão pendente.
+   - Docente: Total de materiais enviados pelo professor, materiais aprovados e materiais aguardando conversão.
+   - Revisor: Fila de revisão de acessibilidade aguardando parecer e materiais em andamento.
+   - Aluno: Quantidade de materiais disponíveis para sua turma e histórico de suas solicitações.
+
+3.2. Métrica de Cobertura de Acessibilidade:
+   - Cálculo dinâmico da porcentagem de disciplinas do catálogo institucional que já contam com ao menos um material com parecer de acessibilidade `APROVADO` ou `PUBLICADO`.
+
+3.3. Gráfico Semântico em SVG de Distribuição por Categoria:
+   - Renderização nativa vetorial (sem bibliotecas externas pesadas de terceiros) com barras proporcionais representando o acervo por categoria (Livros, Slides, Artigos, Apostilas, Exercícios, Provas).
+   - Acompanhado de elemento `<details>` com tabela tabular completa dos dados para total compatibilidade com leitores de tela (WCAG 1.1.1).
+
+3.4. Tabela de Atividades Recentes e Segurança:
+   - Exibição das últimas 8 ações registradas na trilha de auditoria para acompanhamento rápido pelos gestores.
+
+================================================================================
+4. GESTÃO DO ACERVO E MATERIAIS ACADÊMICOS
+================================================================================
+
+4.1. Repositório Central de Materiais (`/materiais`):
+   - Listagem paginada e filtrável de todos os documentos cadastrados.
+   - Filtro de busca instantâneo por título do material ou nome da disciplina com anúncio dinâmico de resultados.
+   - Filtro drop-down por status de ciclo de vida (`ENVIADO`, `AGUARDANDO_PROCESSAMENTO`, `PROCESSANDO`, `AGUARDANDO_REVISAO`, `EM_REVISAO`, `APROVADO`, `PUBLICADO`, `CORRECAO_SOLICITADA`).
+
+4.2. Área de Upload Acessível (Dropzone Híbrido):
+   - Suporte completo a arrastar e soltar (Drag and Drop) de arquivos com feedback visual de borda.
+   - Totalmente operável via teclado: ao focar na dropzone e pressionar [Enter] ou [Espaço], o seletor de arquivos do sistema operacional é acionado.
+   - Exibição de barra de progresso HTML5 semântica com anúncio por voz do nome e tamanho do arquivo selecionado.
+   - Suporte a extensões: PDF, DOCX, PPTX, PNG, JPG, JPEG e TXT (limite até 50MB).
+
+4.3. Histórico Imutável de Versões (Trilha de Auditoria do Documento):
+   - Cada arquivo enviado cria uma árvore de versões (`material_versions`).
+   - Versão 1 (ORIGINAL): Arquivo original bruto submetido pelo docente.
+   - Versão 2 (PROCESSADO_BOT): Arquivo estruturado gerado pelo motor de inteligência artificial.
+   - Versão 3+ (HUMAN_FIXED): Versões com intervenções e ajustes de qualidade feitos pela equipe do NAI.
+   - Cada versão possui cálculo de hash de integridade SHA-256 gravado no banco de dados.
+
+4.4. Controle de Acesso e Download Multi-Formato:
+   - Validação de autorização antes de liberar o download dos materiais.
+   - Quando autorizado, o usuário tem acesso a 6 formatos sob demanda:
+     1. HTML Semântico: Navegável no browser, com landmarks semânticos e títulos H1-H6.
+     2. PDF/UA (Universal Accessibility): PDF normalizado para leitores de tela e software de aumento.
+     3. DOCX (Microsoft Word): Documento estruturado por estilos de cabeçalho, editável.
+     4. Texto Puro (TXT): Compatível com linhas Braille acopladas e leitores de código aberto.
+     5. Áudio MP3: Audiolivro completo com narração sintetizada da obra.
+     6. Pacote Completo (.ZIP): Download consolidado de todas as variações em um clique.
+
+================================================================================
+5. LEITOR ACESSÍVEL WEB & AUDIOLIVRO INTEGRADO
+================================================================================
+
+5.1. Web Reader Acessível Integrado (`detail.ejs`):
+   - Permite a leitura do material diretamente no navegador, sem necessidade de baixar softwares proprietários ou plug-ins pesados.
+   - O conteúdo é encapsulado em tags `<article>` com foco programático acessível por teclado.
+
+5.2. Leitor de Síntese de Voz Nativo (Web Speech API):
+   - Botão "🔊 Ler em Voz Alta" que aciona o sintetizador de fala do próprio navegador em português brasileiro (`pt-BR`).
+   - Controles de Pausa, Retomada e Parada total, mantendo o estado de leitura sincronizado.
+
+5.3. Player de Áudio Nativo com Controle de Velocidade (Audiolivro MP3):
+   - Componente `<audio>` HTML5 completo com controles padrão acessíveis (barra de progresso, volume e tempo decorrido).
+   - Seletor rápido de velocidade de reprodução com 5 cadências:
+     * 0.75x: Cadência lenta (ideal para estudantes com déficit de atenção ou compreensão de termos técnicos complexos).
+     * 1.0x: Velocidade padrão natural.
+     * 1.25x: Aceleração leve.
+     * 1.5x: Aceleração média.
+     * 2.0x: Aceleração rápida (amplamente utilizada por estudantes cegos experientes com sintetizadores).
+   - Feedback sonoro/verbal via `aria-status-announcer` anunciando a nova velocidade selecionada.
+
+================================================================================
+6. FLUXO DE REVISÃO TÉCNICA HUMANA (DIFF COMPARATIVO LADO A LADO)
+================================================================================
+
+6.1. Fila de Revisões de Acessibilidade (`/revisoes`):
+   - Listagem de todos os documentos cujo processamento por IA foi finalizado e que aguardam validação por um profissional do NAI.
+   - Tabela de histórico de revisões recentemente concluídas com notas e pareceres emitidos.
+
+6.2. Tela de Análise Comparativa Lado a Lado (`/revisoes/:id/analise`):
+   - Layout em duas colunas sincronizadas (Visual Diff):
+     * Coluna da Esquerda: Documento original submetido pelo professor, metadados de arquivo e botão para download do arquivo bruto.
+     * Coluna da Direita: Versão acessível gerada pela IA, destacando hierarquia de cabeçalhos, notas de acessibilidade e descrições textuais das imagens geradas pelo modelo de visão computacional.
+
+6.3. Emissão de Parecer Técnico Conclusivo:
+   - Formulário com CSRF para validação da equipe técnica:
+     * APROVAR: Libera o material no catálogo para os estudantes.
+     * SOLICITAR CORREÇÃO: Devolve o material com apontamentos para nova passagem pelo motor ou ajuste pelo docente.
+     * REPROVAR: Sinaliza inadequação severa de conteúdo ou ilegibilidade do original.
+   - Campo de notas pedagógicas e orientações de acessibilidade que ficam registradas no prontuário do material.
+
+================================================================================
+7. GESTÃO DE DEMANDAS E SOLICITAÇÕES DE ACESSIBILIDADE
+================================================================================
+
+7.1. Central de Solicitações (`/solicitacoes`):
+   - Permite que estudantes com deficiência abram solicitações de priorização para materiais didáticos que ainda não estejam adaptados.
+   - Professores e gestores acompanham a fila de prioridades das turmas.
+
+7.2. Cadastro de Demanda Acessível:
+   - Seleção de material, definição de prioridade (`BAIXA`, `NORMAL`, `ALTA`, `URGENTE`) e campo para observações específicas de necessidades (ex: "Necessito de descrição matemática estendida em áudio").
+
+7.3. Gestão e Despacho de Status:
+   - Atualização do ciclo da solicitação (`SOLICITADA`, `EM_ANDAMENTO`, `CONCLUIDA`, `CANCELADA`).
+   - Disparo de evento via `NotificationEmitter` que notifica o estudante no painel no momento em que seu material for adaptado.
+
+================================================================================
+8. GESTÃO DA ESTRUTURA ACADÊMICA (CURSOS E DISCIPLINAS)
+================================================================================
+
+8.1. Catálogo de Cursos Institucionais (`/academico/cursos`):
+   - Cadastro e listagem de cursos de graduação e pós-graduação da UFG.
+   - Atributos gerenciados: Nome do curso, código, departamento responsável, modalidade (Presencial, EAD, Híbrido) e duração em semestres.
+
+8.2. Matriz Curricular Dinâmica do Curso (`/academico/cursos/:id`):
+   - Visualização de todas as disciplinas vinculadas ao curso, separadas por semestre recomendado e categorizadas entre Obrigatórias e Eletivas.
+   - Ferramenta para associar disciplinas existentes à grade curricular.
+
+8.3. Catálogo Geral de Disciplinas (`/academico/disciplinas`):
+   - Visualização consolidada de todas as disciplinas da instituição com código, carga horária e departamento.
+   - Modal acessível de cadastro de nova disciplina (`POST /academico/disciplinas`) com foco programático e campo de redirecionamento inteligente (`redirectUrl`), permitindo criar uma disciplina diretamente da matriz curricular sem perder o contexto de navegação.
+
+================================================================================
+9. ADMINISTRAÇÃO DE USUÁRIOS E PERFIS
+================================================================================
+
+9.1. Gestão de Usuários (`/usuarios`):
+   - Tabela administrativa contendo nome, e-mail institucional, matrícula e papel associado.
+   - Filtro e ordenação de usuários.
+
+9.2. Cadastro com Atribuição de Papel:
+   - Cadastro de novos membros com senha inicial criptografada em Argon2id e vinculação ao papel institucional no modelo RBAC.
+
+9.3. Ativação / Desativação Segura:
+   - Alternância de status (`ACTIVE` / `INACTIVE`) com bloqueio programático caso se tente inativar o último administrador do sistema.
+
+================================================================================
+10. AUDITORIA, COMPLIANCE LEGAL (LBI) E RELATÓRIOS
+================================================================================
+
+10.1. Trilha de Auditoria Imutável (`/auditoria`):
+    - Registro detalhado de cada ação relevante no sistema em banco de dados: data/hora exata, usuário executor, tipo de ação, recurso afetado, ID do recurso, IP de origem e payload JSON dos detalhes da operação.
+
+10.2. Exportação de Auditoria em CSV (`/relatorios/auditoria.csv`):
+    - Gera download direto de arquivo CSV formatado em UTF-8 com cabeçalhos normalizados para auditorias externas, comissões disciplinares ou compliance institucional.
+
+10.3. Relatório de Materiais e Acessibilidade em CSV (`/relatorios/materiais.csv`):
+    - Exportação contendo métricas de cada material: título, disciplina, docente, categoria, status de processamento e quantidade de versões registradas.
+
+10.4. Laudo Institucional de Conformidade com a Lei Brasileira de Inclusão (`/relatorios/conformidade-lbi.html`):
+    - Relatório oficial emitido conforme os artigos 27 e 28 da Lei Federal nº 13.146/2015 (LBI) e Decretos de Acessibilidade da Educação Superior.
+    - Contém cabeçalho com brasão e chancela institucional da UFG / NAI, data por extenso, indicadores de cobertura, total de materiais adaptados, solicitações atendidas e demonstrativo tabular de acervo.
+    - Folha de estilo otimizada para impressão física ou exportação em PDF via navegador (`@media print` com ocultação de menus e forçamento de contraste).
+
+================================================================================
+11. MONITORAMENTO DO MOTOR DE IA, FILA E BACKUP A QUENTE
+================================================================================
+
+11.1. Painel de Monitoramento do Motor Acessilia (`/monitoramento`):
+    - Diagnóstico visual de conexão com o microsserviço Python do Acessilia Core.
+    - Exibição do status da API REST (Online/Offline), URL configurada, modelo de visão computacional em operação (Gemini Pro/Flash ou Qwen-VL) e motor de síntese de voz (TTS).
+
+11.2. Painel de Fila de Conversões Assíncronas:
+    - Indicadores em tempo real de tarefas em fila (`QUEUED`), em processamento (`PROCESSING`), concluídas com sucesso (`COMPLETED`) e eventuais falhas (`FAILED`).
+    - Exibição do tamanho físico ocupado pela base SQLite em disco (em Megabytes).
+
+11.3. Sistema de Backup a Quente do Banco de Dados (SQLite Online Backup):
+    - Botão "💾 Gerar Backup a Quente" que invoca o `backupService`.
+    - Realiza uma cópia segura e atômica do banco de dados em execução sem necessidade de travar as transações ativas dos usuários ou derrubar o servidor.
+    - Armazenamento com carimbo de data/hora (`backup_YYYY-MM-DD_HH-mm-ss.sqlite`) e listagem dos últimos 5 backups criados com data e tamanho em MB.
+
+================================================================================
+12. INTEGRAÇÃO COM O MOTOR ACESSILIA CORE (IA / OCR / TTS)
+================================================================================
+
+12.1. Cliente HTTP Dedicado (`BotAcessClient`):
+    - Módulo cliente desacoplado para integração com os endpoints REST oficiais do Acessilia Core:
+      * `POST /api/v1/jobs`: Envio multipart/form-data com documento e prompt customizado.
+      * `GET /api/v1/jobs/{task_id}`: Polling de progresso e etapa de conversão.
+      * `POST /api/v1/jobs/{task_id}/cancel`: Interrupção de conversão pelo usuário.
+      * `GET /api/v1/download/{token}/{format}`: Obtenção de arquivos gerados em múltiplos formatos.
+      * `GET /api/v1/health`: Verificação de saúde dos contêineres e modelos de inteligência artificial.
+
+12.2. Webhook Assíncrono (`/api/v1/webhooks/bot-acess`):
+    - Endpoint para recebimento de notificações automáticas quando o motor de IA finaliza a conversão de um documento.
+    - Atualiza o status do job, cria automaticamente uma nova versão do material (`PROCESSADO_BOT`) e coloca o material no status `AGUARDANDO_REVISAO`.
+
+12.3. Canal de Notificações em Tempo Real via Server-Sent Events (SSE):
+    - Endpoint `/api/v1/notifications/stream`.
+    - Permite atualização reativa dos navegadores dos usuários sem necessidade de refresh na página quando novos materiais chegam ou revisões são aprovadas.
+
+12.4. Endpoint de Sondagem de Saúde Geral (`/healthz`):
+    - Endpoint padronizado para checagem de liveness e readiness do Kubernetes/Docker/Nginx.
+    - Retorna JSON com uptime do Node.js, status de leitura e escrita do banco de dados SQLite e conectividade com o motor de inteligência artificial.
+
+================================================================================
+13. ARQUITETURA DE REDE, PROXY REVERSO E PERSISTÊNCIA
+================================================================================
+
+13.1. Suporte Nativo a Proxy Reverso com Prefixo de Subcaminho (`/gestor`):
+    - O sistema opera perfeitamente atrás de proxies reversos Apache/Nginx na infraestrutura da UFG sob o caminho `https://www.acessilia3.inf.ufg.br/gestor/`.
+    - Roteamento com prefixo automático ou links relativos protegidos, impedindo que requisições escapem para a raiz do servidor Python.
+
+13.2. Migrações Automáticas na Inicialização (`runMigrations()`):
+    - Ao iniciar o servidor em `server.js`, o sistema executa automaticamente todas as migrações SQL pendentes na pasta `/database/migrations/`.
+    - Criação de novas tabelas (`user_ui_preferences`, `reviews`, etc.) sem perda de dados existentes e sem exigir intervenções manuais via terminal em ambientes de produção.
+
+13.3. Suíte Abrangente de Testes Automatizados (31 Testes Ativos):
+    - Testes unitários e de integração cobrindo autenticação, Argon2id, RBAC, proteção de último administrador, injeção CSRF, integridade do banco e sanitização de dados.
+    - Execução contínua via comando padrão `npm test`.
+
+================================================================================
+FIM DO DOCUMENTO
+================================================================================

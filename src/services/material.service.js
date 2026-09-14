@@ -57,7 +57,31 @@ export const materialService = {
     return { material, version };
   },
 
-  // Verificação de Permissão de Download (Escopo Fino)
+  // Verificação de Permissão para Visualizar Detalhes do Material (Prevenção de IDOR)
+  async canUserViewMaterial(user, materialId) {
+    const material = materialRepository.findMaterialById(materialId);
+    if (!material) return false;
+
+    if (user.roleCode === 'ADMINISTRADOR' || user.roleCode === 'GESTOR_ACESSIBILIDADE' || user.roleCode === 'REVISOR') {
+      return true;
+    }
+
+    if (user.roleCode === 'PROFESSOR') {
+      return material.teacher_user_id === user.id;
+    }
+
+    if (user.roleCode === 'ALUNO') {
+      // Aluno só pode ver se estiver matriculado na turma e o material estiver APROVADO ou PUBLICADO
+      if (!material.class_id) return false;
+      const isEnrolled = academicRepository.isStudentInClass(user.id, material.class_id);
+      const isAccessibleStatus = ['APROVADO', 'PUBLICADO'].includes(material.current_status);
+      return isEnrolled && isAccessibleStatus;
+    }
+
+    return false;
+  },
+
+  // Verificação de Permissão de Download (Escopo Fino por Turma)
   async canUserDownloadMaterial(user, materialId) {
     const material = materialRepository.findMaterialById(materialId);
     if (!material) return false;
@@ -75,7 +99,7 @@ export const materialService = {
     }
 
     if (user.roleCode === 'ALUNO') {
-      // Deve ser aluno matriculado na turma e o material deve estar aprovado/publicado
+      // Deve ser aluno matriculado na turma da aula e o material deve estar aprovado/publicado
       if (!material.class_id) return false;
       const isEnrolled = academicRepository.isStudentInClass(user.id, material.class_id);
       const isAccessibleStatus = ['APROVADO', 'PUBLICADO'].includes(material.current_status);

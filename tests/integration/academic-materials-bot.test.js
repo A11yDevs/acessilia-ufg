@@ -128,5 +128,21 @@ test('Testes de Módulos Acadêmicos, Matriz Flexível, Materiais e bot-acess', 
     assert.equal(canDownloadAfter, true);
   });
 
+  await t.test('7. Proteção contra IDOR: Aluno de outra turma NÃO pode visualizar nem baixar', async () => {
+    const otherStudent = { id: 999, roleCode: 'ALUNO' }; // Aluno não matriculado na turma do material
+
+    // Tentativa de visualização deve ser bloqueada
+    const canView = await materialService.canUserViewMaterial(otherStudent, createdMaterial.id);
+    assert.equal(canView, false, 'Aluno não matriculado não deve conseguir visualizar detalhes do material');
+
+    // Tentativa de download deve ser bloqueada
+    const canDownload = await materialService.canUserDownloadMaterial(otherStudent, createdMaterial.id);
+    assert.equal(canDownload, false, 'Aluno não matriculado não deve conseguir baixar o material');
+
+    // O aluno matriculado na turma PODE visualizar após aprovação
+    const canEnrolledView = await materialService.canUserViewMaterial(studentActor, createdMaterial.id);
+    assert.equal(canEnrolledView, true, 'Aluno matriculado deve conseguir visualizar material aprovado');
+  });
+
   await app.close();
 });

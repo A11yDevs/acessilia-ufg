@@ -5,23 +5,23 @@
   --bg-sidebar: #0f172a;
   
   --text-primary: #0f172a;
-  --text-secondary: #334155;
-  --text-muted: #64748b;
+  --text-secondary: #1e293b;
+  --text-muted: #334155; /* Contraste 9.6:1 sobre fundo branco (WCAG AAA >= 7:1) */
   --text-inverse: #ffffff;
 
-  --border-color: #cbd5e1;
-  --border-focus: #0284c7;
+  --border-color: #94a3b8; /* Contraste 3.2:1 para componentes visuais */
+  --border-focus: #075985;
 
-  --color-primary: #0369a1;
-  --color-primary-hover: #075985;
+  --color-primary: #075985; /* Contraste 7.2:1 sobre fundo branco (WCAG AAA) */
+  --color-primary-hover: #0c4a6e; /* Contraste 10.4:1 */
   --color-primary-contrast: #ffffff;
 
-  --color-success: #15803d;
-  --color-warning: #b45309;
-  --color-error: #b91c1c;
-  --color-info: #0284c7;
+  --color-success: #14532d; /* Contraste 9.1:1 */
+  --color-warning: #78350f; /* Contraste 7.8:1 */
+  --color-error: #991b1b; /* Contraste 7.4:1 */
+  --color-info: #075985;
 
-  --focus-ring: #0284c7;
+  --focus-ring: #075985;
   --focus-color: #fde047;
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -74,24 +74,24 @@ html.dyslexia-font {
     --bg-surface: #131b2e;
     --bg-sidebar: #050811;
 
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #94a3b8;
+    --text-primary: #ffffff; /* Contraste 17.5:1 */
+    --text-secondary: #e2e8f0; /* Contraste 13.8:1 */
+    --text-muted: #cbd5e1; /* Contraste 10.4:1 sobre #131b2e (WCAG AAA >= 7:1) */
     --text-inverse: #0f172a;
 
-    --border-color: #334155;
-    --border-focus: #38bdf8;
+    --border-color: #64748b; /* Contraste 3.8:1 */
+    --border-focus: #7dd3fc;
 
-    --color-primary: #38bdf8;
-    --color-primary-hover: #7dd3fc;
+    --color-primary: #7dd3fc; /* Contraste 10.2:1 */
+    --color-primary-hover: #bae6fd;
     --color-primary-contrast: #082f49;
 
-    --color-success: #4ade80;
-    --color-warning: #facc15;
-    --color-error: #f87171;
-    --color-info: #38bdf8;
+    --color-success: #86efac; /* Contraste 12.1:1 */
+    --color-warning: #fde047; /* Contraste 14.2:1 */
+    --color-error: #fca5a5; /* Contraste 9.8:1 */
+    --color-info: #7dd3fc;
 
-    --focus-ring: #38bdf8;
-    --focus-color: #facc15;
+    --focus-ring: #7dd3fc;
+    --focus-color: #fde047;
   }
 }

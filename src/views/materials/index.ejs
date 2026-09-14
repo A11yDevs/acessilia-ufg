@@ -107,6 +107,19 @@
       </div>
 
       <div class="form-group">
+        <label for="sel-turma-mat" class="form-label">Turma / Aula Associada (Escopo Discente)</label>
+        <select id="sel-turma-mat" name="classId" class="form-input">
+          <option value="">Nenhuma turma específica (Geral)</option>
+          <% (locals.classes || []).forEach(cl => { %>
+            <option value="<%= cl.id %>"><%= cl.code %> — <%= cl.subject_name %> (<%= cl.course_name %>)</option>
+          <% }) %>
+        </select>
+        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+          💡 Associar à turma garante que apenas os alunos matriculados nessa aula tenham acesso ao material após a aprovação.
+        </p>
+      </div>
+
+      <div class="form-group">
         <label for="sel-cat-mat" class="form-label">Categoria <span class="required-indicator">*</span></label>
         <select id="sel-cat-mat" name="category" class="form-input" required>
           <option value="SLIDE">Slide / Apresentação</option>

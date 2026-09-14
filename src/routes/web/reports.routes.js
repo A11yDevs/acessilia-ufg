@@ -28,15 +28,46 @@ export async function reportsWebRoutes(fastify, opts) {
   fastify.get('/relatorios/materiais.csv', {
     preHandler: [fastify.requirePermission('materiais.visualizar')]
   }, async (request, reply) => {
-    const materials = db.prepare(`
-      SELECT m.id, m.created_at, m.title, s.name as subject_name, u.name as teacher_name,
-             m.category, m.current_status,
-             (SELECT COUNT(*) FROM material_versions mv WHERE mv.material_id = m.id) as total_versions
-      FROM materials m
-      JOIN subjects s ON s.id = m.subject_id
-      JOIN users u ON u.id = m.teacher_user_id
-      ORDER BY m.created_at DESC
-    `).all();
+    const user = request.user;
+    let materials = [];
+
+    if (user.roleCode === 'ALUNO') {
+      // O aluno só tem permissão de exportar materiais das turmas em que está matriculado
+      materials = db.prepare(`
+        SELECT DISTINCT m.id, m.created_at, m.title, s.name as subject_name, u.name as teacher_name,
+               m.category, m.current_status,
+               (SELECT COUNT(*) FROM material_versions mv WHERE mv.material_id = m.id) as total_versions
+        FROM materials m
+        JOIN subjects s ON s.id = m.subject_id
+        JOIN users u ON u.id = m.teacher_user_id
+        JOIN class_students cs ON cs.class_id = m.class_id
+        WHERE cs.student_user_id = ?
+          AND cs.status = 'MATRICULADO'
+          AND m.current_status IN ('APROVADO', 'PUBLICADO')
+        ORDER BY m.created_at DESC
+      `).all(user.id);
+    } else if (user.roleCode === 'PROFESSOR') {
+      materials = db.prepare(`
+        SELECT m.id, m.created_at, m.title, s.name as subject_name, u.name as teacher_name,
+               m.category, m.current_status,
+               (SELECT COUNT(*) FROM material_versions mv WHERE mv.material_id = m.id) as total_versions
+        FROM materials m
+        JOIN subjects s ON s.id = m.subject_id
+        JOIN users u ON u.id = m.teacher_user_id
+        WHERE m.teacher_user_id = ?
+        ORDER BY m.created_at DESC
+      `).all(user.id);
+    } else {
+      materials = db.prepare(`
+        SELECT m.id, m.created_at, m.title, s.name as subject_name, u.name as teacher_name,
+               m.category, m.current_status,
+               (SELECT COUNT(*) FROM material_versions mv WHERE mv.material_id = m.id) as total_versions
+        FROM materials m
+        JOIN subjects s ON s.id = m.subject_id
+        JOIN users u ON u.id = m.teacher_user_id
+        ORDER BY m.created_at DESC
+      `).all();
+    }
 
     let csv = 'ID,Data_Cadastro,Titulo,Disciplina,Docente,Categoria,Status,Total_Versoes\n';
     for (const m of materials) {
