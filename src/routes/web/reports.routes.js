@@ -21,7 +21,7 @@ export async function reportsWebRoutes(fastify, opts) {
 
     reply.header('Content-Type', 'text/csv; charset=utf-8');
     reply.header('Content-Disposition', 'attachment; filename="relatorio_auditoria.csv"');
-    return reply.send(csv);
+    return reply.send('\uFEFF' + csv);
   });
 
   // Exportar Métricas de Materiais e Acessibilidade em CSV
@@ -76,7 +76,7 @@ export async function reportsWebRoutes(fastify, opts) {
 
     reply.header('Content-Type', 'text/csv; charset=utf-8');
     reply.header('Content-Disposition', 'attachment; filename="relatorio_acessibilidade_materiais.csv"');
-    return reply.send(csv);
+    return reply.send('\uFEFF' + csv);
   });
 
   // Relatório de Conformidade Legal com a Lei Brasileira de Inclusão (LBI)

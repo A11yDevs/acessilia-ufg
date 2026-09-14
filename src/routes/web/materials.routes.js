@@ -76,6 +76,14 @@ export async function materialsWebRoutes(fastify, opts) {
         throw new Error('Título e Disciplina são obrigatórios.');
       }
 
+      // Validação estrita de extensão (bloqueio de executáveis/arquivos perigosos)
+      const allowedExtensions = /\.(pdf|docx|doc|pptx|ppt|txt|png|jpe?g)$/i;
+      if (!allowedExtensions.test(originalFilename)) {
+        return reply.status(400).send({
+          error: `Formato de arquivo não suportado ou inválido (${originalFilename}). Formatos permitidos: PDF, DOCX, DOC, PPTX, PPT, TXT, PNG, JPG/JPEG.`
+        });
+      }
+
       // 1. Cria o registro acadêmico no Gestor com a Versão v1 (ORIGINAL)
       const { material, version } = await materialService.uploadMaterial({
         title,

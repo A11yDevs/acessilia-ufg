@@ -25,6 +25,7 @@ test('Testes das Novas Funcionalidades: Healthcheck, Relatórios CSV, Solicitaç
     const res = await app.inject({ method: 'GET', url: '/relatorios/auditoria.csv' });
     assert.equal(res.statusCode, 200);
     assert.match(res.headers['content-type'], /text\/csv/);
+    assert.equal(res.payload.startsWith('\uFEFF'), true, 'CSV deve conter UTF-8 BOM para compatibilidade com Excel');
     assert.match(res.payload, /ID,Data\/Hora,Usuario,Email,Acao/);
   });
 
@@ -32,6 +33,7 @@ test('Testes das Novas Funcionalidades: Healthcheck, Relatórios CSV, Solicitaç
     const res = await app.inject({ method: 'GET', url: '/relatorios/materiais.csv' });
     assert.equal(res.statusCode, 200);
     assert.match(res.headers['content-type'], /text\/csv/);
+    assert.equal(res.payload.startsWith('\uFEFF'), true, 'CSV deve conter UTF-8 BOM para compatibilidade com Excel');
     assert.match(res.payload, /ID,Data_Cadastro,Titulo,Disciplina/);
   });
 

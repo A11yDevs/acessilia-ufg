@@ -144,4 +144,36 @@ test('Novas Funcionalidades: Agendamento, Bulk Actions, Feedback Discente e Alt 
     assert.equal(updated.status, 'APROVADO');
     assert.equal(updated.human_reviewed_alt, 'Diagrama de blocos detalhado exibindo CPU, barramento e memória principal.');
   });
+
+  await t.test('5. Validação de Extensão de Arquivo no Upload (V1)', async () => {
+    const { buildApp } = await import('../../src/app.js');
+    const app = await buildApp({ logger: false });
+
+    const teacherWithPerms = {
+      ...teacher,
+      permissions: ['materiais.enviar', 'materiais.visualizar']
+    };
+
+    app.addHook('preHandler', async (req) => {
+      req.user = teacherWithPerms;
+      req.session = { get: () => teacherWithPerms };
+    });
+
+    // Tentativa com arquivo não permitido (.exe)
+    const resForbidden = await app.inject({
+      method: 'POST',
+      url: '/materiais',
+      payload: {
+        title: 'Script Perigoso',
+        subjectId: subject.id,
+        filename: 'malware.exe'
+      }
+    });
+
+    assert.equal(resForbidden.statusCode, 400);
+    const bodyForbidden = JSON.parse(resForbidden.payload);
+    assert.match(bodyForbidden.error, /Formato de arquivo não suportado/);
+
+    await app.close();
+  });
 });
