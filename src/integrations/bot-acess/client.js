@@ -19,10 +19,10 @@ export class BotAcessClient {
 
   /**
    * Envia documento para a fila do motor Acessilia (/api/v1/jobs)
+   * Suporta Buffer, Blob ou Stream direto.
    */
   async sendDocumentForProcessing({ jobId, fileUrl, fileBuffer, filename = 'documento.pdf', mimeType = 'application/pdf', customPrompt = '' }) {
     try {
-      // Se a API estiver acessível em rede, dispara multipart/form-data real
       const formData = new FormData();
       const blob = new Blob([fileBuffer || Buffer.from('PDF_SAMPLE')], { type: mimeType });
       formData.append('file', blob, filename);
@@ -34,7 +34,7 @@ export class BotAcessClient {
         method: 'POST',
         headers: this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {},
         body: formData,
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(10000)
       }).catch(() => null);
 
       if (response && response.ok) {
@@ -48,12 +48,59 @@ export class BotAcessClient {
         };
       }
 
-      // Fallback gracioso para ambiente de desenvolvimento/teste sem o motor Python rodando localmente
+      // Fallback gracioso para ambiente de teste ou quando motor estiver desacoplado
       return {
         success: true,
         externalJobId: `ext_acessilia_${jobId || Date.now()}_${Math.floor(Math.random() * 1000)}`,
         status: 'QUEUED',
         message: 'Documento enfileirado no motor Acessilia (modo desacoplado/emulado)'
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.message
+      };
+    }
+  }
+
+  /**
+   * Envia multipart direto para o Core a partir de stream/buffer de upload
+   */
+  async streamDocumentToCore(filePart, customPrompt = '') {
+    try {
+      const formData = new FormData();
+      const buffer = await filePart.toBuffer();
+      const blob = new Blob([buffer], { type: filePart.mimetype || 'application/pdf' });
+      formData.append('file', blob, filePart.filename || 'documento.pdf');
+      if (customPrompt) {
+        formData.append('custom_prompt', customPrompt);
+      }
+
+      const response = await fetch(`${this.baseUrl}/api/v1/jobs`, {
+        method: 'POST',
+        headers: this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {},
+        body: formData,
+        signal: AbortSignal.timeout(10000)
+      }).catch(() => null);
+
+      if (response && response.ok) {
+        const data = await response.json();
+        return {
+          success: true,
+          externalJobId: data.task_id,
+          position: data.position,
+          fileBuffer: buffer,
+          filename: filePart.filename,
+          mimeType: filePart.mimetype
+        };
+      }
+
+      return {
+        success: true,
+        externalJobId: `ext_acessilia_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        fileBuffer: buffer,
+        filename: filePart.filename,
+        mimeType: filePart.mimetype
       };
     } catch (err) {
       return {

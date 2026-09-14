@@ -84,7 +84,7 @@
 <div id="modal-novo-material" role="dialog" aria-modal="true" aria-labelledby="modal-mat-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
   <div class="auth-card" style="margin: 3rem auto; max-width: 500px;">
     <h2 id="modal-mat-titulo" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">Enviar Material para Acessibilidade</h2>
-    <form action="/materiais" method="POST">
+    <form action="/materiais" method="POST" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
       <div class="form-group">

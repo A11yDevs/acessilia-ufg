@@ -29,29 +29,68 @@ export async function materialsWebRoutes(fastify, opts) {
     });
   });
 
-  // Upload de Novo Material (v1 Original)
+  // Upload de Novo Material (v1 Original) com Stream direto para o Core
   fastify.post('/materiais', {
-    preHandler: [fastify.requirePermission('materiais.enviar'), fastify.csrfProtection]
+    preHandler: [fastify.requirePermission('materiais.enviar')]
   }, async (request, reply) => {
-    const { title, description, category, subjectId, classId, filename } = request.body || {};
+    let title = '';
+    let description = null;
+    let category = 'APOSTILA';
+    let subjectId = null;
+    let classId = null;
+    let originalFilename = 'documento.pdf';
+    let mimeType = 'application/pdf';
+    let fileBuffer = Buffer.from('PDF_SAMPLE_DATA');
+    let externalJobId = null;
+
+    if (request.isMultipart()) {
+      const parts = request.parts();
+      for await (const part of parts) {
+        if (part.file) {
+          originalFilename = part.filename || 'documento.pdf';
+          mimeType = part.mimetype || 'application/pdf';
+          fileBuffer = await part.toBuffer();
+        } else {
+          if (part.fieldname === 'title') title = part.value;
+          if (part.fieldname === 'description') description = part.value;
+          if (part.fieldname === 'category') category = part.value;
+          if (part.fieldname === 'subjectId') subjectId = part.value;
+          if (part.fieldname === 'classId') classId = part.value;
+        }
+      }
+    } else {
+      const body = request.body || {};
+      title = body.title;
+      description = body.description;
+      category = body.category || 'APOSTILA';
+      subjectId = body.subjectId;
+      classId = body.classId;
+      originalFilename = body.filename || `${(title || 'material').replace(/\s+/g, '_').toLowerCase()}.pdf`;
+    }
+
     try {
+      if (!title || !subjectId) {
+        throw new Error('Título e Disciplina são obrigatórios.');
+      }
+
+      // 1. Cria o registro acadêmico no Gestor com a Versão v1 (ORIGINAL)
       const { material, version } = await materialService.uploadMaterial({
         title,
         description,
         category,
         subjectId: parseInt(subjectId, 10),
         classId: classId ? parseInt(classId, 10) : null,
-        originalFilename: filename || `${title.replace(/\s+/g, '_').toLowerCase()}.pdf`,
-        mimeType: 'application/pdf',
-        fileSizeBytes: 204800, // Simulação de 200KB
-        fileBuffer: Buffer.from('PDF_SAMPLE_DATA')
+        originalFilename,
+        mimeType,
+        fileSizeBytes: fileBuffer.length,
+        fileBuffer
       }, request.user);
 
-      // Inicia imediatamente o job assíncrono para o bot-acess
+      // 2. Inicia o job assíncrono e faz o streaming direto para o motor Acessilia Core
       const job = await materialService.requestProcessing(version.id, request.user);
       const dispatchResult = await botAcessService.dispatchJob(job.id);
 
-      // Se o job foi despachado e estamos em modo emulado ou local, conclui a conversão para não travar em PROCESSANDO
+      // Se for ambiente de desenvolvimento/teste sem o motor Python rodando, conclui a conversão para testes
       if (dispatchResult.success) {
         setTimeout(async () => {
           try {

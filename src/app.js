@@ -10,6 +10,7 @@ import fastifyFormbody from '@fastify/formbody';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifyCsrf from '@fastify/csrf-protection';
+import fastifyMultipart from '@fastify/multipart';
 import ejs from 'ejs';
 
 import { env } from './config/env.js';
@@ -45,8 +46,14 @@ export async function buildApp(opts = {}) {
     contentSecurityPolicy: false
   });
 
-  // 2. Parse de Formularios HTML
+  // 2. Parse de Formularios HTML e Multipart (Stream)
   await fastify.register(fastifyFormbody);
+  await fastify.register(fastifyMultipart, {
+    limits: {
+      fileSize: 50 * 1024 * 1024 // 50MB
+    },
+    attachFieldsToBody: false // Permite consumo via stream nativo (req.file() ou req.parts())
+  });
 
   // 3. Arquivos Estaticos
   await fastify.register(fastifyStatic, {
