@@ -29,6 +29,53 @@
   </div>
 <% } %>
 
+<!-- INDICAÇÃO EXPLÍCITA DE CONFORMIDADE E REVISÃO DE ACESSIBILIDADE (WCAG 2.2 AAA & LBI) -->
+<% if (material.current_status === 'AGUARDANDO_REVISAO' || material.current_status === 'EM_REVISAO') { %>
+  <div role="status" aria-live="polite" class="stat-card" style="border-left: 6px solid #d97706; background: #fffbeb; margin-bottom: 2rem; padding: 1.5rem;">
+    <div style="display: flex; gap: 1rem; align-items: flex-start;">
+      <span style="font-size: 2.25rem;" aria-hidden="true">🤖⚠️</span>
+      <div>
+        <h2 style="font-size: 1.25rem; font-weight: 700; color: #b45309; margin-bottom: 0.25rem;">
+          Conteúdo Acessibilizado Automaticamente por IA (Aguardando Validação Humana)
+        </h2>
+        <p style="color: #92400e; font-size: 0.9375rem; margin-bottom: 0.5rem; line-height: 1.6;">
+          Este material foi estruturado pelo motor de Inteligência Artificial do <strong>Acessilia Core</strong>
+          <% if (locals.botProcessedVersion) { %>
+            em <strong><%= new Date(botProcessedVersion.created_at).toLocaleString('pt-BR') %></strong>.
+          <% } %>
+          Ele já está disponível para sua consulta e estudo antecipado, porém <strong>pode conter erros ou imperfeições</strong> e está na fila para validação por um revisor humano de acessibilidade.
+        </p>
+        <p style="font-size: 0.8125rem; color: #b45309; margin: 0;">
+          💡 <em>Você já pode conferir o texto e áudio abaixo. Se notar qualquer barreira de compreensão, utilize o botão "Reportar Problema de Acessibilidade".</em>
+        </p>
+      </div>
+    </div>
+  </div>
+<% } else if (material.current_status === 'APROVADO' || material.current_status === 'PUBLICADO') { %>
+  <div role="status" aria-live="polite" class="stat-card" style="border-left: 6px solid var(--color-success); background: #f0fdf4; margin-bottom: 2rem; padding: 1.5rem;">
+    <div style="display: flex; gap: 1rem; align-items: flex-start;">
+      <span style="font-size: 2.25rem;" aria-hidden="true">✔🎓</span>
+      <div>
+        <h2 style="font-size: 1.25rem; font-weight: 700; color: #166534; margin-bottom: 0.25rem;">
+          Material Revisado e Homologado pela Equipe de Acessibilidade
+        </h2>
+        <p style="color: #14532d; font-size: 0.9375rem; margin-bottom: 0.5rem; line-height: 1.6;">
+          Este material passou pela esteira do Acessilia Core e foi <strong>criteriosamente auditado, revisado e aprovado</strong>
+          <% if (locals.approvalReview && approvalReview.reviewer_name) { %>
+            pelo(a) revisor(a) <strong><%= approvalReview.reviewer_name %></strong>
+            em <strong><%= new Date(approvalReview.finished_at).toLocaleString('pt-BR') %></strong>.
+          <% } else { %>
+            pela equipe pedagógica do NAI/UFG.
+          <% } %>
+        </p>
+        <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #dcfce7; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8125rem; font-weight: 600; color: #166534;">
+          <span>Certificação WCAG 2.2 Nível AAA & LBI (Lei 13.146/15)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+<% } %>
+
 <!-- HISTÓRICO DE VERSÕES DO MATERIAL -->
 <section aria-labelledby="sec-versoes" style="margin-bottom: 2.5rem;">
   <h2 id="sec-versoes" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">

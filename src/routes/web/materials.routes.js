@@ -145,6 +145,8 @@ export async function materialsWebRoutes(fastify, opts) {
 
     // Carrega alt-texts da versão mais recente e feedbacks discentes
     const latestVersion = versions[0];
+    const botProcessedVersion = versions.find(v => v.version_type === 'PROCESSADO_BOT');
+    const approvalReview = materialRepository.getApprovalReviewForMaterial(materialId);
     const altTexts = latestVersion ? materialRepository.listAltTextsByVersion(latestVersion.id) : [];
     const feedbacks = materialRepository.listFeedbacksByMaterial(materialId);
     const feedbackSuccess = request.query.feedback === 'success';
@@ -158,6 +160,8 @@ export async function materialsWebRoutes(fastify, opts) {
       body: await fastify.view('materials/detail.ejs', {
         material,
         versions,
+        botProcessedVersion,
+        approvalReview,
         altTexts,
         feedbacks,
         feedbackSuccess,

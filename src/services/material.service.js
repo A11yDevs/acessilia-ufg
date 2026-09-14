@@ -73,10 +73,10 @@ export const materialService = {
     }
 
     if (user.roleCode === 'ALUNO') {
-      // Aluno só pode ver se estiver matriculado na turma e o material estiver APROVADO ou PUBLICADO
+      // Aluno pode ver se estiver matriculado na turma e o material já tiver versão acessibilizada (AGUARDANDO_REVISAO em diante)
       if (!material.class_id) return false;
       const isEnrolled = academicRepository.isStudentInClass(user.id, material.class_id);
-      const isAccessibleStatus = ['APROVADO', 'PUBLICADO'].includes(material.current_status);
+      const isAccessibleStatus = ['AGUARDANDO_REVISAO', 'EM_REVISAO', 'APROVADO', 'PUBLICADO'].includes(material.current_status);
       
       // Checagem de Agendamento: Se houver publish_at no futuro, ainda não está disponível para discentes
       if (material.publish_at) {
@@ -92,7 +92,7 @@ export const materialService = {
     return false;
   },
 
-  // Verificação de Permissão de Download (Escopo Fino por Turma e Agendamento)
+  // Verificação de Permissão de Download (Escopo Fino por Turma, Agendamento e Versão Acessibilizada)
   async canUserDownloadMaterial(user, materialId) {
     const material = materialRepository.findMaterialById(materialId);
     if (!material) return false;
@@ -110,10 +110,10 @@ export const materialService = {
     }
 
     if (user.roleCode === 'ALUNO') {
-      // Deve ser aluno matriculado na turma da aula e o material deve estar aprovado/publicado
+      // Aluno matriculado pode baixar logo que a IA acessibiliza (AGUARDANDO_REVISAO em diante)
       if (!material.class_id) return false;
       const isEnrolled = academicRepository.isStudentInClass(user.id, material.class_id);
-      const isAccessibleStatus = ['APROVADO', 'PUBLICADO'].includes(material.current_status);
+      const isAccessibleStatus = ['AGUARDANDO_REVISAO', 'EM_REVISAO', 'APROVADO', 'PUBLICADO'].includes(material.current_status);
 
       // Checagem de Agendamento
       if (material.publish_at) {

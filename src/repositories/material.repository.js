@@ -110,7 +110,7 @@ export const materialRepository = {
       `).all();
     }
 
-    // ALUNO: Apenas materiais aprovados/publicados das turmas onde está matriculado
+    // ALUNO: Materiais das turmas matriculadas que já tenham sido acessibilizados pela IA ou aprovados
     return db.prepare(`
       SELECT DISTINCT m.*, s.name as subject_name, u.name as teacher_name
       FROM materials m
@@ -119,7 +119,7 @@ export const materialRepository = {
       JOIN class_students cs ON cs.class_id = m.class_id
       WHERE cs.student_user_id = ?
         AND cs.status = 'MATRICULADO'
-        AND m.current_status IN ('APROVADO', 'PUBLICADO')
+        AND m.current_status IN ('AGUARDANDO_REVISAO', 'EM_REVISAO', 'APROVADO', 'PUBLICADO')
       ORDER BY m.created_at DESC
     `).all(user.id);
   },
@@ -176,6 +176,18 @@ export const materialRepository = {
 
   findReviewById(id) {
     return db.prepare('SELECT * FROM reviews WHERE id = ?').get(id);
+  },
+
+  getApprovalReviewForMaterial(materialId) {
+    return db.prepare(`
+      SELECT r.*, u.name as reviewer_name, u.email as reviewer_email
+      FROM reviews r
+      JOIN material_versions mv ON mv.id = r.material_version_id
+      JOIN users u ON u.id = r.reviewer_user_id
+      WHERE mv.material_id = ? AND r.status = 'APROVADO'
+      ORDER BY r.finished_at DESC
+      LIMIT 1
+    `).get(materialId);
   },
 
   addReviewComment({ reviewId, userId, comment, pageOrSection = null, severity = 'OBSERVACAO' }) {

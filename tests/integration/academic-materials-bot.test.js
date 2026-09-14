@@ -113,19 +113,26 @@ test('Testes de Módulos Acadêmicos, Matriz Flexível, Materiais e bot-acess', 
     assert.equal(updatedMaterial.current_status, 'AGUARDANDO_REVISAO');
   });
 
-  await t.test('6. Controle Fino de Download (Aluno só acessa se Aprovado)', async () => {
-    // Enquanto estiver em AGUARDANDO_REVISAO, aluno NÃO pode baixar
-    const canDownloadBefore = await materialService.canUserDownloadMaterial(studentActor, createdMaterial.id);
-    assert.equal(canDownloadBefore, false);
+  await t.test('6. Acesso Antecipado do Aluno com Aviso de Validação Humana Pendente', async () => {
+    // Logo que o bot conclui (AGUARDANDO_REVISAO), o aluno matriculado JÁ PODE visualizar e baixar com aviso explícito
+    const canDownloadEarly = await materialService.canUserDownloadMaterial(studentActor, createdMaterial.id);
+    assert.equal(canDownloadEarly, true, 'Aluno deve poder acessar logo após processamento da IA com aviso de revisão pendente');
 
-    // Revisor aprova
+    const canViewEarly = await materialService.canUserViewMaterial(studentActor, createdMaterial.id);
+    assert.equal(canViewEarly, true, 'Aluno deve poder visualizar logo após processamento da IA');
+
+    // Revisor aprova formalmente
     const latestVersion = materialRepository.getLatestVersion(createdMaterial.id);
     const review = await materialService.startReview(latestVersion.id, { id: 3, roleCode: 'REVISOR' });
     await materialService.finishReview(review.id, 'APROVADO', {}, { id: 3, roleCode: 'REVISOR' });
 
-    // Após aprovação, aluno matriculado PODE baixar
+    // Após homologação, aluno continua com acesso autorizado e status APROVADO
     const canDownloadAfter = await materialService.canUserDownloadMaterial(studentActor, createdMaterial.id);
     assert.equal(canDownloadAfter, true);
+    
+    const approval = materialRepository.getApprovalReviewForMaterial(createdMaterial.id);
+    assert.ok(approval);
+    assert.equal(approval.status, 'APROVADO');
   });
 
   await t.test('7. Proteção contra IDOR: Aluno de outra turma NÃO pode visualizar nem baixar', async () => {
