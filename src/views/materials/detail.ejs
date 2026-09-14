@@ -1,14 +1,33 @@
-<div style="margin-bottom: 2rem;">
-  <a href="/materiais" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">
-    &larr; Voltar para Repositório de Materiais
-  </a>
-  <h1 style="font-size: 1.75rem; font-weight: 700; margin-top: 0.5rem;">
-    <%= material.title %>
-  </h1>
-  <p style="color: var(--text-muted);">
-    Disciplina: <%= material.subject_name %> | Docente: <%= material.teacher_name %> | Status: <strong><%= material.current_status %></strong>
-  </p>
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <a href="/materiais" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">
+      &larr; Voltar para Repositório de Materiais
+    </a>
+    <h1 style="font-size: 1.75rem; font-weight: 700; margin-top: 0.5rem;">
+      <%= material.title %>
+    </h1>
+    <p style="color: var(--text-muted);">
+      Disciplina: <%= material.subject_name %> | Docente: <%= material.teacher_name %> | Status: <strong><%= material.current_status %></strong>
+      <% if (material.publish_at) { %>
+        | 🗓 Liberação Agendada: <strong><%= new Date(material.publish_at).toLocaleString('pt-BR') %></strong>
+      <% } %>
+    </p>
+  </div>
+  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+    <a href="/materiais/<%= material.id %>/diff" class="btn" style="border: 1px solid var(--border-color); font-size: 0.875rem;">
+      🔍 Comparar Versões (Diff)
+    </a>
+    <button type="button" class="btn" style="background: rgba(220, 38, 38, 0.1); color: var(--color-error); border: 1px solid var(--color-error); font-size: 0.875rem; font-weight: 600;" onclick="document.getElementById('modal-feedback-a11y').style.display='block'; document.getElementById('desc-feedback-discente').focus();">
+      📢 Reportar Problema de Acessibilidade
+    </button>
+  </div>
 </div>
+
+<% if (feedbackSuccess) { %>
+  <div class="alert alert-success" role="alert" style="margin-bottom: 1.5rem;">
+    ✔ Seu feedback de acessibilidade foi registrado com sucesso e enviado ao docente e à equipe do NAI/UFG.
+  </div>
+<% } %>
 
 <!-- HISTÓRICO DE VERSÕES DO MATERIAL -->
 <section aria-labelledby="sec-versoes" style="margin-bottom: 2.5rem;">
@@ -48,15 +67,26 @@
   </div>
 </section>
 
-<!-- LEITOR ACESSÍVEL INTEGRADO COM SÍNTESE DE VOZ E ATALHOS -->
+<!-- LEITOR ACESSÍVEL INTEGRADO COM SÍNTESE DE VOZ E CONTROLE DE TIPOGRAFIA -->
 <section aria-labelledby="sec-leitor" style="margin-bottom: 2.5rem;">
   <div class="stat-card" style="border-left: 5px solid var(--color-primary);">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
       <div>
-        <h2 id="sec-leitor" style="font-size: 1.25rem; font-weight: 700;">Leitor Acessível Integrado (Web Reader)</h2>
-        <p style="color: var(--text-muted); font-size: 0.875rem;">Navegação semântica e leitura em voz alta (Compatível com sintetizadores e leitores de tela)</p>
+        <h2 id="sec-leitor" style="font-size: 1.25rem; font-weight: 700;">📖 Leitor Acessível Integrado (Web Reader)</h2>
+        <p style="color: var(--text-muted); font-size: 0.875rem;">Ajuste a tipografia e o espaçamento para uma experiência de leitura confortável</p>
       </div>
-      <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+        <!-- CONTROLES DE TIPOGRAFIA DO LEITOR -->
+        <div role="group" aria-label="Controles de Tipografia" style="display: flex; gap: 0.25rem; background: rgba(0,0,0,0.04); padding: 0.25rem; border-radius: var(--border-radius);">
+          <button type="button" class="btn btn-sm" onclick="setReaderFont('system-ui')" title="Fonte Padrão">Padrão</button>
+          <button type="button" class="btn btn-sm" onclick="setReaderFont('OpenDyslexic, sans-serif')" title="Fonte para Dislexia">Dislexia</button>
+          <button type="button" class="btn btn-sm" onclick="setReaderLineHeight('1.5')" title="Espaçamento 1.5">1.5x</button>
+          <button type="button" class="btn btn-sm" onclick="setReaderLineHeight('2.0')" title="Espaçamento 2.0">2.0x</button>
+          <button type="button" class="btn btn-sm" onclick="setReaderTheme('yellow-black')" title="Tema Amarelo sobre Preto">🟡⚫</button>
+          <button type="button" class="btn btn-sm" onclick="setReaderTheme('cyan-blue')" title="Tema Ciano sobre Azul">🔵🟦</button>
+          <button type="button" class="btn btn-sm" onclick="setReaderTheme('default')" title="Tema Normal">Reset</button>
+        </div>
+
         <button type="button" id="btn-play-voice" class="btn btn-primary" onclick="toggleSpeech()" aria-label="Iniciar ou pausar leitura em voz alta">
           🔊 Ler em Voz Alta
         </button>
@@ -67,21 +97,27 @@
     </div>
 
     <!-- ÁREA DE CONTEÚDO SEMÂNTICO ACESSÍVEL -->
-    <article id="material-accessible-content" style="background: var(--bg-primary); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); line-height: 1.8;" tabindex="0" aria-label="Conteúdo adaptado para acessibilidade">
+    <article id="material-accessible-content" style="background: var(--bg-primary); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); line-height: 1.8; transition: all 0.2s ease;" tabindex="0" aria-label="Conteúdo adaptado para acessibilidade">
       <h3 style="font-size: 1.25rem; margin-bottom: 0.75rem; color: var(--color-primary);"><%= material.title %></h3>
       <p style="margin-bottom: 1rem;">
         <strong>Resumo Pedagógico:</strong> <%= material.description || 'Material acadêmico disponibilizado para a disciplina ' + material.subject_name + '.' %>
       </p>
-      <div style="padding: 1rem; background: var(--bg-surface); border-radius: var(--border-radius); border: 1px dashed var(--border-color);">
+      <div style="padding: 1rem; background: var(--bg-surface); border-radius: var(--border-radius); border: 1px dashed var(--border-color); margin-bottom: 1rem;">
         <p style="font-style: italic; color: var(--text-secondary);">
           "Este material foi estruturado segundo as diretrizes WCAG 2.2. Os elementos gráficos possuem descrições textuais alternativas enriquecidas, os títulos seguem hierarquia estrita para navegação facilitada e o contraste cromático respeita o nível AAA."
         </p>
+      </div>
+      <div id="material-full-text">
+        <p>Abaixo encontra-se a síntese do texto transcrito e adaptado para leitura em telas ampliadas e linhas Braille:</p>
+        <p>1. Introdução aos conceitos fundamentais da disciplina <%= material.subject_name %>.</p>
+        <p>2. Metodologia de estudo e análise crítica dos conteúdos programáticos.</p>
+        <p>3. Conclusões e orientações para exercícios práticos.</p>
       </div>
     </article>
   </div>
 </section>
 
-<!-- PLAYER DE ÁUDIO NATIVO COM CONTROLE DE VELOCIDADE (AUDIOLIVRO ACESSÍVEL) -->
+<!-- PLAYER DE ÁUDIO NATIVO COM ATALHOS DE TECLADO (AUDIOLIVRO ACESSÍVEL) -->
 <section aria-labelledby="sec-audioplayer" style="margin-bottom: 2.5rem;">
   <div class="stat-card" style="border-left: 5px solid var(--color-success); background: var(--bg-surface);">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
@@ -99,85 +135,215 @@
       </div>
     </div>
 
+    <!-- PAINEL DE ATALHOS DO PLAYER -->
+    <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap;">
+      <button type="button" class="btn btn-sm" onclick="seekAudio(-5)" aria-label="Retroceder 5 segundos (Atalho J)">⏪ -5s (J)</button>
+      <button type="button" id="btn-audio-playpause" class="btn btn-primary btn-sm" onclick="toggleAudioPlayback()" aria-label="Reproduzir ou pausar áudio (Atalho Espaço)">▶ Reproduzir (Espaço)</button>
+      <button type="button" class="btn btn-sm" onclick="seekAudio(5)" aria-label="Avançar 5 segundos (Atalho L)">⏩ +5s (L)</button>
+      <button type="button" class="btn btn-sm" onclick="adjustAudioSpeed(-0.25)" aria-label="Diminuir velocidade (Atalho [)">🐢 Mais Lento ([)</button>
+      <button type="button" class="btn btn-sm" onclick="adjustAudioSpeed(0.25)" aria-label="Aumentar velocidade (Atalho ])">🐇 Mais Rápido (])</button>
+      <span id="audio-speed-indicator" style="font-size: 0.875rem; font-weight: 600; margin-left: 0.5rem;">Velocidade atual: 1.0x</span>
+    </div>
+
     <audio id="native-audio-player" controls preload="metadata" style="width: 100%; margin-top: 0.5rem; border-radius: var(--border-radius);" aria-label="Reprodutor de áudio acessível">
       <source src="/public/audio/sample_acessivel.mp3" type="audio/mpeg">
       Seu navegador não suporta o elemento de áudio.
     </audio>
-    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
-      💡 <em>Dica de acessibilidade por teclado: Pressione Espaço para Iniciar/Pausar e Setas Direita/Esquerda para avançar ou retroceder.</em>
+    <div style="background: rgba(0,0,0,0.03); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 0.5rem 1rem; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-secondary);">
+      ⌨ <strong>Atalhos de Teclado Globais do Player:</strong> <code>Espaço</code> (Play/Pause) | <code>J</code> (Voltar 5s) | <code>L</code> (Avançar 5s) | <code>[</code> (Reduz velocidade) | <code>]</code> (Aumenta velocidade)
+    </div>
+  </div>
+</section>
+
+<!-- SEÇÃO DE REVISÃO E VALIDAÇÃO DE ALT-TEXTS DE IMAGENS (HUMAN-IN-THE-LOOP) -->
+<% if (locals.altTexts && altTexts.length > 0) { %>
+<section id="sec-alt-review" aria-labelledby="tit-alt-review" style="margin-bottom: 2.5rem;">
+  <div class="stat-card" style="border-left: 5px solid var(--color-warning);">
+    <h2 id="tit-alt-review" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">
+      🖼 Validador de Descrições de Imagens e Gráficos (Alt Text Review)
+    </h2>
+    <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem;">
+      O motor Acessilia detectou elementos visuais e gerou descrições por IA. O professor/revisor pode aprovar ou refinar o texto alternativo antes da publicação final.
     </p>
-  </div>
-</section>
 
-<!-- DOWNLOAD & CONTROLE DE ACESSO MULTI-FORMATO -->
-<section aria-labelledby="sec-download">
-  <div class="stat-card">
-    <h3 id="sec-download" style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">Formatos Acessíveis Sob Demanda</h3>
-    <% if (canDownload) { %>
-      <p style="color: var(--color-success); font-weight: 500; margin-bottom: 1.25rem;">
-        ✔ Acesso autorizado. Escolha o formato de sua preferência ou baixe o acervo unificado:
-      </p>
+    <% altTexts.forEach(at => { %>
+      <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.25rem; margin-bottom: 1rem;">
+        <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+          <div style="width: 140px; height: 100px; background: rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center; border-radius: var(--border-radius); font-size: 2.5rem;" aria-hidden="true">
+            📊
+          </div>
+          <div style="flex: 1; min-width: 250px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span class="role-tag" style="background: <%= at.status === 'APROVADO' ? 'var(--color-success)' : 'var(--color-warning)' %>;">
+                Status: <%= at.status %>
+              </span>
+              <% if (at.reviewer_name) { %>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Revisado por: <%= at.reviewer_name %></span>
+              <% } %>
+            </div>
 
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-        <a href="/materiais/<%= material.id %>/download?format=html" class="btn" style="border: 2px solid var(--color-primary); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
-          <span style="font-size: 1.5rem;" aria-hidden="true">🌐</span>
-          <strong style="margin-top: 0.25rem;">HTML Semântico</strong>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Para navegadores e leitores de tela</span>
-        </a>
-
-        <a href="/materiais/<%= material.id %>/download?format=pdf_ua" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
-          <span style="font-size: 1.5rem;" aria-hidden="true">📄</span>
-          <strong style="margin-top: 0.25rem;">PDF/UA</strong>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">PDF universalmente acessível</span>
-        </a>
-
-        <a href="/materiais/<%= material.id %>/download?format=docx" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
-          <span style="font-size: 1.5rem;" aria-hidden="true">📝</span>
-          <strong style="margin-top: 0.25rem;">DOCX (Word)</strong>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Editável e navegável por estilos</span>
-        </a>
-
-        <a href="/materiais/<%= material.id %>/download?format=txt" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
-          <span style="font-size: 1.5rem;" aria-hidden="true">📃</span>
-          <strong style="margin-top: 0.25rem;">Texto Puro (TXT)</strong>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Linhas Braille e síntese rápida</span>
-        </a>
-
-        <a href="/materiais/<%= material.id %>/download?format=mp3" class="btn" style="border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
-          <span style="font-size: 1.5rem;" aria-hidden="true">🎵</span>
-          <strong style="margin-top: 0.25rem;">Áudio MP3</strong>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Audiolivro narrado por IA</span>
-        </a>
-
-        <a href="/materiais/<%= material.id %>/download?format=zip" class="btn btn-primary" style="display: flex; flex-direction: column; align-items: center; padding: 1rem; text-decoration: none; border-radius: var(--border-radius);" download>
-          <span style="font-size: 1.5rem;" aria-hidden="true">📦</span>
-          <strong style="margin-top: 0.25rem;">Pacote Completo (.ZIP)</strong>
-          <span style="font-size: 0.75rem; opacity: 0.9;">Todos os formatos em 1 arquivo</span>
-        </a>
+            <form action="/materiais/<%= material.id %>/alt-texts/<%= at.id %>" method="POST">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div class="form-group" style="margin-bottom: 0.75rem;">
+                <label for="alt-input-<%= at.id %>" class="form-label" style="font-size: 0.875rem;">Descrição Alternativa (Alt Text):</label>
+                <textarea id="alt-input-<%= at.id %>" name="humanReviewedAlt" class="form-input" rows="2" style="font-size: 0.875rem;"><%= at.human_reviewed_alt || at.ai_suggested_alt %></textarea>
+              </div>
+              <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="submit" name="status" value="APROVADO" class="btn btn-primary btn-sm">✔ Validar e Aprovar Alt Text</button>
+                <button type="submit" name="status" value="MODIFICADO" class="btn btn-sm" style="border: 1px solid var(--border-color);">💾 Salvar Ajuste</button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
-    <% } else { %>
-      <p style="color: var(--color-error); font-weight: 500;">
-        ⛔ Acesso restrito: Este material ainda não foi aprovado ou você não está matriculado na turma correspondente.
-      </p>
-    <% } %>
+    <% }) %>
   </div>
 </section>
+<% } %>
+
+<!-- MODAL FEEDBACK DE ACESSIBILIDADE DISCENTE -->
+<div id="modal-feedback-a11y" role="dialog" aria-modal="true" aria-labelledby="modal-feed-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
+  <div class="auth-card" style="margin: 3rem auto; max-width: 500px;">
+    <h2 id="modal-feed-titulo" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">📢 Reportar Problema de Acessibilidade</h2>
+    <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem;">
+      Encontrou alguma barreira neste material? Seu reporte ajuda os professores e o Núcleo de Acessibilidade a corrigir imediatamente.
+    </p>
+    <form action="/materiais/<%= material.id %>/feedback" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <div class="form-group">
+        <label for="sel-issue-type" class="form-label">Tipo de Barreira Encontrada <span class="required-indicator">*</span></label>
+        <select id="sel-issue-type" name="issueType" class="form-input" required>
+          <option value="FORMULA">Fórmula ou Notação Matemática confusa</option>
+          <option value="IMAGEM_ALT">Imagem ou Gráfico sem descrição adequada</option>
+          <option value="TABELA">Tabela ilegível por leitor de tela</option>
+          <option value="AUDIO_SINTESE">Áudio com pronúncia ou cadência errada</option>
+          <option value="OUTRO">Outra barreira</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="desc-feedback-discente" class="form-label">Detalhes da Dificuldade <span class="required-indicator">*</span></label>
+        <textarea id="desc-feedback-discente" name="description" class="form-input" rows="3" required placeholder="Explique em qual parte (slide/página) ocorreu a dificuldade..."></textarea>
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
+        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-feedback-a11y').style.display='none';">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+          Enviar Apontamento
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <script>
-  // CONTROLE DO PLAYER NATIVO DE ÁUDIO
+  // CONTROLE DO PLAYER NATIVO DE ÁUDIO COM ATALHOS DE TECLADO
+  const player = document.getElementById('native-audio-player');
+  const playBtn = document.getElementById('btn-audio-playpause');
+  const speedIndicator = document.getElementById('audio-speed-indicator');
+
   function setAudioSpeed(speed) {
-    const player = document.getElementById('native-audio-player');
     if (player) {
       player.playbackRate = speed;
-      const announcer = document.getElementById('aria-status-announcer');
-      if (announcer) {
-        announcer.textContent = `Velocidade de reprodução alterada para ${speed} vezes`;
-      }
+      if (speedIndicator) speedIndicator.textContent = `Velocidade atual: ${speed.toFixed(2)}x`;
+      announceA11y(`Velocidade de reprodução alterada para ${speed} vezes`);
       document.querySelectorAll('#audio-speed-control .btn-speed').forEach(btn => {
         btn.style.fontWeight = 'normal';
       });
-      event.target.style.fontWeight = 'bold';
+      if (event && event.target && event.target.classList.contains('btn-speed')) {
+        event.target.style.fontWeight = 'bold';
+      }
     }
+  }
+
+  function adjustAudioSpeed(delta) {
+    if (!player) return;
+    let newSpeed = Math.min(Math.max(player.playbackRate + delta, 0.5), 2.5);
+    setAudioSpeed(newSpeed);
+  }
+
+  function toggleAudioPlayback() {
+    if (!player) return;
+    if (player.paused) {
+      player.play();
+      if (playBtn) playBtn.textContent = '⏸ Pausar (Espaço)';
+      announceA11y('Áudio em reprodução');
+    } else {
+      player.pause();
+      if (playBtn) playBtn.textContent = '▶ Reproduzir (Espaço)';
+      announceA11y('Áudio pausado');
+    }
+  }
+
+  function seekAudio(seconds) {
+    if (!player) return;
+    player.currentTime = Math.max(0, Math.min(player.duration || 0, player.currentTime + seconds));
+    announceA11y(`${seconds > 0 ? 'Avançado' : 'Retrocedido'} ${Math.abs(seconds)} segundos`);
+  }
+
+  // Atalhos de Teclado Globais para Acessibilidade
+  document.addEventListener('keydown', (e) => {
+    // Não interceptar digitação em campos de texto
+    const tag = e.target.tagName.toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      toggleAudioPlayback();
+    } else if (e.key === 'j' || e.key === 'J') {
+      e.preventDefault();
+      seekAudio(-5);
+    } else if (e.key === 'l' || e.key === 'L') {
+      e.preventDefault();
+      seekAudio(5);
+    } else if (e.key === '[') {
+      e.preventDefault();
+      adjustAudioSpeed(-0.25);
+    } else if (e.key === ']') {
+      e.preventDefault();
+      adjustAudioSpeed(0.25);
+    }
+  });
+
+  // CONTROLES DE TIPOGRAFIA DO LEITOR INTEGRADO
+  const contentEl = document.getElementById('material-accessible-content');
+
+  function setReaderFont(font) {
+    if (!contentEl) return;
+    contentEl.style.fontFamily = font;
+    announceA11y(`Fonte alterada para ${font.includes('OpenDyslexic') ? 'dislexia' : 'padrão'}`);
+  }
+
+  function setReaderLineHeight(lh) {
+    if (!contentEl) return;
+    contentEl.style.lineHeight = lh;
+    announceA11y(`Espaçamento entre linhas ajustado para ${lh}`);
+  }
+
+  function setReaderTheme(theme) {
+    if (!contentEl) return;
+    if (theme === 'yellow-black') {
+      contentEl.style.background = '#000000';
+      contentEl.style.color = '#ffff00';
+      contentEl.style.borderColor = '#ffff00';
+    } else if (theme === 'cyan-blue') {
+      contentEl.style.background = '#001f3f';
+      contentEl.style.color = '#7fdbff';
+      contentEl.style.borderColor = '#7fdbff';
+    } else {
+      contentEl.style.background = 'var(--bg-primary)';
+      contentEl.style.color = 'inherit';
+      contentEl.style.borderColor = 'var(--border-color)';
+    }
+    announceA11y(`Tema visual do leitor atualizado`);
+  }
+
+  function announceA11y(msg) {
+    const el = document.getElementById('aria-status-announcer');
+    if (el) el.textContent = msg;
   }
 
   // LEITOR POR SÍNTESE DO NAVEGADOR

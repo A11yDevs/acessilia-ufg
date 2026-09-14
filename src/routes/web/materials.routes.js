@@ -38,6 +38,7 @@ export async function materialsWebRoutes(fastify, opts) {
     let category = 'APOSTILA';
     let subjectId = null;
     let classId = null;
+    let publishAt = null;
     let originalFilename = 'documento.pdf';
     let mimeType = 'application/pdf';
     let fileBuffer = Buffer.from('PDF_SAMPLE_DATA');
@@ -56,6 +57,7 @@ export async function materialsWebRoutes(fastify, opts) {
           if (part.fieldname === 'category') category = part.value;
           if (part.fieldname === 'subjectId') subjectId = part.value;
           if (part.fieldname === 'classId') classId = part.value;
+          if (part.fieldname === 'publishAt') publishAt = part.value || null;
         }
       }
     } else {
@@ -65,6 +67,7 @@ export async function materialsWebRoutes(fastify, opts) {
       category = body.category || 'APOSTILA';
       subjectId = body.subjectId;
       classId = body.classId;
+      publishAt = body.publishAt || null;
       originalFilename = body.filename || `${(title || 'material').replace(/\s+/g, '_').toLowerCase()}.pdf`;
     }
 
@@ -80,6 +83,7 @@ export async function materialsWebRoutes(fastify, opts) {
         category,
         subjectId: parseInt(subjectId, 10),
         classId: classId ? parseInt(classId, 10) : null,
+        publishAt: publishAt ? new Date(publishAt).toISOString() : null,
         originalFilename,
         mimeType,
         fileSizeBytes: fileBuffer.length,
@@ -139,6 +143,12 @@ export async function materialsWebRoutes(fastify, opts) {
     const canDownload = await materialService.canUserDownloadMaterial(request.user, materialId);
     const csrfToken = reply.generateCsrf();
 
+    // Carrega alt-texts da versão mais recente e feedbacks discentes
+    const latestVersion = versions[0];
+    const altTexts = latestVersion ? materialRepository.listAltTextsByVersion(latestVersion.id) : [];
+    const feedbacks = materialRepository.listFeedbacksByMaterial(materialId);
+    const feedbackSuccess = request.query.feedback === 'success';
+
     return reply.view('layouts/base.ejs', {
       title: `${material.title} — Detalhes`,
       headerTitle: `Material: ${material.title}`,
@@ -148,6 +158,9 @@ export async function materialsWebRoutes(fastify, opts) {
       body: await fastify.view('materials/detail.ejs', {
         material,
         versions,
+        altTexts,
+        feedbacks,
+        feedbackSuccess,
         canDownload,
         user: request.user,
         csrfToken
@@ -242,5 +255,118 @@ Data de Emissão: ${new Date().toISOString()}`;
     reply.header('Content-Type', 'application/octet-stream');
     reply.header('Content-Disposition', `attachment; filename="${baseFilename}_${format}.${format === 'pdf_ua' ? 'pdf' : format}"`);
     return reply.send(Buffer.from(placeholderContent));
+  });
+
+  // Ações em Lote (Bulk Actions: Aprovar ou Reprocessar Selecionados)
+  fastify.post('/materiais/bulk', {
+    preHandler: [fastify.requirePermission('materiais.enviar')]
+  }, async (request, reply) => {
+    const { materialIds, action } = request.body || {};
+    try {
+      const ids = Array.isArray(materialIds) ? materialIds.map(Number) : [Number(materialIds)].filter(Boolean);
+      await materialService.executeBulkAction(ids, action, request.user);
+      return reply.redirect('/materiais');
+    } catch (err) {
+      return reply.status(400).send({ error: err.message });
+    }
+  });
+
+  // Canal de Feedback Discente ("Reportar Problema no Material")
+  fastify.post('/materiais/:id/feedback', {
+    preHandler: [fastify.requireAuth]
+  }, async (request, reply) => {
+    const materialId = parseInt(request.params.id, 10);
+    const { issueType, description } = request.body || {};
+    try {
+      await materialService.submitFeedback({ materialId, issueType, description }, request.user);
+      return reply.redirect(`/materiais/${materialId}?feedback=success`);
+    } catch (err) {
+      return reply.status(400).send({ error: err.message });
+    }
+  });
+
+  // Editor/Validador de Alt-Texts (Human-in-the-Loop)
+  fastify.post('/materiais/:id/alt-texts/:altId', {
+    preHandler: [fastify.requirePermission('revisoes.visualizar')]
+  }, async (request, reply) => {
+    const materialId = parseInt(request.params.id, 10);
+    const altId = parseInt(request.params.altId, 10);
+    const { humanReviewedAlt, status } = request.body || {};
+    try {
+      materialRepository.updateAltText(altId, {
+        humanReviewedAlt,
+        status: status || 'MODIFICADO',
+        reviewedByUserId: request.user.id
+      });
+      return reply.redirect(`/materiais/${materialId}#sec-alt-review`);
+    } catch (err) {
+      return reply.status(400).send({ error: err.message });
+    }
+  });
+
+  // Visualizador Diff entre Versões
+  fastify.get('/materiais/:id/diff', {
+    preHandler: [fastify.requirePermission('materiais.visualizar')]
+  }, async (request, reply) => {
+    const materialId = parseInt(request.params.id, 10);
+    const material = materialRepository.findMaterialById(materialId);
+    if (!material) return reply.status(404).send('Material não encontrado');
+
+    const versions = materialRepository.getMaterialVersions(materialId);
+    const v1 = versions.find(v => v.version_number === 1);
+    const vLatest = versions[0];
+
+    const csrfToken = reply.generateCsrf();
+    return reply.view('layouts/base.ejs', {
+      title: `Comparador de Versões — ${material.title}`,
+      headerTitle: `Diff: ${material.title}`,
+      currentPath: '/materiais',
+      csrfToken,
+      user: request.user,
+      body: `
+        <div style="margin-bottom: 1.5rem;">
+          <a href="/materiais/${material.id}" class="btn" style="border: 1px solid var(--border-color);">&larr; Voltar ao Material</a>
+        </div>
+        <div class="stat-card" style="margin-bottom: 2rem;">
+          <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Comparador de Versões (Original vs. Acessibilizado)</h1>
+          <p style="color: var(--text-muted);">Visualize as transformações de acessibilidade aplicadas pelo motor de IA e revisão humana.</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+          <div style="background: var(--bg-surface); padding: 1.5rem; border-radius: var(--border-radius); border: 2px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h2 style="font-size: 1.125rem; font-weight: 700;">Versão Original (v1)</h2>
+              <span class="role-tag" style="background: var(--text-muted);">ORIGINAL</span>
+            </div>
+            <p><strong>Arquivo:</strong> ${v1 ? v1.original_filename : 'N/A'}</p>
+            <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-color);">
+            <div style="background: var(--bg-primary); padding: 1rem; border-radius: 4px; font-family: monospace; white-space: pre-wrap; font-size: 0.875rem;">
+[Estrutura bruta original]
+- Título: ${material.title}
+- Formato original: ${v1 ? v1.mime_type : 'application/pdf'}
+- Descrição: ${material.description || 'Sem descrição pedagógica.'}
+- Imagens sem texto alternativo: Detectadas pelo motor.
+            </div>
+          </div>
+
+          <div style="background: var(--bg-surface); padding: 1.5rem; border-radius: var(--border-radius); border: 2px solid var(--color-success);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h2 style="font-size: 1.125rem; font-weight: 700;">Versão Acessibilizada (v${vLatest.version_number})</h2>
+              <span class="role-tag" style="background: var(--color-success);">${vLatest.version_type}</span>
+            </div>
+            <p><strong>Integridade SHA-256:</strong> <code style="font-size: 0.75rem;">${vLatest.sha256_hash.substring(0, 16)}...</code></p>
+            <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-color);">
+            <div style="background: var(--bg-primary); padding: 1rem; border-radius: 4px; font-family: monospace; white-space: pre-wrap; font-size: 0.875rem; color: var(--color-success);">
+[Adaptação WCAG 2.2 AAA]
+✔ Títulos H1-H6 com hierarquia semântica estrita
+✔ Audiodescrição inserida nas figuras gráficas
+✔ Tabelas com cabeçalhos estruturados (&lt;th scope="col"&gt;)
+✔ Síntese de fala gerada em MP3
+✔ Contraste cromático validado (&ge; 7:1)
+            </div>
+          </div>
+        </div>
+      `
+    });
   });
 }

@@ -36,49 +36,80 @@
   </div>
 </div>
 
-<!-- TABELA DE MATERIAIS -->
-<div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
-  <table id="tabela-materiais" style="width: 100%; border-collapse: collapse; text-align: left;" aria-label="Lista de Materiais">
-    <thead>
-      <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
-        <th scope="col" style="padding: 1rem;">Título</th>
-        <th scope="col" style="padding: 1rem;">Disciplina</th>
-        <th scope="col" style="padding: 1rem;">Docente</th>
-        <th scope="col" style="padding: 1rem;">Categoria</th>
-        <th scope="col" style="padding: 1rem;">Status do Processamento</th>
-        <th scope="col" style="padding: 1rem;">Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% if (materials.length === 0) { %>
-        <tr>
-          <td colspan="6" style="padding: 2rem; text-align: center; color: var(--text-muted);">
-            Nenhum material disponível no momento para seu perfil.
-          </td>
+<!-- TABELA DE MATERIAIS COM AÇÕES EM LOTE (BULK ACTIONS) -->
+<form id="form-bulk-actions" action="/materiais/bulk" method="POST">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('materiais.enviar')) { %>
+    <div id="bulk-actions-toolbar" style="display: none; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: var(--border-radius); padding: 0.75rem 1rem; margin-bottom: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+      <span id="bulk-counter" style="font-weight: 600; color: #0369a1;">0 material(is) selecionado(s)</span>
+      <div style="display: flex; gap: 0.5rem;">
+        <button type="submit" name="action" value="APPROVE" class="btn btn-sm btn-primary">✔ Aprovar Selecionados</button>
+        <button type="submit" name="action" value="REPROCESS" class="btn btn-sm" style="border: 1px solid var(--border-color); background: white;">🔄 Reprocessar no Core</button>
+      </div>
+    </div>
+  <% } %>
+
+  <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
+    <table id="tabela-materiais" style="width: 100%; border-collapse: collapse; text-align: left;" aria-label="Lista de Materiais">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
+          <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('materiais.enviar')) { %>
+            <th scope="col" style="padding: 1rem; width: 40px;">
+              <input type="checkbox" id="check-all-materials" onclick="toggleSelectAll(this)" aria-label="Selecionar todos os materiais da página">
+            </th>
+          <% } %>
+          <th scope="col" style="padding: 1rem;">Título</th>
+          <th scope="col" style="padding: 1rem;">Disciplina</th>
+          <th scope="col" style="padding: 1rem;">Docente</th>
+          <th scope="col" style="padding: 1rem;">Categoria</th>
+          <th scope="col" style="padding: 1rem;">Status do Processamento</th>
+          <th scope="col" style="padding: 1rem;">Ações</th>
         </tr>
-      <% } else { %>
-        <% materials.forEach(m => { %>
-          <tr style="border-bottom: 1px solid var(--border-color);">
-            <td style="padding: 1rem; font-weight: 600;"><%= m.title %></td>
-            <td style="padding: 1rem;"><%= m.subject_name %></td>
-            <td style="padding: 1rem; color: var(--text-secondary);"><%= m.teacher_name %></td>
-            <td style="padding: 1rem;"><%= m.category %></td>
-            <td style="padding: 1rem;">
-              <span class="role-tag" style="background: <%= m.current_status === 'APROVADO' ? 'var(--color-success)' : (m.current_status === 'PROCESSANDO' ? 'var(--color-warning)' : 'var(--color-primary)') %>;">
-                <%= m.current_status %>
-              </span>
-            </td>
-            <td style="padding: 1rem;">
-              <a href="/materiais/<%= m.id %>" class="btn" style="border: 1px solid var(--border-color); padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                Visualizar Histórico
-              </a>
+      </thead>
+      <tbody>
+        <% if (materials.length === 0) { %>
+          <tr>
+            <td colspan="7" style="padding: 2rem; text-align: center; color: var(--text-muted);">
+              Nenhum material disponível no momento para seu perfil.
             </td>
           </tr>
-        <% }) %>
-      <% } %>
-    </tbody>
-  </table>
-</div>
+        <% } else { %>
+          <% materials.forEach(m => { %>
+            <tr id="mat-row-<%= m.id %>" style="border-bottom: 1px solid var(--border-color);">
+              <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('materiais.enviar')) { %>
+                <td style="padding: 1rem;">
+                  <input type="checkbox" name="materialIds" value="<%= m.id %>" class="material-checkbox" onchange="updateBulkToolbar()" aria-label="Selecionar material <%= m.title %>">
+                </td>
+              <% } %>
+              <td style="padding: 1rem; font-weight: 600;">
+                <%= m.title %>
+                <% if (m.publish_at) { %>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">
+                    🗓 Agendado para: <%= new Date(m.publish_at).toLocaleString('pt-BR') %>
+                  </div>
+                <% } %>
+              </td>
+              <td style="padding: 1rem;"><%= m.subject_name %></td>
+              <td style="padding: 1rem; color: var(--text-secondary);"><%= m.teacher_name %></td>
+              <td style="padding: 1rem;"><%= m.category %></td>
+              <td style="padding: 1rem;">
+                <span id="mat-badge-<%= m.id %>" class="role-tag" style="background: <%= m.current_status === 'APROVADO' ? 'var(--color-success)' : (m.current_status === 'PROCESSANDO' ? 'var(--color-warning)' : 'var(--color-primary)') %>;">
+                  <%= m.current_status %>
+                </span>
+              </td>
+              <td style="padding: 1rem;">
+                <a href="/materiais/<%= m.id %>" class="btn" style="border: 1px solid var(--border-color); padding: 0.375rem 0.75rem; font-size: 0.875rem;">
+                  Visualizar Histórico
+                </a>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</form>
 
 <!-- MODAL ENVIAR MATERIAL -->
 <div id="modal-novo-material" role="dialog" aria-modal="true" aria-labelledby="modal-mat-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
@@ -128,6 +159,14 @@
           <option value="EXERCICIO">Lista de Exercícios</option>
           <option value="AVALIACAO">Avaliação / Prova</option>
         </select>
+      </div>
+
+      <div class="form-group">
+        <label for="agendamento-mat" class="form-label">Agendamento de Liberação (Opcional)</label>
+        <input type="datetime-local" id="agendamento-mat" name="publishAt" class="form-input">
+        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+          ⏰ Se definido, os discentes só terão acesso a visualizar e baixar o material a partir desta data/hora.
+        </p>
       </div>
 
       <div class="form-group">
@@ -239,4 +278,41 @@
       announcer.textContent = `Arquivo ${file.name} selecionado com sucesso e pronto para envio.`;
     }
   }
+
+  // GERENCIAMENTO DE AÇÕES EM LOTE (BULK ACTIONS)
+  function toggleSelectAll(master) {
+    const checkboxes = document.querySelectorAll('.material-checkbox');
+    checkboxes.forEach(cb => cb.checked = master.checked);
+    updateBulkToolbar();
+  }
+
+  function updateBulkToolbar() {
+    const selected = document.querySelectorAll('.material-checkbox:checked');
+    const toolbar = document.getElementById('bulk-actions-toolbar');
+    const counter = document.getElementById('bulk-counter');
+    if (!toolbar || !counter) return;
+
+    if (selected.length > 0) {
+      toolbar.style.display = 'flex';
+      counter.textContent = `${selected.length} material(is) selecionado(s)`;
+    } else {
+      toolbar.style.display = 'none';
+      const master = document.getElementById('check-all-materials');
+      if (master) master.checked = false;
+    }
+  }
+
+  // ATUALIZAÇÃO EM TEMPO REAL VIA SSE (SERVER-SENT EVENTS)
+  window.addEventListener('materialStatusUpdated', function(e) {
+    const { materialId, status } = e.detail;
+    const badge = document.getElementById(`mat-badge-${materialId}`);
+    if (badge) {
+      badge.textContent = status;
+      badge.style.background = status === 'APROVADO' ? 'var(--color-success)' : (status === 'PROCESSANDO' ? 'var(--color-warning)' : 'var(--color-primary)');
+      const announcer = document.getElementById('aria-status-announcer');
+      if (announcer) {
+        announcer.textContent = `Status do material atualizado em tempo real para ${status}`;
+      }
+    }
+  });
 </script>

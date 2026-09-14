@@ -1,12 +1,12 @@
 import { db } from '../../database/connection.js';
 
 export const materialRepository = {
-  createMaterial({ subjectId, classId = null, teacherUserId, title, description = null, category }) {
+  createMaterial({ subjectId, classId = null, teacherUserId, title, description = null, category, publishAt = null }) {
     const stmt = db.prepare(`
-      INSERT INTO materials (subject_id, class_id, teacher_user_id, title, description, category, current_status)
-      VALUES (?, ?, ?, ?, ?, ?, 'ENVIADO')
+      INSERT INTO materials (subject_id, class_id, teacher_user_id, title, description, category, current_status, publish_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'ENVIADO', ?)
     `);
-    const info = stmt.run(subjectId, classId, teacherUserId, title.trim(), description, category);
+    const info = stmt.run(subjectId, classId, teacherUserId, title.trim(), description, category, publishAt);
     return this.findMaterialById(info.lastInsertRowid);
   },
 
@@ -185,5 +185,77 @@ export const materialRepository = {
     `);
     const info = stmt.run(reviewId, userId, comment.trim(), pageOrSection, severity);
     return db.prepare('SELECT * FROM review_comments WHERE id = ?').get(info.lastInsertRowid);
+  },
+
+  // Ações em Lote (Bulk Actions)
+  bulkUpdateStatus(materialIds, status) {
+    if (!materialIds || materialIds.length === 0) return 0;
+    const placeholders = materialIds.map(() => '?').join(',');
+    const stmt = db.prepare(`
+      UPDATE materials
+      SET current_status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id IN (${placeholders})
+    `);
+    const result = stmt.run(status, ...materialIds);
+    return result.changes;
+  },
+
+  // Gestão de Descrições de Imagens (Alt Text Review)
+  createAltText({ materialVersionId, imageUrlOrPath, aiSuggestedAlt, humanReviewedAlt = null, status = 'PENDENTE' }) {
+    const stmt = db.prepare(`
+      INSERT INTO material_alt_texts (material_version_id, image_url_or_path, ai_suggested_alt, human_reviewed_alt, status)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const info = stmt.run(materialVersionId, imageUrlOrPath, aiSuggestedAlt, humanReviewedAlt, status);
+    return db.prepare('SELECT * FROM material_alt_texts WHERE id = ?').get(info.lastInsertRowid);
+  },
+
+  listAltTextsByVersion(materialVersionId) {
+    return db.prepare(`
+      SELECT mat.*, u.name as reviewer_name
+      FROM material_alt_texts mat
+      LEFT JOIN users u ON u.id = mat.reviewed_by_user_id
+      WHERE mat.material_version_id = ?
+      ORDER BY mat.id ASC
+    `).all(materialVersionId);
+  },
+
+  updateAltText(id, { humanReviewedAlt, status, reviewedByUserId }) {
+    const stmt = db.prepare(`
+      UPDATE material_alt_texts
+      SET human_reviewed_alt = ?,
+          status = ?,
+          reviewed_by_user_id = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    stmt.run(humanReviewedAlt, status, reviewedByUserId, id);
+    return db.prepare('SELECT * FROM material_alt_texts WHERE id = ?').get(id);
+  },
+
+  // Canal de Feedback Discente
+  createMaterialFeedback({ materialId, studentUserId, issueType, description }) {
+    const stmt = db.prepare(`
+      INSERT INTO material_feedbacks (material_id, student_user_id, issue_type, description, status)
+      VALUES (?, ?, ?, ?, 'ABERTO')
+    `);
+    const info = stmt.run(materialId, studentUserId, issueType, description.trim());
+    return db.prepare(`
+      SELECT mf.*, u.name as student_name, m.title as material_title
+      FROM material_feedbacks mf
+      JOIN users u ON u.id = mf.student_user_id
+      JOIN materials m ON m.id = mf.material_id
+      WHERE mf.id = ?
+    `).get(info.lastInsertRowid);
+  },
+
+  listFeedbacksByMaterial(materialId) {
+    return db.prepare(`
+      SELECT mf.*, u.name as student_name
+      FROM material_feedbacks mf
+      JOIN users u ON u.id = mf.student_user_id
+      WHERE mf.material_id = ?
+      ORDER BY mf.created_at DESC
+    `).all(materialId);
   }
 };

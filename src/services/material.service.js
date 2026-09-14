@@ -2,10 +2,11 @@ import crypto from 'crypto';
 import { materialRepository } from '../repositories/material.repository.js';
 import { academicRepository } from '../repositories/academic.repository.js';
 import { auditRepository } from '../repositories/audit.repository.js';
+import { notificationEvents } from '../routes/api/notifications.api.js';
 
 export const materialService = {
-  // Envio de Material (Cria v1 ORIGINAL)
-  async uploadMaterial({ subjectId, classId = null, title, description, category, originalFilename, mimeType, fileSizeBytes, fileBuffer }, actorUser) {
+  // Envio de Material (Cria v1 ORIGINAL) com suporte opcional a agendamento
+  async uploadMaterial({ subjectId, classId = null, title, description, category, originalFilename, mimeType, fileSizeBytes, fileBuffer, publishAt = null }, actorUser) {
     if (!title || !subjectId || !category) {
       throw new Error('Título, disciplina e categoria são obrigatórios.');
     }
@@ -29,7 +30,8 @@ export const materialService = {
       teacherUserId: actorUser.id,
       title,
       description,
-      category
+      category,
+      publishAt
     });
 
     const version = materialRepository.createVersion({
@@ -51,7 +53,7 @@ export const materialService = {
       action: 'UPLOAD_MATERIAL',
       resource: 'materials',
       resourceId: material.id,
-      details: { versionNumber: 1, sha256Hash, originalFilename }
+      details: { versionNumber: 1, sha256Hash, originalFilename, publishAt }
     });
 
     return { material, version };
@@ -75,13 +77,22 @@ export const materialService = {
       if (!material.class_id) return false;
       const isEnrolled = academicRepository.isStudentInClass(user.id, material.class_id);
       const isAccessibleStatus = ['APROVADO', 'PUBLICADO'].includes(material.current_status);
+      
+      // Checagem de Agendamento: Se houver publish_at no futuro, ainda não está disponível para discentes
+      if (material.publish_at) {
+        const publishDate = new Date(material.publish_at);
+        if (publishDate > new Date()) {
+          return false;
+        }
+      }
+
       return isEnrolled && isAccessibleStatus;
     }
 
     return false;
   },
 
-  // Verificação de Permissão de Download (Escopo Fino por Turma)
+  // Verificação de Permissão de Download (Escopo Fino por Turma e Agendamento)
   async canUserDownloadMaterial(user, materialId) {
     const material = materialRepository.findMaterialById(materialId);
     if (!material) return false;
@@ -103,6 +114,15 @@ export const materialService = {
       if (!material.class_id) return false;
       const isEnrolled = academicRepository.isStudentInClass(user.id, material.class_id);
       const isAccessibleStatus = ['APROVADO', 'PUBLICADO'].includes(material.current_status);
+
+      // Checagem de Agendamento
+      if (material.publish_at) {
+        const publishDate = new Date(material.publish_at);
+        if (publishDate > new Date()) {
+          return false;
+        }
+      }
+
       return isEnrolled && isAccessibleStatus;
     }
 
@@ -167,6 +187,15 @@ export const materialService = {
 
     materialRepository.updateMaterialStatus(version.material_id, materialStatusMap[status]);
 
+    // Emite evento SSE para atualização da tela em tempo real
+    notificationEvents.emit('notify', {
+      type: 'MATERIAL_UPDATED',
+      materialId: version.material_id,
+      status: materialStatusMap[status],
+      title: 'Material Atualizado',
+      message: `O status do material foi alterado para ${materialStatusMap[status]}.`
+    });
+
     auditRepository.createLog({
       userId: actorUser.id,
       action: 'CONCLUIR_REVISAO',
@@ -174,5 +203,93 @@ export const materialService = {
       resourceId: reviewId,
       details: { status, materialId: version.material_id }
     });
+  },
+
+  // Ações em Lote (Bulk Actions)
+  async executeBulkAction(materialIds, action, actorUser) {
+    if (!materialIds || materialIds.length === 0) {
+      throw new Error('Nenhum material selecionado.');
+    }
+
+    if (action === 'APPROVE') {
+      const affected = materialRepository.bulkUpdateStatus(materialIds, 'APROVADO');
+      for (const id of materialIds) {
+        notificationEvents.emit('notify', {
+          type: 'MATERIAL_UPDATED',
+          materialId: id,
+          status: 'APROVADO',
+          title: 'Material Aprovado',
+          message: 'Material aprovado via ação em lote.'
+        });
+      }
+      auditRepository.createLog({
+        userId: actorUser.id,
+        action: 'BULK_APPROVE_MATERIALS',
+        resource: 'materials',
+        resourceId: 0,
+        details: { materialIds, affected }
+      });
+      return { action, affected };
+    }
+
+    if (action === 'REPROCESS') {
+      const affected = materialRepository.bulkUpdateStatus(materialIds, 'AGUARDANDO_PROCESSAMENTO');
+      for (const id of materialIds) {
+        notificationEvents.emit('notify', {
+          type: 'MATERIAL_UPDATED',
+          materialId: id,
+          status: 'AGUARDANDO_PROCESSAMENTO',
+          title: 'Material em Fila',
+          message: 'Material reenviado para fila de acessibilização em lote.'
+        });
+      }
+      auditRepository.createLog({
+        userId: actorUser.id,
+        action: 'BULK_REPROCESS_MATERIALS',
+        resource: 'materials',
+        resourceId: 0,
+        details: { materialIds, affected }
+      });
+      return { action, affected };
+    }
+
+    throw new Error('Ação em lote não suportada.');
+  },
+
+  // Canal de Feedback Discente
+  async submitFeedback({ materialId, issueType, description }, actorUser) {
+    if (!description || !issueType) {
+      throw new Error('Tipo do problema e descrição são obrigatórios.');
+    }
+
+    const material = materialRepository.findMaterialById(materialId);
+    if (!material) throw new Error('Material não encontrado.');
+
+    const feedback = materialRepository.createMaterialFeedback({
+      materialId,
+      studentUserId: actorUser.id,
+      issueType,
+      description
+    });
+
+    // Notifica professor titular e equipe NAI
+    notificationEvents.emit('notify', {
+      userId: material.teacher_user_id,
+      type: 'FEEDBACK_SUBMITTED',
+      materialId,
+      feedbackId: feedback.id,
+      title: 'Feedback de Acessibilidade Recebido',
+      message: `O aluno ${actorUser.name} apontou uma dificuldade no material "${material.title}".`
+    });
+
+    auditRepository.createLog({
+      userId: actorUser.id,
+      action: 'FEEDBACK_ACESSIBILIDADE_DISCENTE',
+      resource: 'material_feedbacks',
+      resourceId: feedback.id,
+      details: { materialId, issueType }
+    });
+
+    return feedback;
   }
 };

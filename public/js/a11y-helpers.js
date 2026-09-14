@@ -79,6 +79,13 @@
             const msg = `Nova notificação: ${data.title || ''} - ${data.message || ''}`;
             announceA11y(msg);
 
+            // Se for atualização de material, dispara evento interno para atualizar DOM sem F5
+            if (data.type === 'MATERIAL_UPDATED' && data.materialId) {
+              window.dispatchEvent(new CustomEvent('materialStatusUpdated', {
+                detail: { materialId: data.materialId, status: data.status }
+              }));
+            }
+
             // Exibir toast visual acessível temporário se houver corpo
             showToast(data.title, data.message);
           }
@@ -103,4 +110,64 @@
       if (toast.parentNode) toast.parentNode.removeChild(toast);
     }, 6000);
   }
+
+  // MONITOR DE INATIVIDADE DE SESSÃO (LGPD / MÁQUINAS COMPARTILHADAS)
+  // Alerta com 25 minutos e encerra sessão com 30 minutos
+  (function initSessionInactivityMonitor() {
+    let warningTimer;
+    let logoutTimer;
+    const WARNING_MS = 25 * 60 * 1000; // 25 min
+    const LOGOUT_MS = 30 * 60 * 1000;  // 30 min
+
+    function resetTimers() {
+      clearTimeout(warningTimer);
+      clearTimeout(logoutTimer);
+
+      const modal = document.getElementById('modal-inactivity-warning');
+      if (modal) modal.style.display = 'none';
+
+      warningTimer = setTimeout(showInactivityWarning, WARNING_MS);
+      logoutTimer = setTimeout(performAutoLogout, LOGOUT_MS);
+    }
+
+    function showInactivityWarning() {
+      let modal = document.getElementById('modal-inactivity-warning');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-inactivity-warning';
+        modal.setAttribute('role', 'alertdialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'tit-inactivity');
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;padding:1rem;';
+        modal.innerHTML = `
+          <div class="auth-card" style="max-width:440px;background:var(--bg-surface);border:2px solid var(--color-warning);box-shadow:var(--shadow-lg);padding:2rem;">
+            <h2 id="tit-inactivity" style="font-size:1.25rem;font-weight:700;margin-bottom:0.75rem;color:var(--color-primary);">⏳ Aviso de Inatividade</h2>
+            <p style="margin-bottom:1.5rem;color:var(--text-secondary);line-height:1.6;">
+              Por motivos de segurança e proteção de dados (LGPD em computadores acadêmicos compartilhados), sua sessão será encerrada em <strong>5 minutos</strong>.
+            </p>
+            <div style="display:flex;justify-content:flex-end;gap:1rem;">
+              <button type="button" class="btn btn-primary" onclick="resetUserInactivity()">Continuar Conectado</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+      modal.style.display = 'flex';
+      announceA11y('Aviso de inatividade: sua sessão irá expirar em 5 minutos.');
+    }
+
+    function performAutoLogout() {
+      announceA11y('Sua sessão expirou por inatividade. Redirecionando...');
+      window.location.href = '/login?reason=timeout';
+    }
+
+    window.resetUserInactivity = resetTimers;
+
+    // Monitorar eventos de interação do usuário
+    ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
+      document.addEventListener(evt, resetTimers, { passive: true });
+    });
+
+    resetTimers();
+  })();
 })();

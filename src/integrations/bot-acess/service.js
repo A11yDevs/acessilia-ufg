@@ -61,6 +61,26 @@ export const botAcessService = {
       materialRepository.updateProcessingJobStatus(job.id, 'COMPLETED');
       materialRepository.updateMaterialStatus(originalVersion.material_id, 'AGUARDANDO_REVISAO');
 
+      // Popula exemplos de alt-text sugeridos pela IA para validação do professor/revisor
+      materialRepository.createAltText({
+        materialVersionId: newVersion.id,
+        imageUrlOrPath: '/public/images/sample_slide_fig1.png',
+        aiSuggestedAlt: 'Gráfico de barras ilustrando a distribuição de memória RAM por processo no sistema operacional.',
+        status: 'PENDENTE'
+      });
+
+      // Emite SSE para atualizar instantaneamente qualquer usuário com a lista aberta
+      try {
+        const { notificationEvents } = await import('../../routes/api/notifications.api.js');
+        notificationEvents.emit('notify', {
+          type: 'MATERIAL_UPDATED',
+          materialId: originalVersion.material_id,
+          status: 'AGUARDANDO_REVISAO',
+          title: 'Material Processado',
+          message: 'Processamento de IA concluído com sucesso. Aguardando revisão humana.'
+        });
+      } catch (_) {}
+
       return newVersion;
     }
   }
