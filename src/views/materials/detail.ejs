@@ -35,10 +35,10 @@
     <div style="flex: 1; min-width: 280px;">
       <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
         <span class="role-tag" style="background: var(--color-primary); color: white; font-weight: 700; font-size: 0.75rem;">
-          SELO ACESSILIA UFG
+          SELO ACESSILIA
         </span>
         <span style="font-size: 0.8125rem; color: var(--text-muted);">
-          Núcleo de Acessibilidade (NAI) • Lei 13.146/2015 & WCAG 2.2 AAA
+          Núcleo de Acessibilidade • Lei 13.146/2015 & WCAG 2.2 AAA
         </span>
       </div>
 
@@ -52,7 +52,7 @@
             ✔ Documento revisado e aprovado pelo Núcleo de Acessibilidade
           </p>
           <p style="margin: 0.25rem 0 0 0; color: #14532d; font-size: 0.875rem;">
-            Aprovado por: <strong><%= certData.reviewerName || 'Revisor NAI/UFG' %></strong>
+            Aprovado por: <strong><%= certData.reviewerName || 'Revisor de Acessibilidade' %></strong>
             <% if (certData.approvalDateFormatted) { %>
               em <strong><%= certData.approvalDateFormatted %></strong>
             <% } %>
@@ -156,7 +156,7 @@
       <div style="border-bottom: 2px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
           <span class="badge" style="background: var(--color-primary); color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">
-            Selo Acessilia • UFG
+            Selo Acessilia
           </span>
           <% if (locals.certData) { %>
             <a href="<%= certData.certificateUrl %>" target="_blank" rel="noopener" style="font-size: 0.75rem; color: var(--color-primary); font-weight: 600; text-decoration: underline;">

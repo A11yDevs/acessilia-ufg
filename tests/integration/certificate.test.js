@@ -47,7 +47,7 @@ test('Selo e Certificado Digital de Acessibilidade com QR Code', async (t) => {
     subjectId: subject.id,
     classId: testClass.id,
     title: 'Guia de Diretrizes WCAG 2.2',
-    description: 'Normas completas de conformidade digital da UFG.',
+    description: 'Normas completas de conformidade digital e inclusão.',
     category: 'APOSTILA',
     originalFilename: 'diretrizes_wcag.pdf'
   }, teacher);
@@ -100,7 +100,8 @@ test('Selo e Certificado Digital de Acessibilidade com QR Code', async (t) => {
       url: `/materiais/${material.id}/download?format=html`
     });
     assert.equal(resHtml.statusCode, 200);
-    assert.match(resHtml.payload, /Selo Acessilia UFG/);
+    assert.match(resHtml.payload, /Selo Acessilia/);
+    assert.doesNotMatch(resHtml.payload, /UFG/i);
     assert.match(resHtml.payload, /Documento acessibilizado pelo Acessilia \(Processamento Automático\)/);
     assert.match(resHtml.payload, /não foi revisado.*pelo Núcleo de Acessibilidade/);
     assert.match(resHtml.payload, /data:image\/png;base64,/);
@@ -113,9 +114,23 @@ test('Selo e Certificado Digital de Acessibilidade com QR Code', async (t) => {
     });
     assert.equal(resTxt.statusCode, 200);
     assert.match(resTxt.payload, /SELO ACESSILIA/);
+    assert.doesNotMatch(resTxt.payload, /UFG/i);
     assert.match(resTxt.payload, /DOCUMENTO ACESSIBILIZADO PELO ACESSILIA \(PROCESSAMENTO AUTOMÁTICO\)/);
     assert.match(resTxt.payload, /ESTE DOCUMENTO NÃO FOI REVISADO PELO NÚCLEO DE ACESSIBILIDADE/);
     assert.match(resTxt.payload, new RegExp(`/certificados/material/${material.id}`));
+
+    // Download DOCX / PDF_UA / ZIP (todos com o cabeçalho)
+    for (const fmt of ['docx', 'pdf_ua', 'zip']) {
+      const resOther = await app.inject({
+        method: 'GET',
+        url: `/materiais/${material.id}/download?format=${fmt}`
+      });
+      assert.equal(resOther.statusCode, 200);
+      const textPayload = resOther.payload.toString();
+      assert.match(textPayload, /SELO ACESSILIA/);
+      assert.doesNotMatch(textPayload, /UFG/i);
+      assert.match(textPayload, /DOCUMENTO ACESSIBILIZADO PELO ACESSILIA/);
+    }
   });
 
   await t.test('3. Certificado após Revisão Humana e Homologação NAI', async () => {
@@ -139,6 +154,7 @@ test('Selo e Certificado Digital de Acessibilidade com QR Code', async (t) => {
     assert.match(resPublic.payload, /Documento Revisado e Aprovado pelo Núcleo de Acessibilidade/);
     assert.match(resPublic.payload, /Ana Beatriz Souza \(Revisora\)/);
     assert.doesNotMatch(resPublic.payload, /não foi revisado pelo Núcleo de Acessibilidade/);
+    assert.doesNotMatch(resPublic.payload, /UFG/i);
 
     // Download HTML deve agora refletir a homologação com data de aprovação
     currentUser = student;
@@ -150,6 +166,7 @@ test('Selo e Certificado Digital de Acessibilidade com QR Code', async (t) => {
     assert.match(resHtmlApproved.payload, /Documento revisado e aprovado pelo Núcleo de Acessibilidade/);
     assert.match(resHtmlApproved.payload, /Ana Beatriz Souza \(Revisora\)/);
     assert.doesNotMatch(resHtmlApproved.payload, /não foi revisado pelo Núcleo de Acessibilidade/);
+    assert.doesNotMatch(resHtmlApproved.payload, /UFG/i);
   });
 
   await app.close();

@@ -216,7 +216,7 @@ export async function materialsWebRoutes(fastify, opts) {
       const headerStatusNotice = cert.isApproved
         ? `<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 5px solid #166534; padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
             <p style="margin: 0; color: #166534; font-weight: 700; font-size: 0.95rem;">
-              ✔ Documento revisado e aprovado pelo Núcleo de Acessibilidade (NAI - UFG)
+              ✔ Documento revisado e aprovado pelo Núcleo de Acessibilidade
               ${cert.reviewerName ? ` por <strong>${cert.reviewerName}</strong>` : ''}
               ${cert.approvalDateFormatted ? ` em <strong>${cert.approvalDateFormatted}</strong>` : ''}.
             </p>
@@ -237,7 +237,7 @@ export async function materialsWebRoutes(fastify, opts) {
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>${material.title} — Acessilia UFG</title>
+  <title>${material.title} — Acessilia</title>
   <style>
     body { font-family: system-ui, sans-serif; line-height: 1.8; max-width: 800px; margin: 2rem auto; padding: 0 1rem; color: #0f172a; }
     h1 { color: #0369a1; border-bottom: 2px solid #cbd5e1; padding-bottom: 0.5rem; margin-top: 0.5rem; }
@@ -255,10 +255,10 @@ export async function materialsWebRoutes(fastify, opts) {
   <header>
     <div class="cert-header">
       <div class="cert-info">
-        <span class="badge">Selo Acessilia UFG</span>
-        <div style="font-weight: 700; color: #0369a1; margin-top: 0.25rem;">UNIVERSIDADE FEDERAL DE GOIÁS</div>
+        <span class="badge">Selo Acessilia</span>
+        <div style="font-weight: 700; color: #0369a1; margin-top: 0.25rem;">SISTEMA ACESSILIA</div>
         <p style="margin: 0.25rem 0 0 0; color: #475569;">
-          Documento Acessibilizado pelo Acessilia | NAI - Núcleo de Acessibilidade
+          Documento Acessibilizado pelo Acessilia | Núcleo de Acessibilidade
         </p>
       </div>
       <div class="cert-qr">
@@ -276,9 +276,9 @@ export async function materialsWebRoutes(fastify, opts) {
   <main>
     <article>
       <h2>Resumo e Conteúdo Acessibilizado</h2>
-      <p>${material.description || 'Material acadêmico adaptado pelo Núcleo de Acessibilidade (NAI - UFG).'}</p>
+      <p>${material.description || 'Material acadêmico adaptado pelo Núcleo de Acessibilidade.'}</p>
       <hr>
-      <p><em>Este documento foi gerado pelo ecossistema Acessilia UFG para uso acadêmico exclusivo.</em></p>
+      <p><em>Este documento foi gerado pelo ecossistema Acessilia para uso acadêmico exclusivo.</em></p>
     </article>
   </main>
 </body>
@@ -288,23 +288,22 @@ export async function materialsWebRoutes(fastify, opts) {
       return reply.send(htmlContent);
     }
 
-    if (format === 'txt') {
-      const txtStatusNotice = cert.isApproved
-        ? `SITUAÇÃO: DOCUMENTO REVISADO E APROVADO PELO NÚCLEO DE ACESSIBILIDADE
-REVISOR: ${cert.reviewerName || 'Equipe NAI/UFG'}
+    const txtStatusNotice = cert.isApproved
+      ? `SITUAÇÃO: DOCUMENTO REVISADO E APROVADO PELO NÚCLEO DE ACESSIBILIDADE
+REVISOR: ${cert.reviewerName || 'Equipe do Núcleo de Acessibilidade'}
 DATA DE APROVAÇÃO: ${cert.approvalDateFormatted || 'Data confirmada'}
 CONFORMIDADE: Lei Brasileira de Inclusão (Lei nº 13.146/2015) & WCAG 2.2 AAA`
-        : `SITUAÇÃO: DOCUMENTO ACESSIBILIZADO PELO ACESSILIA (PROCESSAMENTO AUTOMÁTICO)
+      : `SITUAÇÃO: DOCUMENTO ACESSIBILIZADO PELO ACESSILIA (PROCESSAMENTO AUTOMÁTICO)
 DATA DA ACESSIBILIZAÇÃO: ${cert.automaticDateFormatted || 'Recente'}
 AVISO: ESTE DOCUMENTO NÃO FOI REVISADO PELO NÚCLEO DE ACESSIBILIDADE E PODE CONTER IMPERFEIÇÕES.`;
 
-      const txtContent = `======================================================================
-UNIVERSIDADE FEDERAL DE GOIÁS — UFG | SELO ACESSILIA
+    const txtContent = `======================================================================
+SELO ACESSILIA | DOCUMENTO ACESSIBILIZADO
 ${material.title.toUpperCase()}
 ======================================================================
 ${txtStatusNotice}
 
-VALIDAÇÃO PÚBLICA DO CERTIFICADO DIGITAL:
+VALIDAÇÃO PÚBLICA DO CERTIFICADO DIGITAL COM QR CODE:
 ${cert.certificateUrl}
 ======================================================================
 
@@ -313,11 +312,13 @@ Docente: ${material.teacher_name}
 Hash SHA-256: ${cert.sha256Hash}
 
 CONTEÚDO:
-${material.description || 'Material acadêmico adaptado pelo Núcleo de Acessibilidade da UFG.'}
+${material.description || 'Material acadêmico adaptado pelo Núcleo de Acessibilidade.'}
 
 ----------------------------------------------------------------------
-Documento acessível gerado pelo Acessilia UFG.
+Documento acessível gerado pelo Acessilia.
 `;
+
+    if (format === 'txt') {
       reply.header('Content-Type', 'text/plain; charset=utf-8');
       reply.header('Content-Disposition', `attachment; filename="${baseFilename}_acessivel.txt"`);
       return reply.send(txtContent);
@@ -328,15 +329,23 @@ Documento acessível gerado pelo Acessilia UFG.
       return reply.redirect('/public/audio/sample_acessivel.mp3');
     }
 
-    // Para docx, pdf_ua e zip: se existir arquivo em disco, serve diretamente, senão entrega texto informativo
-    const placeholderContent = `[Acessilia UFG] Arquivo ${format.toUpperCase()} gerado para o material "${material.title}".
-Disciplina: ${material.subject_name}
-Docente: ${material.teacher_name}
-Data de Emissão: ${new Date().toISOString()}`;
+    // Para docx, pdf_ua e zip: todos incluem o cabeçalho oficial do Selo Acessilia com link/validação e status
+    const formattedContent = `${txtContent}
+======================================================================
+FORMATO ESPECÍFICO: ${format.toUpperCase()}
+DATA DE EMISSÃO: ${new Date().toISOString()}
+======================================================================
+`;
 
-    reply.header('Content-Type', 'application/octet-stream');
+    const mimeTypes = {
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      pdf_ua: 'application/pdf',
+      zip: 'application/zip'
+    };
+
+    reply.header('Content-Type', mimeTypes[format] || 'application/octet-stream');
     reply.header('Content-Disposition', `attachment; filename="${baseFilename}_${format}.${format === 'pdf_ua' ? 'pdf' : format}"`);
-    return reply.send(Buffer.from(placeholderContent));
+    return reply.send(Buffer.from(formattedContent));
   });
 
   // Ações em Lote (Bulk Actions: Aprovar ou Reprocessar Selecionados)
