@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/public/css/reset.css">
+  <link rel="stylesheet" href="/public/css/variables.css">
+  <link rel="stylesheet" href="/public/css/components.css">
+  <link rel="stylesheet" href="/public/css/layout.css">
+</head>
+<body style="background: var(--bg-surface); padding: 2rem 1rem; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh;">
+  <main style="max-width: 780px; width: 100%; background: var(--bg-primary); border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: var(--shadow-md); padding: 2.5rem 2rem;">
+
+    <!-- CABEÇALHO INSTITUCIONAL -->
+    <header style="border-bottom: 2px solid var(--border-color); padding-bottom: 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <div style="font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-primary); font-weight: 700;">
+          Universidade Federal de Goiás — UFG
+        </div>
+        <h1 style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin-top: 0.25rem;">
+          Certificado Digital de Acessibilidade
+        </h1>
+        <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">
+          Sistema Acessilia Gestor • Núcleo de Acessibilidade (NAI)
+        </p>
+      </div>
+
+      <div style="background: rgba(3, 105, 161, 0.1); border: 1px solid var(--color-primary); color: var(--color-primary); padding: 0.5rem 1rem; border-radius: 9999px; font-weight: 700; font-size: 0.875rem;">
+        Selo Acessilia Digital
+      </div>
+    </header>
+
+    <!-- ESTADO DINÂMICO DE REVISÃO E CONFORMIDADE -->
+    <% if (cert.isApproved) { %>
+      <section role="status" aria-live="polite" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 6px solid var(--color-success); border-radius: var(--border-radius); padding: 1.25rem; margin-bottom: 2rem;">
+        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+          <span style="font-size: 2rem;" aria-hidden="true">✔🎓</span>
+          <div>
+            <h2 style="font-size: 1.125rem; font-weight: 700; color: #166534; margin-bottom: 0.25rem;">
+              Documento Revisado e Aprovado pelo Núcleo de Acessibilidade
+            </h2>
+            <p style="font-size: 0.9375rem; color: #14532d; margin: 0; line-height: 1.5;">
+              Este material foi formalmente auditado, revisado e aprovado
+              <% if (cert.reviewerName) { %>
+                pelo(a) revisor(a) <strong><%= cert.reviewerName %></strong>
+              <% } %>
+              <% if (cert.approvalDateFormatted) { %>
+                em <strong><%= cert.approvalDateFormatted %></strong>.
+              <% } %>
+            </p>
+            <div style="margin-top: 0.5rem; font-size: 0.8125rem; color: #166534; font-weight: 600;">
+              Conformidade Atestada: Lei Brasileira de Inclusão (Lei nº 13.146/2015) & WCAG 2.2 Nível AAA
+            </div>
+          </div>
+        </div>
+      </section>
+    <% } else { %>
+      <section role="status" aria-live="polite" style="background: #fffbeb; border: 1px solid #fde68a; border-left: 6px solid #d97706; border-radius: var(--border-radius); padding: 1.25rem; margin-bottom: 2rem;">
+        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+          <span style="font-size: 2rem;" aria-hidden="true">🤖⚠️</span>
+          <div>
+            <h2 style="font-size: 1.125rem; font-weight: 700; color: #b45309; margin-bottom: 0.25rem;">
+              Documento Acessibilizado pelo Acessilia (Processamento Automático)
+            </h2>
+            <p style="font-size: 0.9375rem; color: #92400e; margin: 0; line-height: 1.5;">
+              Acessibilização automática realizada em: <strong><%= cert.automaticDateFormatted || 'Data recente' %></strong>.<br>
+              <strong>Atenção:</strong> Este documento <em>não foi revisado</em> pelo Núcleo de Acessibilidade da UFG e pode conter imperfeições em tabelas, fórmulas ou descrições visuais.
+            </p>
+          </div>
+        </div>
+      </section>
+    <% } %>
+
+    <!-- DETALHES DO DOCUMENTO E QR CODE DE AUTENTICIDADE -->
+    <div style="display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 2rem;">
+      <div style="flex: 1; min-width: 280px;">
+        <h3 style="font-size: 1.125rem; font-weight: 700; margin-bottom: 1rem; color: var(--color-primary);">
+          Dados Acadêmicos Registrados
+        </h3>
+        <dl style="font-size: 0.9375rem; display: grid; grid-template-columns: 140px 1fr; gap: 0.75rem 0.5rem; line-height: 1.5;">
+          <dt style="font-weight: 600; color: var(--text-secondary);">Título do Material:</dt>
+          <dd style="margin: 0; font-weight: 700;"><%= cert.title %></dd>
+
+          <dt style="font-weight: 600; color: var(--text-secondary);">Disciplina:</dt>
+          <dd style="margin: 0;"><%= cert.subjectName %></dd>
+
+          <dt style="font-weight: 600; color: var(--text-secondary);">Docente:</dt>
+          <dd style="margin: 0;"><%= cert.teacherName %></dd>
+
+          <dt style="font-weight: 600; color: var(--text-secondary);">Status Atual:</dt>
+          <dd style="margin: 0;">
+            <span class="role-tag" style="background: <%= cert.isApproved ? 'var(--color-success)' : 'var(--color-warning)' %>;">
+              <%= cert.currentStatus %>
+            </span>
+          </dd>
+
+          <dt style="font-weight: 600; color: var(--text-secondary);">Hash SHA-256:</dt>
+          <dd style="margin: 0; font-family: monospace; font-size: 0.8125rem; word-break: break-all;">
+            <%= cert.sha256Hash %>
+          </dd>
+        </dl>
+      </div>
+
+      <!-- QR CODE BOX -->
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg-surface); padding: 1.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); text-align: center; width: 220px; margin: 0 auto;">
+        <% if (qrCodeDataUrl) { %>
+          <img src="<%= qrCodeDataUrl %>" alt="QR Code de validação do certificado de acessibilidade" style="width: 160px; height: 160px; display: block; margin-bottom: 0.75rem; border-radius: 4px;">
+        <% } %>
+        <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary);">
+          Escaneie para validar a autenticidade online
+        </span>
+        <code style="font-size: 0.6875rem; margin-top: 0.5rem; word-break: break-all; color: var(--text-muted);">
+          ID: #<%= cert.materialId %>
+        </code>
+      </div>
+    </div>
+
+    <!-- RODAPÉ DE AÇÕES -->
+    <footer style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <a href="/materiais/<%= cert.materialId %>" class="btn btn-primary" style="font-size: 0.875rem;">
+        &larr; Acessar Material no Gestor
+      </a>
+      <span style="font-size: 0.8125rem; color: var(--text-muted);">
+        Validação Institucional UFG • Lei 13.146/2015
+      </span>
+    </footer>
+
+  </main>
+</body>
+</html>

@@ -2,6 +2,7 @@ import { materialService } from '../../services/material.service.js';
 import { materialRepository } from '../../repositories/material.repository.js';
 import { academicRepository } from '../../repositories/academic.repository.js';
 import { botAcessService } from '../../integrations/bot-acess/service.js';
+import { certificateService } from '../../services/certificate.service.js';
 
 export async function materialsWebRoutes(fastify, opts) {
   // Listagem de materiais respeitando escopo de permissão
@@ -159,6 +160,12 @@ export async function materialsWebRoutes(fastify, opts) {
     const feedbacks = materialRepository.listFeedbacksByMaterial(materialId);
     const feedbackSuccess = request.query.feedback === 'success';
 
+    // Certificado Digital e QR Code
+    const host = request.headers.host || 'localhost:3000';
+    const protocol = request.protocol || 'http';
+    const certData = certificateService.getCertificateData(materialId, host, protocol);
+    const qrCodeDataUrl = certData ? await certificateService.generateQrCodeDataUrl(certData.certificateUrl) : null;
+
     return reply.view('layouts/base.ejs', {
       title: `${material.title} — Detalhes`,
       headerTitle: `Material: ${material.title}`,
@@ -174,6 +181,8 @@ export async function materialsWebRoutes(fastify, opts) {
         feedbacks,
         feedbackSuccess,
         canDownload,
+        certData,
+        qrCodeDataUrl,
         user: request.user,
         csrfToken
       })
@@ -198,7 +207,32 @@ export async function materialsWebRoutes(fastify, opts) {
     const versions = materialRepository.getMaterialVersions(materialId);
     const baseFilename = material.title.toLowerCase().replace(/[^a-z0-9]/gi, '_').substring(0, 40);
 
+    const host = request.headers.host || 'localhost:3000';
+    const protocol = request.protocol || 'http';
+    const cert = certificateService.getCertificateData(materialId, host, protocol);
+    const qrCodeDataUrl = cert ? await certificateService.generateQrCodeDataUrl(cert.certificateUrl) : '';
+
     if (format === 'html') {
+      const headerStatusNotice = cert.isApproved
+        ? `<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 5px solid #166534; padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+            <p style="margin: 0; color: #166534; font-weight: 700; font-size: 0.95rem;">
+              ✔ Documento revisado e aprovado pelo Núcleo de Acessibilidade (NAI - UFG)
+              ${cert.reviewerName ? ` por <strong>${cert.reviewerName}</strong>` : ''}
+              ${cert.approvalDateFormatted ? ` em <strong>${cert.approvalDateFormatted}</strong>` : ''}.
+            </p>
+            <p style="margin: 0.25rem 0 0 0; font-size: 0.8125rem; color: #14532d;">
+              Conforme Lei Brasileira de Inclusão (Lei nº 13.146/2015) e critérios WCAG 2.2 Nível AAA.
+            </p>
+          </div>`
+        : `<div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 5px solid #d97706; padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+            <p style="margin: 0; color: #b45309; font-weight: 700; font-size: 0.95rem;">
+              🤖 Documento acessibilizado pelo Acessilia (Processamento Automático) em <strong>${cert.automaticDateFormatted || 'Data recente'}</strong>.
+            </p>
+            <p style="margin: 0.25rem 0 0 0; font-size: 0.8125rem; color: #92400e;">
+              <strong>Atenção:</strong> Este documento <em>não foi revisado</em> pelo Núcleo de Acessibilidade e pode conter imperfeições.
+            </p>
+          </div>`;
+
       const htmlContent = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -206,17 +240,39 @@ export async function materialsWebRoutes(fastify, opts) {
   <title>${material.title} — Acessilia UFG</title>
   <style>
     body { font-family: system-ui, sans-serif; line-height: 1.8; max-width: 800px; margin: 2rem auto; padding: 0 1rem; color: #0f172a; }
-    h1 { color: #0369a1; border-bottom: 2px solid #cbd5e1; padding-bottom: 0.5rem; }
-    .badge { background: #15803d; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem; }
-    article { margin-top: 2rem; }
+    h1 { color: #0369a1; border-bottom: 2px solid #cbd5e1; padding-bottom: 0.5rem; margin-top: 0.5rem; }
+    .badge { background: #15803d; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem; font-weight: 600; }
+    .cert-header { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; gap: 1rem; }
+    .cert-info { flex: 1; font-size: 0.875rem; }
+    .cert-qr { text-align: center; }
+    .cert-qr img { width: 110px; height: 110px; display: block; border-radius: 4px; }
+    .cert-qr a { font-size: 0.6875rem; color: #0369a1; text-decoration: none; word-break: break-all; }
+    article { margin-top: 1.5rem; }
   </style>
 </head>
 <body>
+  <!-- CABEÇALHO DO SELO ACESSILIA COM QR CODE -->
   <header>
-    <span class="badge">Acessível WCAG 2.2 AAA</span>
+    <div class="cert-header">
+      <div class="cert-info">
+        <span class="badge">Selo Acessilia UFG</span>
+        <div style="font-weight: 700; color: #0369a1; margin-top: 0.25rem;">UNIVERSIDADE FEDERAL DE GOIÁS</div>
+        <p style="margin: 0.25rem 0 0 0; color: #475569;">
+          Documento Acessibilizado pelo Acessilia | NAI - Núcleo de Acessibilidade
+        </p>
+      </div>
+      <div class="cert-qr">
+        ${qrCodeDataUrl ? `<img src="${qrCodeDataUrl}" alt="QR Code de validação do certificado de acessibilidade">` : ''}
+        <a href="${cert.certificateUrl}" target="_blank" rel="noopener">Validar Certificado</a>
+      </div>
+    </div>
+
+    ${headerStatusNotice}
+
     <h1>${material.title}</h1>
     <p><strong>Disciplina:</strong> ${material.subject_name} | <strong>Docente:</strong> ${material.teacher_name}</p>
   </header>
+
   <main>
     <article>
       <h2>Resumo e Conteúdo Acessibilizado</h2>
@@ -233,14 +289,28 @@ export async function materialsWebRoutes(fastify, opts) {
     }
 
     if (format === 'txt') {
+      const txtStatusNotice = cert.isApproved
+        ? `SITUAÇÃO: DOCUMENTO REVISADO E APROVADO PELO NÚCLEO DE ACESSIBILIDADE
+REVISOR: ${cert.reviewerName || 'Equipe NAI/UFG'}
+DATA DE APROVAÇÃO: ${cert.approvalDateFormatted || 'Data confirmada'}
+CONFORMIDADE: Lei Brasileira de Inclusão (Lei nº 13.146/2015) & WCAG 2.2 AAA`
+        : `SITUAÇÃO: DOCUMENTO ACESSIBILIZADO PELO ACESSILIA (PROCESSAMENTO AUTOMÁTICO)
+DATA DA ACESSIBILIZAÇÃO: ${cert.automaticDateFormatted || 'Recente'}
+AVISO: ESTE DOCUMENTO NÃO FOI REVISADO PELO NÚCLEO DE ACESSIBILIDADE E PODE CONTER IMPERFEIÇÕES.`;
+
       const txtContent = `======================================================================
+UNIVERSIDADE FEDERAL DE GOIÁS — UFG | SELO ACESSILIA
 ${material.title.toUpperCase()}
-Acessilia Gestor — NAI / UFG (Formato Texto Puro para Linhas Braille)
+======================================================================
+${txtStatusNotice}
+
+VALIDAÇÃO PÚBLICA DO CERTIFICADO DIGITAL:
+${cert.certificateUrl}
 ======================================================================
 
 Disciplina: ${material.subject_name}
 Docente: ${material.teacher_name}
-Status: ${material.current_status}
+Hash SHA-256: ${cert.sha256Hash}
 
 CONTEÚDO:
 ${material.description || 'Material acadêmico adaptado pelo Núcleo de Acessibilidade da UFG.'}

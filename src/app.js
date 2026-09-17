@@ -30,6 +30,7 @@ import { requestsWebRoutes } from './routes/web/requests.routes.js';
 import { reportsWebRoutes } from './routes/web/reports.routes.js';
 import { monitoringWebRoutes } from './routes/web/monitoring.routes.js';
 import { preferencesApiRoutes } from './routes/api/preferences.api.js';
+import { certificateWebRoutes } from './routes/web/certificate.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -122,6 +123,7 @@ export async function buildApp(opts = {}) {
   await fastify.register(healthApiRoutes);
   await fastify.register(notificationsApiRoutes);
   await fastify.register(preferencesApiRoutes);
+  await fastify.register(certificateWebRoutes);
 
   return fastify;
 }
