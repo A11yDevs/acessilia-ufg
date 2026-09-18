@@ -1,4 +1,4 @@
-﻿/* COMPONENTES ACESSÍVEIS */
+/* COMPONENTES ACESSÍVEIS */
 
 /* BOTÕES REAIS */
 .btn {
@@ -114,4 +114,57 @@
   font-weight: 700;
   margin-top: 0.5rem;
   color: var(--color-primary);
+}
+
+/* TABELAS RESPONSIVAS E ACESSÍVEIS (WCAG 1.4.10 Reflow) */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.data-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.875rem 1rem;
+  vertical-align: middle;
+}
+
+.data-table th {
+  border-bottom: 2px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.02);
+  font-weight: 600;
+}
+
+.data-table tr {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.col-nowrap {
+  white-space: nowrap;
+}
+
+.col-checkbox {
+  width: 44px;
+  text-align: center;
+}
+
+.col-status {
+  white-space: nowrap;
+  min-width: 130px;
+}
+
+.col-actions {
+  white-space: nowrap;
+  min-width: 110px;
+  text-align: right;
 }

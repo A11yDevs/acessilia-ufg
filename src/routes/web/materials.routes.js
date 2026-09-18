@@ -103,13 +103,16 @@ export async function materialsWebRoutes(fastify, opts) {
       const job = await materialService.requestProcessing(version.id, request.user);
       const dispatchResult = await botAcessService.dispatchJob(job.id);
 
-      // Se for ambiente de desenvolvimento/teste sem o motor Python rodando, conclui a conversão para testes
-      if (dispatchResult.success) {
+      // Se for ambiente de teste automatizado sem o motor Python rodando, conclui a conversão para testes
+      if (dispatchResult.success && process.env.NODE_ENV === 'test') {
         setTimeout(async () => {
           try {
             await botAcessService.handleJobCompleted(job.id);
           } catch (_) {}
         }, 100);
+      } else if (!dispatchResult.success) {
+        // Se o despacho falhou no ambiente real, atualiza o status do material para sinalizar erro
+        materialRepository.updateMaterialStatus(material.id, 'FALHA_PROCESSAMENTO');
       }
 
       return reply.redirect(`/materiais/${material.id}`);

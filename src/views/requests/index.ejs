@@ -1,36 +1,37 @@
-﻿<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
   <div>
     <h1 style="font-size: 1.75rem; font-weight: 700;">Solicitações de Acessibilidade</h1>
     <p style="color: var(--text-muted);">Canal direto para solicitar adaptação e formatos assistivos de materiais</p>
   </div>
   <% if (user.roleCode === 'ALUNO' || user.permissions.includes('solicitacoes.criar')) { %>
-    <a href="#modal-nova-solicitacao" class="btn btn-primary" onclick="document.getElementById('modal-nova-solicitacao').style.display='block'; document.getElementById('sel-mat-solic').focus(); return false;">
+    <a href="#modal-nova-solicitacao" class="btn btn-primary" onclick="openNovaSolicitacaoModal(); return false;">
       + Nova Solicitação
     </a>
   <% } %>
 </div>
 
 <!-- TABELA DE SOLICITAÇÕES -->
-<div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
-  <table style="width: 100%; border-collapse: collapse; text-align: left;" aria-label="Lista de Solicitações de Acessibilidade">
+<% const totalColsRequests = (user.roleCode !== 'ALUNO') ? 7 : 6; %>
+<div class="table-responsive">
+  <table class="data-table" aria-label="Lista de Solicitações de Acessibilidade">
     <thead>
-      <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
-        <th scope="col" style="padding: 1rem;">Material Acadêmico</th>
-        <th scope="col" style="padding: 1rem;">Disciplina</th>
+      <tr>
+        <th scope="col">Material Acadêmico</th>
+        <th scope="col">Disciplina</th>
         <% if (user.roleCode !== 'ALUNO') { %>
-          <th scope="col" style="padding: 1rem;">Solicitante</th>
+          <th scope="col">Solicitante</th>
         <% } %>
-        <th scope="col" style="padding: 1rem;">Prioridade</th>
-        <th scope="col" style="padding: 1rem;">Status</th>
-        <th scope="col" style="padding: 1rem;">Data/Hora</th>
-        <th scope="col" style="padding: 1rem;">Observações / Ações</th>
+        <th scope="col" class="col-status">Prioridade</th>
+        <th scope="col" class="col-status">Status</th>
+        <th scope="col" class="col-nowrap">Data/Hora</th>
+        <th scope="col">Observações / Ações</th>
       </tr>
     </thead>
     <tbody>
       <% if (requestsList.length === 0) { %>
         <tr>
-          <td colspan="7" style="padding: 2rem; text-align: center; color: var(--text-muted);">
-            Nenhuma solicitação de acessibilidade registrada no momento.
+          <td colspan="<%= totalColsRequests %>" style="padding: 2rem; text-align: center; color: var(--text-muted);">
+            Nenhum registro de solicitação encontrado.
           </td>
         </tr>
       <% } else { %>
@@ -108,7 +109,7 @@
       </div>
 
       <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
-        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-nova-solicitacao').style.display='none';">
+        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="closeNovaSolicitacaoModal();">
           Cancelar
         </button>
         <button type="submit" class="btn btn-primary">
@@ -118,3 +119,53 @@
     </form>
   </div>
 </div>
+
+<script>
+  let previouslyFocusedSolicElem = null;
+  const modalNovaSolic = document.getElementById('modal-nova-solicitacao');
+
+  function openNovaSolicitacaoModal() {
+    previouslyFocusedSolicElem = document.activeElement;
+    modalNovaSolic.style.display = 'block';
+    const firstField = document.getElementById('sel-mat-solic');
+    if (firstField) firstField.focus();
+  }
+
+  function closeNovaSolicitacaoModal() {
+    modalNovaSolic.style.display = 'none';
+    if (previouslyFocusedSolicElem && typeof previouslyFocusedSolicElem.focus === 'function') {
+      previouslyFocusedSolicElem.focus();
+    }
+  }
+
+  if (modalNovaSolic) {
+    modalNovaSolic.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeNovaSolicitacaoModal();
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const focusableElements = modalNovaSolic.querySelectorAll(
+          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusableElements.length) return;
+        const firstElem = focusableElements[0];
+        const lastElem = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElem) {
+            e.preventDefault();
+            lastElem.focus();
+          }
+        } else {
+          if (document.activeElement === lastElem) {
+            e.preventDefault();
+            firstElem.focus();
+          }
+        }
+      }
+    });
+  }
+</script>

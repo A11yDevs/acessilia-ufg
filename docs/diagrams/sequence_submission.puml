@@ -1,0 +1,66 @@
+@startuml sequence_submission
+title Fluxo de Envio, Processamento Assincrono e Revisao Humana (Acessilia Gestor & Core)
+
+autonumber
+actor "Professor / Docente" as Prof
+boundary "Interface Web (Gestor)" as UI
+control "Materials Controller" as Controller
+control "Material Service" as Service
+database "Banco SQLite (WAL)" as DB
+control "BotAcess Client" as Client
+entity "Motor Acessilia (Core IA)" as Core
+actor "Aluno (Discente)" as Aluno
+actor "Revisor de Acessibilidade" as Revisor
+
+== 1. Envio do Material Original (v1) ==
+Prof -> UI : Envia arquivo (PDF, DOCX, etc.) com metadados
+UI -> Controller : POST /materiais (multipart/form-data)
+Controller -> Service : uploadMaterial(dados, arquivo, user)
+Service -> DB : INSERT INTO materials (status = 'ENVIADO')
+Service -> DB : INSERT INTO material_versions (v1, 'ORIGINAL')
+Service -> DB : INSERT INTO processing_jobs (status = 'PENDING', idempotency_key)
+Service --> Controller : { material, version, job }
+
+== 2. Despacho Assincrono para o Motor Core ==
+Controller -> Client : sendDocumentForProcessing(file, jobId)
+Client -> Core : POST /api/v1/jobs (multipart com token/apiKey)
+
+alt Motor Core Disponivel
+    Core --> Client : 202 Accepted { task_id, position, status: 'QUEUED' }
+    Client --> Service : { success: true, externalJobId }
+    Service -> DB : UPDATE processing_jobs (status = 'PROCESSING', external_job_id)
+    Service -> DB : UPDATE materials (current_status = 'PROCESSANDO')
+else Falha de Conexao ou Motor Indisponivel
+    Client --> Service : { success: false, error: 'Indisponivel' }
+    Service -> DB : UPDATE processing_jobs (status = 'FAILED')
+    Service -> DB : UPDATE materials (current_status = 'FALHA_PROCESSAMENTO')
+end
+
+== 3. Conclusao do Processamento de IA (v2) ==
+Core -> UI : Webhook POST /api/v1/webhooks/bot-acess { externalJobId, status: 'COMPLETED', downloadUrl }
+UI -> Service : handleJobCompleted(jobId)
+Service -> DB : INSERT INTO material_versions (v2, 'PROCESSADO_BOT')
+Service -> DB : UPDATE materials (current_status = 'AGUARDANDO_REVISAO')
+Service -> UI : SSE emit('notify', 'MATERIAL_UPDATED')
+
+== 4. Acesso Antecipado do Aluno com Selo Informativo ==
+Aluno -> UI : Acessa /materiais/:id
+UI -> Service : canUserDownloadMaterial(aluno, materialId)
+Service --> UI : Autorizado (com flag isPendingReview = true)
+UI --> Aluno : Exibe aviso "Processado automaticamente por IA em [DATA]. Aguardando validacao do NAI."
+Aluno -> UI : Download do documento (HTML/TXT/DOCX com Selo Institucional e QR Code)
+
+== 5. Revisao Humana e Homologacao NAI (v3) ==
+Revisor -> UI : Inicia revisao em /materiais/:id/revisar
+UI -> Service : startReview(versionId, revisor)
+Revisor -> UI : Valida descricoes de imagem (alt-text) e estrutura
+Revisor -> UI : Aprova material (POST /revisoes/:id/concluir, status = 'APROVADO')
+Service -> DB : UPDATE materials (current_status = 'APROVADO')
+Service -> DB : INSERT INTO material_versions (v3, 'REVISADO_HUMANO')
+Service -> UI : SSE emit('notify', 'MATERIAL_APROVADO')
+
+== 6. Selo Final com Conformidade Homologada ==
+Aluno -> UI : Visualiza material homologado
+UI --> Aluno : Exibe "Revisado e Aprovado pelo NAI em [DATA_APROVACAO]" com Certificado Digital WCAG 2.2 AAA
+
+@enduml

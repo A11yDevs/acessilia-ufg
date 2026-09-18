@@ -1,0 +1,161 @@
+@startuml classes_domain
+title Modelo de Classes e Entidades de Dominio (Acessilia Gestor)
+
+skinparam classAttributeIconSize 0
+
+package "Modulo Academico" {
+    class Course {
+        +Integer id
+        +Integer department_id
+        +String code
+        +String name
+        +String modality
+        +Integer duration_semesters
+    }
+
+    class Subject {
+        +Integer id
+        +Integer department_id
+        +String code
+        +String name
+        +String description
+        +Integer workload_hours
+    }
+
+    class CourseSubjectMatrix {
+        +Integer id
+        +Integer course_id
+        +Integer subject_id
+        +Integer semester_recommended
+        +String nature
+    }
+
+    class Class {
+        +Integer id
+        +Integer course_id
+        +Integer subject_id
+        +Integer academic_period_id
+        +String code
+        +Integer capacity
+        +String location
+    }
+
+    Course "1" -- "0..*" CourseSubjectMatrix
+    Subject "1" -- "0..*" CourseSubjectMatrix
+    Course "1" -- "0..*" Class
+    Subject "1" -- "0..*" Class
+}
+
+package "Modulo de Materiais e IA" {
+    enum MaterialStatus {
+        ENVIADO
+        PROCESSANDO
+        AGUARDANDO_REVISAO
+        EM_REVISAO
+        APROVADO
+        PUBLICADO
+        FALHA_PROCESSAMENTO
+    }
+
+    enum VersionType {
+        ORIGINAL
+        PROCESSADO_BOT
+        REVISADO_HUMANO
+    }
+
+    class Material {
+        +Integer id
+        +Integer subject_id
+        +Integer class_id
+        +Integer teacher_user_id
+        +String title
+        +String description
+        +String category
+        +MaterialStatus current_status
+        +DateTime publish_at
+    }
+
+    class MaterialVersion {
+        +Integer id
+        +Integer material_id
+        +Integer version_number
+        +String storage_key
+        +String storage_path
+        +String original_filename
+        +String mime_type
+        +Integer file_size_bytes
+        +String sha256_hash
+        +VersionType version_type
+        +Integer uploaded_by_user_id
+    }
+
+    class ProcessingJob {
+        +Integer id
+        +String idempotency_key
+        +Integer material_version_id
+        +String provider
+        +String external_job_id
+        +String status
+        +Integer attempts
+    }
+
+    class AltTextReview {
+        +Integer id
+        +Integer material_version_id
+        +String image_url_or_path
+        +String ai_suggested_alt
+        +String human_reviewed_alt
+        +String status
+    }
+
+    Material "1" *-- "1..*" MaterialVersion
+    MaterialVersion "1" -- "0..1" ProcessingJob
+    MaterialVersion "1" *-- "0..*" AltTextReview
+    Subject "1" -- "0..*" Material
+    Class "1" -- "0..*" Material
+}
+
+package "Modulo de Acessibilidade e Revisao" {
+    class AccessibilityRequest {
+        +Integer id
+        +Integer material_id
+        +Integer requester_user_id
+        +String priority
+        +String status
+        +String specific_notes
+    }
+
+    class Review {
+        +Integer id
+        +Integer material_version_id
+        +Integer reviewer_user_id
+        +String status
+        +String general_notes
+        +DateTime finished_at
+    }
+
+    class ReviewComment {
+        +Integer id
+        +Integer review_id
+        +Integer user_id
+        +String page_or_section
+        +String comment
+        +String severity
+    }
+
+    class AccessibilityCertificate {
+        +Integer id
+        +Integer material_id
+        +String certificate_uuid
+        +String qr_code_data
+        +String lbi_conformity_level
+        +String wcag_level
+    }
+
+    Material "1" -- "0..*" AccessibilityRequest
+    MaterialVersion "1" -- "0..*" Review
+    Review "1" *-- "0..*" ReviewComment
+    Material "1" -- "0..1" AccessibilityCertificate
+}
+
+@enduml

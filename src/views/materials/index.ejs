@@ -8,7 +8,7 @@
       📥 Exportar CSV
     </a>
     <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('materiais.enviar')) { %>
-      <a href="#modal-novo-material" class="btn btn-primary" onclick="document.getElementById('modal-novo-material').style.display='block'; document.getElementById('titulo-material').focus(); return false;">
+      <a href="#modal-novo-material" class="btn btn-primary" onclick="openNovoMaterialModal(); return false;">
         + Enviar Material
       </a>
     <% } %>
@@ -36,11 +36,10 @@
   </div>
 </div>
 
-<!-- TABELA DE MATERIAIS COM AÇÕES EM LOTE (BULK ACTIONS) -->
-<form id="form-bulk-actions" action="/materiais/bulk" method="POST">
-  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-
-  <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('materiais.enviar')) { %>
+<!-- FORMULÁRIO DE AÇÕES EM LOTE (BULK ACTIONS) -->
+<% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('materiais.enviar')) { %>
+  <form id="form-bulk-actions" action="/materiais/bulk" method="POST" onsubmit="return handleBulkSubmit(event)">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div id="bulk-actions-toolbar" style="display: none; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: var(--border-radius); padding: 0.75rem 1rem; margin-bottom: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
       <span id="bulk-counter" style="font-weight: 600; color: #0369a1;">0 material(is) selecionado(s)</span>
       <div style="display: flex; gap: 0.5rem;">
@@ -48,68 +47,71 @@
         <button type="submit" name="action" value="REPROCESS" class="btn btn-sm" style="border: 1px solid var(--border-color); background: white;">🔄 Reprocessar no Core</button>
       </div>
     </div>
-  <% } %>
+  </form>
+<% } %>
 
-  <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
-    <table id="tabela-materiais" style="width: 100%; border-collapse: collapse; text-align: left;" aria-label="Lista de Materiais">
-      <thead>
-        <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
-          <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('materiais.enviar')) { %>
-            <th scope="col" style="padding: 1rem; width: 40px;">
-              <input type="checkbox" id="check-all-materials" onclick="toggleSelectAll(this)" aria-label="Selecionar todos os materiais da página">
-            </th>
-          <% } %>
-          <th scope="col" style="padding: 1rem;">Título</th>
-          <th scope="col" style="padding: 1rem;">Disciplina</th>
-          <th scope="col" style="padding: 1rem;">Docente</th>
-          <th scope="col" style="padding: 1rem;">Categoria</th>
-          <th scope="col" style="padding: 1rem;">Status do Processamento</th>
-          <th scope="col" style="padding: 1rem;">Ações</th>
+<!-- TABELA DE MATERIAIS RESPONSIVA -->
+<div class="table-responsive">
+  <table id="tabela-materiais" class="data-table" aria-label="Lista de Materiais">
+    <thead>
+      <tr>
+        <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('materiais.enviar')) { %>
+          <th scope="col" class="col-checkbox">
+            <input type="checkbox" id="check-all-materials" onclick="toggleSelectAll(this)" aria-label="Selecionar todos os materiais da página">
+          </th>
+        <% } %>
+        <th scope="col">Título</th>
+        <th scope="col">Disciplina</th>
+        <th scope="col">Docente</th>
+        <th scope="col">Categoria</th>
+        <th scope="col" class="col-status">Status do Processamento</th>
+        <th scope="col" class="col-actions">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% const totalCols = (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('materiais.enviar')) ? 7 : 6; %>
+      <% if (materials.length === 0) { %>
+        <tr>
+          <td colspan="<%= totalCols %>" style="padding: 2rem; text-align: center; color: var(--text-muted);">
+            Nenhum material disponível no momento para seu perfil.
+          </td>
         </tr>
-      </thead>
-      <tbody>
-        <% if (materials.length === 0) { %>
-          <tr>
-            <td colspan="7" style="padding: 2rem; text-align: center; color: var(--text-muted);">
-              Nenhum material disponível no momento para seu perfil.
+      <% } else { %>
+        <% materials.forEach(m => { %>
+          <tr id="mat-row-<%= m.id %>" data-title="<%= (m.title || '').toLowerCase() %>" data-subject="<%= (m.subject_name || '').toLowerCase() %>" data-status="<%= m.current_status || '' %>">
+            <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('materiais.enviar')) { %>
+              <td class="col-checkbox">
+                <input type="checkbox" name="materialIds" value="<%= m.id %>" form="form-bulk-actions" class="material-checkbox" onchange="updateBulkToolbar()" aria-label="Selecionar material <%= m.title %>">
+              </td>
+            <% } %>
+            <td style="font-weight: 600;">
+              <%= m.title %>
+              <% if (m.publish_at) { %>
+                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">
+                  🗓 Agendado para: <%= new Date(m.publish_at).toLocaleString('pt-BR') %>
+                </div>
+              <% } %>
+            </td>
+            <td><%= m.subject_name %></td>
+            <td style="color: var(--text-secondary);"><%= m.teacher_name %></td>
+            <td><%= m.category %></td>
+            <td class="col-status">
+              <span id="mat-badge-<%= m.id %>" class="role-tag" style="background: <%= m.current_status === 'APROVADO' ? 'var(--color-success)' : (m.current_status === 'PROCESSANDO' ? 'var(--color-warning)' : 'var(--color-primary)') %>;">
+                <%= m.current_status %>
+              </span>
+            </td>
+            <td class="col-actions">
+              <a href="/materiais/<%= m.id %>" class="btn" style="border: 1px solid var(--border-color); padding: 0.375rem 0.75rem; font-size: 0.875rem;" title="Visualizar detalhes e histórico de versões">
+                Visualizar
+              </a>
             </td>
           </tr>
-        <% } else { %>
-          <% materials.forEach(m => { %>
-            <tr id="mat-row-<%= m.id %>" style="border-bottom: 1px solid var(--border-color);">
-              <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('materiais.enviar')) { %>
-                <td style="padding: 1rem;">
-                  <input type="checkbox" name="materialIds" value="<%= m.id %>" class="material-checkbox" onchange="updateBulkToolbar()" aria-label="Selecionar material <%= m.title %>">
-                </td>
-              <% } %>
-              <td style="padding: 1rem; font-weight: 600;">
-                <%= m.title %>
-                <% if (m.publish_at) { %>
-                  <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">
-                    🗓 Agendado para: <%= new Date(m.publish_at).toLocaleString('pt-BR') %>
-                  </div>
-                <% } %>
-              </td>
-              <td style="padding: 1rem;"><%= m.subject_name %></td>
-              <td style="padding: 1rem; color: var(--text-secondary);"><%= m.teacher_name %></td>
-              <td style="padding: 1rem;"><%= m.category %></td>
-              <td style="padding: 1rem;">
-                <span id="mat-badge-<%= m.id %>" class="role-tag" style="background: <%= m.current_status === 'APROVADO' ? 'var(--color-success)' : (m.current_status === 'PROCESSANDO' ? 'var(--color-warning)' : 'var(--color-primary)') %>;">
-                  <%= m.current_status %>
-                </span>
-              </td>
-              <td style="padding: 1rem;">
-                <a href="/materiais/<%= m.id %>" class="btn" style="border: 1px solid var(--border-color); padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                  Visualizar Histórico
-                </a>
-              </td>
-            </tr>
-          <% }) %>
-        <% } %>
-      </tbody>
-    </table>
-  </div>
-</form>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
 
 <!-- MODAL ENVIAR MATERIAL -->
 <div id="modal-novo-material" role="dialog" aria-modal="true" aria-labelledby="modal-mat-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 1.5rem; z-index: 1000; overflow-y: auto;">
@@ -199,7 +201,7 @@
       </div>
 
       <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
-        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-novo-material').style.display='none';">
+        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="closeNovoMaterialModal();">
           Cancelar
         </button>
         <button type="submit" id="btn-submit-material" class="btn btn-primary">
@@ -211,24 +213,96 @@
 </div>
 
 <script>
+  // FILTRAGEM ACESSÍVEL BASEADA EM ATRIBUTOS DE DADOS (DATA ATTRIBUTES)
   function filtrarMateriais() {
-    const termo = document.getElementById('input-busca-materiais').value.toLowerCase().trim();
-    const statusFiltro = document.getElementById('filtro-status-materiais').value;
+    const termo = (document.getElementById('input-busca-materiais').value || '').toLowerCase().trim();
+    const statusFiltro = (document.getElementById('filtro-status-materiais').value || '').trim();
     const linhas = document.querySelectorAll('#tabela-materiais tbody tr');
 
     linhas.forEach(linha => {
-      const colunas = linha.querySelectorAll('td');
-      if (colunas.length < 5) return;
+      // Ignora linha de estado vazio
+      if (!linha.hasAttribute('data-title')) return;
 
-      const titulo = colunas[0].textContent.toLowerCase();
-      const disciplina = colunas[1].textContent.toLowerCase();
-      const status = colunas[4].textContent.trim();
+      const titulo = linha.getAttribute('data-title') || '';
+      const disciplina = linha.getAttribute('data-subject') || '';
+      const status = linha.getAttribute('data-status') || '';
 
       const matchTermo = !termo || titulo.includes(termo) || disciplina.includes(termo);
       const matchStatus = !statusFiltro || status === statusFiltro;
 
       linha.style.display = (matchTermo && matchStatus) ? '' : 'none';
     });
+  }
+
+  // CONTROLE DO MODAL DE ENVIO DE MATERIAL (FOCUS TRAP & ESC KEY)
+  let previouslyFocusedElement = null;
+  const modalNovoMaterial = document.getElementById('modal-novo-material');
+
+  function openNovoMaterialModal() {
+    previouslyFocusedElement = document.activeElement;
+    modalNovoMaterial.style.display = 'block';
+    const firstInput = document.getElementById('titulo-material');
+    if (firstInput) firstInput.focus();
+  }
+
+  function closeNovoMaterialModal() {
+    modalNovoMaterial.style.display = 'none';
+    if (previouslyFocusedElement && typeof previouslyFocusedElement.focus === 'function') {
+      previouslyFocusedElement.focus();
+    }
+  }
+
+  if (modalNovoMaterial) {
+    modalNovoMaterial.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeNovoMaterialModal();
+        return;
+      }
+
+      // Focus trap simples dentro do modal
+      if (e.key === 'Tab') {
+        const focusableElements = modalNovoMaterial.querySelectorAll(
+          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusableElements.length) return;
+        const firstElem = focusableElements[0];
+        const lastElem = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElem) {
+            e.preventDefault();
+            lastElem.focus();
+          }
+        } else {
+          if (document.activeElement === lastElem) {
+            e.preventDefault();
+            firstElem.focus();
+          }
+        }
+      }
+    });
+  }
+
+  // CONFIRMAÇÃO DE AÇÕES EM LOTE (BULK ACTIONS)
+  function handleBulkSubmit(e) {
+    const selected = document.querySelectorAll('.material-checkbox:checked');
+    if (selected.length === 0) {
+      alert('Nenhum material selecionado.');
+      e.preventDefault();
+      return false;
+    }
+
+    const action = (e.submitter && e.submitter.value) || 'APPROVE';
+    const actionText = action === 'APPROVE' 
+      ? `Confirma a APROVAÇÃO em lote de ${selected.length} material(is)?` 
+      : `Confirma o REPROCESSAMENTO no Core de ${selected.length} material(is)?`;
+
+    if (!confirm(actionText)) {
+      e.preventDefault();
+      return false;
+    }
+    return true;
   }
 
   // MANIPULAÇÃO DO DROPZONE ACESSÍVEL
@@ -316,3 +390,4 @@
     }
   });
 </script>
+
