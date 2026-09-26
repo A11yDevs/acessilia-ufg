@@ -6,17 +6,30 @@
   const savedContrast = localStorage.getItem('a11y_contrast');
   const savedFont = localStorage.getItem('a11y_font_size');
   const savedDyslexia = localStorage.getItem('a11y_dyslexia');
+  const savedDarkSlate = localStorage.getItem('a11y_dark_slate');
 
   if (savedContrast === 'high') root.classList.add('high-contrast');
+  if (savedDarkSlate === 'true') root.classList.add('dark-slate-theme');
   if (savedFont) root.classList.add(savedFont);
   if (savedDyslexia === 'true') root.classList.add('dyslexia-font');
 
   window.toggleHighContrast = function() {
+    root.classList.remove('dark-slate-theme');
+    localStorage.removeItem('a11y_dark_slate');
     root.classList.toggle('high-contrast');
     const isHigh = root.classList.contains('high-contrast');
     localStorage.setItem('a11y_contrast', isHigh ? 'high' : 'normal');
-    announceA11y(`Modo alto contraste ${isHigh ? 'ativado' : 'desativado'}`);
+    announceA11y(`Modo alto contraste amarelo e preto ${isHigh ? 'ativado' : 'desativado'}`);
     syncPreferencesToServer();
+  };
+
+  window.toggleDarkSlateTheme = function() {
+    root.classList.remove('high-contrast');
+    localStorage.removeItem('a11y_contrast');
+    root.classList.toggle('dark-slate-theme');
+    const isDark = root.classList.contains('dark-slate-theme');
+    localStorage.setItem('a11y_dark_slate', isDark ? 'true' : 'false');
+    announceA11y(`Modo noturno dark slate suave ${isDark ? 'ativado' : 'desativado'}`);
   };
 
   window.changeFontSize = function(delta) {
@@ -48,6 +61,114 @@
     syncPreferencesToServer();
   };
 
+  // RÉGUA DE LEITURA VISUAL (READING GUIDE)
+  const readingRuler = document.getElementById('a11y-reading-ruler');
+  let rulerActive = false;
+
+  window.toggleReadingGuide = function() {
+    if (!readingRuler) return;
+    rulerActive = !rulerActive;
+    readingRuler.style.display = rulerActive ? 'block' : 'none';
+    announceA11y(`Régua de leitura visual ${rulerActive ? 'ativada' : 'desativada'}`);
+  };
+
+  document.addEventListener('mousemove', function(e) {
+    if (rulerActive && readingRuler) {
+      readingRuler.style.top = `${e.clientY - 24}px`;
+    }
+  }, { passive: true });
+
+  // GAVETA MÓVEL ACESSÍVEL (MOBILE SIDEBAR DRAWER)
+  window.toggleMobileSidebar = function() {
+    const sidebar = document.getElementById('app-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const toggleBtn = document.querySelector('.btn-mobile-menu');
+    if (!sidebar) return;
+
+    const isOpen = sidebar.classList.contains('sidebar-open');
+    if (isOpen) {
+      sidebar.classList.remove('sidebar-open');
+      if (backdrop) backdrop.classList.remove('active');
+      if (toggleBtn) {
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        toggleBtn.focus();
+      }
+      announceA11y('Menu de navegação fechado');
+    } else {
+      sidebar.classList.add('sidebar-open');
+      if (backdrop) backdrop.classList.add('active');
+      if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+      announceA11y('Menu de navegação aberto');
+    }
+  };
+
+  // MODAL DE ATALHOS DE TECLADO
+  window.openKeyboardShortcutsModal = function() {
+    const modal = document.getElementById('modal-keyboard-shortcuts');
+    if (modal) {
+      modal.style.display = 'flex';
+      announceA11y('Guia de atalhos de teclado aberto');
+      const closeBtn = modal.querySelector('button');
+      if (closeBtn) closeBtn.focus();
+    }
+  };
+
+  window.closeKeyboardShortcutsModal = function() {
+    const modal = document.getElementById('modal-keyboard-shortcuts');
+    if (modal) {
+      modal.style.display = 'none';
+      announceA11y('Guia de atalhos fechado');
+    }
+  };
+
+  // CENTRAL DE NOTIFICAÇÕES PERSISTENTE
+  const notifications = [];
+  window.toggleNotificationDropdown = function() {
+    const panel = document.getElementById('notification-dropdown-panel');
+    const toggleBtn = document.getElementById('btn-notifications-toggle');
+    if (!panel) return;
+
+    const isHidden = panel.getAttribute('aria-hidden') === 'true';
+    panel.setAttribute('aria-hidden', isHidden ? 'false' : 'true');
+    if (toggleBtn) toggleBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+
+    if (isHidden) {
+      // Marcar como lidas
+      const counter = document.getElementById('notification-counter');
+      if (counter) counter.style.display = 'none';
+    }
+  };
+
+  window.clearNotifications = function() {
+    notifications.length = 0;
+    const list = document.getElementById('notification-list');
+    if (list) {
+      list.innerHTML = '<li id="notification-empty" style="color: var(--text-muted); text-align: center; padding: 0.75rem;">Nenhuma notificação no momento.</li>';
+    }
+    const counter = document.getElementById('notification-counter');
+    if (counter) counter.style.display = 'none';
+    announceA11y('Lista de notificações limpa');
+  };
+
+  function addNotificationItem(title, message) {
+    notifications.unshift({ title, message, date: new Date().toLocaleTimeString('pt-BR') });
+    const list = document.getElementById('notification-list');
+    const counter = document.getElementById('notification-counter');
+    if (counter) {
+      counter.textContent = notifications.length;
+      counter.style.display = 'inline-block';
+    }
+    if (list) {
+      const emptyMsg = document.getElementById('notification-empty');
+      if (emptyMsg) emptyMsg.remove();
+
+      const li = document.createElement('li');
+      li.style.cssText = 'padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);';
+      li.innerHTML = `<strong>${title}</strong><br><span style="color: var(--text-secondary);">${message}</span>`;
+      list.prepend(li);
+    }
+  }
+
   function syncPreferencesToServer() {
     try {
       const contrastMode = root.classList.contains('high-contrast') ? 'high' : 'normal';
@@ -67,6 +188,67 @@
       announcer.textContent = text;
     }
   }
+  window.announceA11y = announceA11y;
+
+  // ESCUTA GLOBAL DE ATALHOS DE TECLADO (WCAG 2.1.1 / 2.1.4)
+  document.addEventListener('keydown', function(e) {
+    const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+
+    if (e.key === 'Escape') {
+      window.closeKeyboardShortcutsModal();
+      const sidebar = document.getElementById('app-sidebar');
+      if (sidebar && sidebar.classList.contains('sidebar-open')) {
+        window.toggleMobileSidebar();
+      }
+      const panel = document.getElementById('notification-dropdown-panel');
+      if (panel && panel.getAttribute('aria-hidden') === 'false') {
+        window.toggleNotificationDropdown();
+      }
+      return;
+    }
+
+    if (isInput) return; // Não intercepta digitação em campos de formulário
+
+    if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+      e.preventDefault();
+      const modal = document.getElementById('modal-keyboard-shortcuts');
+      if (modal && modal.style.display === 'flex') {
+        window.closeKeyboardShortcutsModal();
+      } else {
+        window.openKeyboardShortcutsModal();
+      }
+    } else if (e.key === '/') {
+      const searchBox = document.getElementById('input-busca-materiais') || document.querySelector('input[type="search"]');
+      if (searchBox) {
+        e.preventDefault();
+        searchBox.focus();
+        announceA11y('Foco na busca de materiais');
+      }
+    } else if (e.altKey && (e.key === 'r' || e.key === 'R')) {
+      e.preventDefault();
+      window.toggleReadingGuide();
+    } else if (e.altKey && (e.key === 'c' || e.key === 'C')) {
+      e.preventDefault();
+      window.toggleHighContrast();
+    } else if (e.altKey && (e.key === 'd' || e.key === 'D')) {
+      e.preventDefault();
+      window.toggleDyslexiaFont();
+    } else if (e.altKey && e.key === '1') {
+      e.preventDefault();
+      window.location.href = '/dashboard';
+    } else if (e.altKey && e.key === '2') {
+      e.preventDefault();
+      window.location.href = '/materiais';
+    } else if (e.altKey && e.key === '3') {
+      e.preventDefault();
+      window.location.href = '/solicitacoes';
+    }
+  });
+
+  // REGISTRO DE SERVICE WORKER PARA SUPORTE A PWA
+  if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('/public/sw.js').catch(() => {});
+  }
 
   // CONEXÃO COM O CANAL SSE DE NOTIFICAÇÕES EM TEMPO REAL
   if (typeof EventSource !== 'undefined') {
@@ -79,6 +261,9 @@
             const msg = `Nova notificação: ${data.title || ''} - ${data.message || ''}`;
             announceA11y(msg);
 
+            // Adiciona na lista persistente do sino
+            addNotificationItem(data.title || 'Aviso', data.message || '');
+
             // Se for atualização de material, dispara evento interno para atualizar DOM sem F5
             if (data.type === 'MATERIAL_UPDATED' && data.materialId) {
               window.dispatchEvent(new CustomEvent('materialStatusUpdated', {
@@ -86,7 +271,7 @@
               }));
             }
 
-            // Exibir toast visual acessível temporário se houver corpo
+            // Exibir toast visual acessível temporário
             showToast(data.title, data.message);
           }
         } catch (e) {}

@@ -64,6 +64,7 @@ export async function reviewsWebRoutes(fastify, opts) {
 
     const originalVersion = allVersions.find(v => v.version_type === 'ORIGINAL') || allVersions[allVersions.length - 1];
     const accessibleVersion = allVersions.find(v => v.version_type !== 'ORIGINAL') || version;
+    const altTexts = accessibleVersion ? materialRepository.listAltTextsByVersion(accessibleVersion.id) : [];
 
     const csrfToken = reply.generateCsrf();
 
@@ -78,6 +79,7 @@ export async function reviewsWebRoutes(fastify, opts) {
         review,
         originalVersion,
         accessibleVersion,
+        altTexts,
         user: request.user,
         csrfToken
       })

@@ -1,4 +1,4 @@
-﻿import test from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
 import { backupService } from '../../src/services/backup.service.js';
 import { buildApp } from '../../src/app.js';
@@ -52,6 +52,16 @@ test('Melhorias Avançadas: Backup do SQLite, Webhook do bot-acess e Barra de A1
     // Verifica se o material avançou para AGUARDANDO_REVISAO
     const updatedMaterial = materialRepository.findMaterialById(material.id);
     assert.equal(updatedMaterial.current_status, 'AGUARDANDO_REVISAO');
+  });
+
+  await t.test('3. Rotação e Limpeza Automática de Backups do SQLite', async () => {
+    // Executa limpeza limitando aos 10 mais recentes
+    const deleted = backupService.cleanupOldBackups('./database/backups', 10);
+    assert.ok(Array.isArray(deleted));
+
+    // Garante que o método funciona sem erros e mantém <= 10 arquivos
+    const remaining = backupService.cleanupOldBackups('./database/backups', 10);
+    assert.equal(remaining.length, 0);
   });
 
   await app.close();

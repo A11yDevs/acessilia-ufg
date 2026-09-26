@@ -1,13 +1,21 @@
-﻿<div style="margin-bottom: 2rem;">
-  <a href="/revisoes" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">
-    &larr; Voltar para Fila de Revisões
-  </a>
-  <h1 style="font-size: 1.75rem; font-weight: 700; margin-top: 0.5rem;">
-    Revisão Comparativa Lado a Lado: <%= material.title %>
-  </h1>
-  <p style="color: var(--text-muted);">
-    Disciplina: <%= material.subject_name %> | Docente: <%= material.teacher_name %> | Revisor: <strong><%= user.name %></strong>
-  </p>
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <a href="/revisoes" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">
+      &larr; Voltar para Fila de Revisões
+    </a>
+    <h1 style="font-size: 1.75rem; font-weight: 700; margin-top: 0.5rem;">
+      Revisão Comparativa Lado a Lado: <%= material.title %>
+    </h1>
+    <p style="color: var(--text-muted);">
+      Disciplina: <%= material.subject_name %> | Docente: <%= material.teacher_name %> | Revisor: <strong><%= user.name %></strong>
+    </p>
+  </div>
+  <div>
+    <label style="display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer; background: var(--bg-surface); border: 1px solid var(--border-color); padding: 0.5rem 0.75rem; border-radius: var(--border-radius);">
+      <input type="checkbox" id="check-sync-scroll" checked onchange="toggleSyncScroll(this.checked)">
+      🔄 Sincronizar Rolagem Lado a Lado
+    </label>
+  </div>
 </div>
 
 <!-- COMPARAÇÃO LADO A LADO: ORIGINAL VS ACESSÍVEL -->
@@ -27,7 +35,7 @@
       <p style="font-size: 0.875rem;"><strong>Hash SHA-256:</strong> <code><%= originalVersion.sha256_hash.substring(0, 16) %>...</code></p>
     </div>
 
-    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); line-height: 1.6; max-height: 380px; overflow-y: auto;">
+    <div id="scroll-col-original" style="background: var(--bg-primary); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); line-height: 1.6; max-height: 380px; overflow-y: auto;">
       <p style="font-style: italic; color: var(--text-muted); margin-bottom: 1rem;">Visualização do documento submetido pelo docente:</p>
       <p><%= material.description || 'Material acadêmico disponibilizado para a disciplina.' %></p>
       <hr style="margin: 1rem 0; border: 0; border-top: 1px solid var(--border-color);">
@@ -55,7 +63,7 @@
       <p style="font-size: 0.875rem;"><strong>Conformidade:</strong> WCAG 2.2 Nível AAA</p>
     </div>
 
-    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); line-height: 1.8; max-height: 380px; overflow-y: auto;">
+    <div id="scroll-col-accessible" style="background: var(--bg-primary); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); line-height: 1.8; max-height: 380px; overflow-y: auto;">
       <h3 style="font-size: 1.125rem; color: var(--color-primary); margin-bottom: 0.5rem;"><%= material.title %></h3>
       <p style="margin-bottom: 1rem;"><%= material.description || 'Material acadêmico adaptado para plena leitura acessível.' %></p>
       
@@ -68,6 +76,33 @@
     </div>
   </section>
 </div>
+
+<!-- SEÇÃO DE REVISÃO E VALIDAÇÃO INLINE DE ALT-TEXTS DE IMAGENS -->
+<% if (locals.altTexts && altTexts.length > 0) { %>
+<section aria-labelledby="tit-inline-alt" class="stat-card" style="margin-bottom: 2rem; border-left: 5px solid var(--color-warning);">
+  <h2 id="tit-inline-alt" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">
+    🖼 Descrições de Imagens da Versão (Alt-Texts)
+  </h2>
+  <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">
+    Valide ou edite as descrições textuais das imagens geradas pela IA antes de emitir a aprovação formal:
+  </p>
+  <% altTexts.forEach(at => { %>
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1rem; margin-bottom: 0.75rem;">
+      <form action="/materiais/<%= material.id %>/alt-texts/<%= at.id %>" method="POST" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div style="flex: 1; min-width: 260px;">
+          <label for="alt-rev-<%= at.id %>" class="form-label" style="font-size: 0.8125rem;">Descrição Alternativa:</label>
+          <input type="text" id="alt-rev-<%= at.id %>" name="humanReviewedAlt" class="form-input" style="font-size: 0.875rem;" value="<%= at.human_reviewed_alt || at.ai_suggested_alt %>">
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="submit" name="status" value="APROVADO" class="btn btn-primary btn-sm">✔ Validar</button>
+          <button type="submit" name="status" value="MODIFICADO" class="btn btn-sm" style="border: 1px solid var(--border-color);">💾 Salvar</button>
+        </div>
+      </form>
+    </div>
+  <% }) %>
+</section>
+<% } %>
 
 <!-- PAINEL DE AVALIAÇÃO TÉCNICA E APONTAMENTOS -->
 <section aria-labelledby="sec-avaliacao" class="stat-card" style="border-left: 5px solid var(--color-primary);">
@@ -102,3 +137,30 @@
     </div>
   </form>
 </section>
+
+<script>
+  // SINCRONIZAÇÃO DE ROLAGEM LADO A LADO
+  const colOrig = document.getElementById('scroll-col-original');
+  const colAces = document.getElementById('scroll-col-accessible');
+  let syncScroll = true;
+  let isScrolling = false;
+
+  function toggleSyncScroll(enabled) {
+    syncScroll = enabled;
+  }
+
+  function bindSync(source, target) {
+    if (!source || !target) return;
+    source.addEventListener('scroll', function() {
+      if (!syncScroll || isScrolling) return;
+      isScrolling = true;
+      const pct = source.scrollTop / (source.scrollHeight - source.clientHeight);
+      target.scrollTop = pct * (target.scrollHeight - target.clientHeight);
+      setTimeout(() => { isScrolling = false; }, 40);
+    });
+  }
+
+  bindSync(colOrig, colAces);
+  bindSync(colAces, colOrig);
+</script>
+

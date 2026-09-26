@@ -8,20 +8,30 @@
   <link rel="stylesheet" href="/public/css/variables.css">
   <link rel="stylesheet" href="/public/css/components.css">
   <link rel="stylesheet" href="/public/css/layout.css">
+  <link rel="manifest" href="/public/manifest.json">
 </head>
 <body>
   <!-- SKIP LINK PARA NAVEGAÇÃO POR TECLADO E LEITORES DE TELA (WCAG 2.4.1) -->
   <a href="#conteudo-principal" class="skip-link">Pular para o conteúdo principal</a>
 
+  <!-- RÉGUA DE LEITURA ACESSÍVEL FLUTUANTE -->
+  <div id="a11y-reading-ruler" aria-hidden="true"></div>
+
   <!-- REGIAO DE ANÚNCIO ARIA-LIVE (WCAG 4.1.3) -->
   <div id="aria-status-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
+  <!-- BACKDROP PARA MENU MOBILE -->
+  <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="toggleMobileSidebar()" aria-hidden="true"></div>
+
   <div class="app-container">
     <!-- LANDMARK DE NAVEGAÇÃO -->
-    <aside class="app-sidebar" aria-label="Navegação Institucional">
-      <div class="app-brand">
-        <span aria-hidden="true">♿</span>
-        <span>Acessilia Gestor</span>
+    <aside id="app-sidebar" class="app-sidebar" aria-label="Navegação Institucional">
+      <div class="app-brand" style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span aria-hidden="true">♿</span>
+          <span>Acessilia Gestor</span>
+        </div>
+        <button type="button" class="btn-mobile-menu" style="display: none; border-color: rgba(255,255,255,0.2); color: white;" onclick="toggleMobileSidebar()" aria-label="Fechar menu">✕</button>
       </div>
 
       <nav aria-label="Menu Principal">
@@ -102,20 +112,43 @@
     <div class="app-main">
       <!-- LANDMARK DE CABEÇALHO -->
       <header class="app-header" role="banner" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-        <div>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <button type="button" class="btn-mobile-menu" onclick="toggleMobileSidebar()" aria-label="Abrir menu de navegação" aria-expanded="false" aria-controls="app-sidebar">
+            ☰
+          </button>
           <h2 style="font-size: 1.25rem; font-weight: 600;"><%= headerTitle || 'Painel de Controle' %></h2>
         </div>
 
         <!-- BARRA RÁPIDA DE ACESSIBILIDADE WCAG -->
-        <div role="region" aria-label="Ajustes de Acessibilidade Visual" style="display: flex; align-items: center; gap: 0.5rem; background: rgba(0,0,0,0.03); padding: 0.25rem 0.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color);">
+        <div role="region" aria-label="Ajustes de Acessibilidade Visual" style="display: flex; align-items: center; gap: 0.375rem; background: rgba(0,0,0,0.03); padding: 0.25rem 0.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); flex-wrap: wrap;">
           <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px; min-width: 36px;" onclick="changeFontSize(0)" title="Fonte Normal" aria-label="Tamanho de fonte normal">A</button>
           <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px; min-width: 36px; font-weight: bold;" onclick="changeFontSize(1)" title="Aumentar Fonte" aria-label="Aumentar tamanho da fonte">A+</button>
           <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px; min-width: 36px; font-weight: 900;" onclick="changeFontSize(2)" title="Fonte Muito Grande" aria-label="Tamanho de fonte muito grande">A++</button>
-          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onclick="toggleHighContrast()" title="Alternar Alto Contraste" aria-label="Alternar modo de alto contraste preto e amarelo">🌓 Contraste</button>
+          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onclick="toggleHighContrast()" title="Alternar Alto Contraste (Amarelo/Preto)" aria-label="Alternar modo de alto contraste preto e amarelo">🌓 Contraste</button>
+          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onclick="toggleDarkSlateTheme()" title="Modo Noturno Dark Slate" aria-label="Alternar modo escuro suave">🌙 Slate</button>
           <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onclick="toggleDyslexiaFont()" title="Fonte para Dislexia" aria-label="Alternar tipografia amigável para dislexia">📖 Dislexia</button>
+          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onclick="toggleReadingGuide()" title="Régua de Leitura Visual (Alt + R)" aria-label="Ativar ou desativar régua de leitura visual">📏 Régua</button>
+          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onclick="openKeyboardShortcutsModal()" title="Atalhos de Teclado (?)" aria-label="Ver todos os atalhos de teclado da plataforma">⌨ ?</button>
         </div>
 
         <div class="user-profile-badge">
+          <!-- SINO DE NOTIFICAÇÕES PERSISTENTE -->
+          <div class="notification-container">
+            <button type="button" id="btn-notifications-toggle" class="btn" style="background: transparent; border: 1px solid var(--border-color); padding: 0.375rem 0.625rem; font-size: 1rem; position: relative;" onclick="toggleNotificationDropdown()" aria-label="Central de Notificações" aria-expanded="false" aria-controls="notification-dropdown-panel">
+              🔔
+              <span id="notification-counter" class="notification-badge-count" style="display: none;">0</span>
+            </button>
+            <div id="notification-dropdown-panel" class="notification-dropdown" aria-hidden="true">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <strong style="font-size: 0.875rem;">Notificações Recentes</strong>
+                <button type="button" class="btn btn-sm" style="font-size: 0.6875rem; padding: 0.15rem 0.35rem;" onclick="clearNotifications()">Limpar</button>
+              </div>
+              <ul id="notification-list" style="list-style: none; padding: 0; margin: 0; max-height: 220px; overflow-y: auto; font-size: 0.8125rem;">
+                <li id="notification-empty" style="color: var(--text-muted); text-align: center; padding: 0.75rem;">Nenhuma notificação no momento.</li>
+              </ul>
+            </div>
+          </div>
+
           <span class="role-tag"><%= user ? user.roleName : '' %></span>
           <span style="font-weight: 600;"><%= user ? (user.socialName || user.name) : '' %></span>
           <form action="/logout" method="POST" style="display: inline;">
@@ -145,6 +178,82 @@
       </main>
     </div>
   </div>
+  <!-- MODAL DE ATALHOS DE TECLADO UNIVERSAIS (WCAG 2.1.1 / 2.1.4) -->
+  <div id="modal-keyboard-shortcuts" role="dialog" aria-modal="true" aria-labelledby="tit-modal-shortcuts" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100000; padding: 1rem; align-items: center; justify-content: center;">
+    <div class="auth-card" style="max-width: 580px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1.25rem;">
+        <h2 id="tit-modal-shortcuts" style="font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--color-primary);">
+          ⌨ Guia de Atalhos de Teclado
+        </h2>
+        <button type="button" class="btn btn-sm" onclick="closeKeyboardShortcutsModal()" aria-label="Fechar guia de atalhos" style="border: 1px solid var(--border-color); min-width: 36px; min-height: 36px;">✕</button>
+      </div>
+      <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem;">
+        Navegue por toda a plataforma utilizando combinações de teclado acessíveis:
+      </p>
+      <table class="data-table" style="font-size: 0.875rem; width: 100%;">
+        <thead>
+          <tr>
+            <th scope="col" style="padding: 0.5rem;">Atalho</th>
+            <th scope="col" style="padding: 0.5rem;">Ação Executada</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 0.5rem;"><kbd>?</kbd> ou <kbd>Shift + /</kbd></td>
+            <td style="padding: 0.5rem;">Abre ou fecha este guia de atalhos</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;"><kbd>/</kbd></td>
+            <td style="padding: 0.5rem;">Foca na caixa de busca/filtro da página atual</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;"><kbd>Alt + 1</kbd></td>
+            <td style="padding: 0.5rem;">Navega para o <strong>Dashboard</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;"><kbd>Alt + 2</kbd></td>
+            <td style="padding: 0.5rem;">Navega para <strong>Meus Materiais</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;"><kbd>Alt + 3</kbd></td>
+            <td style="padding: 0.5rem;">Navega para <strong>Solicitações</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;"><kbd>Alt + R</kbd></td>
+            <td style="padding: 0.5rem;">Ativa ou desativa a <strong>Régua de Leitura Visual</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;"><kbd>Alt + C</kbd></td>
+            <td style="padding: 0.5rem;">Alterna o modo de <strong>Alto Contraste Amarelo/Preto</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;"><kbd>Alt + D</kbd></td>
+            <td style="padding: 0.5rem;">Alterna a <strong>Fonte para Dislexia</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;"><kbd>Espaço</kbd></td>
+            <td style="padding: 0.5rem;">Toca ou pausa o áudio no leitor acessível</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;"><kbd>J</kbd> / <kbd>L</kbd></td>
+            <td style="padding: 0.5rem;">Retrocede ou avança 5 segundos no audiolivro</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;"><kbd>[</kbd> / <kbd>]</kbd></td>
+            <td style="padding: 0.5rem;">Diminui ou aumenta a velocidade da voz do audiolivro</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;"><kbd>Esc</kbd></td>
+            <td style="padding: 0.5rem;">Fecha qualquer modal ou menu suspenso aberto</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top: 1.25rem; text-align: right;">
+        <button type="button" class="btn btn-primary" onclick="closeKeyboardShortcutsModal()">Entendido (Esc)</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/public/js/a11y-helpers.js"></script>
 </body>
 </html>

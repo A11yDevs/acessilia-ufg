@@ -37,7 +37,10 @@ SUMÁRIO
    - Função "A+" (Médio): Aplica a classe CSS `.font-lg` elevando o tamanho das fontes para 18px (112,5%) com redimensionamento proporcional de botões, inputs e menus.
    - Função "A++" (Grande): Aplica a classe CSS `.font-xl` elevando as fontes para 20px (125%), garantindo legibilidade para usuários com baixa visão severa sem quebra de layout.
    - Função "🌓 Contraste" (Alto Contraste): Alterna o modo escuro/alto contraste institucional (fundo preto `#000000`, textos e bordas em amarelo acessível `#ffff00` e destaques em ciano `#00ffff`), garantindo razão de contraste superior a 7:1.
+   - Função "🌙 Slate" (Dark Slate Ergonômico): Alterna para uma paleta noturna suave com fundo azul-marinho ardósia profundo `#0b1120`, superfícies `#1e293b` e texto `#f8fafc`, ideal para usuários com fotofobia moderada.
    - Função "📖 Dislexia" (Tipografia Amigável): Alterna para uma tipografia com peso na base dos caracteres, maior espaçamento entre letras (letter-spacing: 0.05em) e entrelinhas expandido (line-height: 1.8), reduzindo a fadiga visual e confusão de caracteres para estudantes com dislexia.
+   - Função "📏 Régua" (Régua de Leitura Visual / Reading Guide): Projeta uma faixa translúcida focal que acompanha o cursor ou a rolagem da página (atalho `Alt + R`), auxiliando pessoas com TDAH, dislexia e déficit de foco.
+   - Função "⌨ ?" (Central de Atalhos de Teclado): Abre modal acessível com aprisionamento de foco listando atalhos universais da plataforma (`?`, `/`, `Alt+1`, `Alt+2`, `Alt+3`, `Alt+R`, `Alt+C`, `Alt+D`, `Esc`, controles do player de áudio).
 
 1.2. Persistência Híbrida de Preferências do Usuário:
    - Sincronização em dois níveis: As escolhas visuais do usuário são salvas imediatamente no LocalStorage do navegador (permitindo carregamento instantâneo sem flash de tema) e enviadas via API REST (`POST /api/v1/usuarios/preferencias`) para o banco de dados.
@@ -54,8 +57,13 @@ SUMÁRIO
 1.5. Indicador de Foco Visível Reforçado (WCAG 2.4.7):
    - Todos os botões, links, selects, campos de texto e áreas arrastáveis possuem `outline` de foco com espessura de 3px em cor de alto contraste e deslocamento (`outline-offset: 2px`).
 
-1.6. Mensagens Toast e Alertas em Tempo Real Acessíveis:
+1.6. Mensagens Toast e Central de Notificações Persistente com Sino:
    - Notificações transitórias exibidas na base da tela com papéis semânticos `role="alert"` e `role="status"`.
+   - Sino interativo no cabeçalho com badge numérico de avisos recebidos na sessão via SSE e dropdown acessível para consulta e limpeza.
+
+1.7. Menu Lateral Responsivo com Gaveta Acessível (Mobile Drawer):
+   - Em smartphones e tablets (`max-width: 768px`), a barra lateral se transforma em um menu deslizante operável via botão hambúrguer (`aria-expanded`), com backdrop escurecido e fechamento com `Esc`.
+
 
 ================================================================================
 2. SEGURANÇA, AUTENTICAÇÃO E CONTROLE DE ACESSO (RBAC)
@@ -109,12 +117,14 @@ SUMÁRIO
 4.1. Repositório Central de Materiais (`/materiais`):
    - Listagem paginada e filtrável de todos os documentos cadastrados.
    - Filtro de busca instantâneo por título do material ou nome da disciplina com anúncio dinâmico de resultados.
+   - Ordenação dinâmica acessível das colunas (Título, Disciplina) com feedback sonoro (`aria-sort`).
+   - Badges de status com dupla codificação visual (ícones semânticos para daltonismo: 🛡️ Aprovado, ⏳ Processando, 👁️ Em Revisão, ⚠️ Falha, 🔄 Correção Solicitada).
    - Filtro drop-down por status de ciclo de vida (`ENVIADO`, `AGUARDANDO_PROCESSAMENTO`, `PROCESSANDO`, `AGUARDANDO_REVISAO`, `EM_REVISAO`, `APROVADO`, `PUBLICADO`, `CORRECAO_SOLICITADA`).
 
-4.2. Área de Upload Acessível (Dropzone Híbrido):
+4.2. Área de Upload Acessível (Dropzone Híbrido com Progresso em Tempo Real):
    - Suporte completo a arrastar e soltar (Drag and Drop) de arquivos com feedback visual de borda.
    - Totalmente operável via teclado: ao focar na dropzone e pressionar [Enter] ou [Espaço], o seletor de arquivos do sistema operacional é acionado.
-   - Exibição de barra de progresso HTML5 semântica com anúncio por voz do nome e tamanho do arquivo selecionado.
+   - Monitoramento de envio com barra de progresso HTML5 alimentada por `XMLHttpRequest.upload.onprogress`, indicando porcentagem de submissão e alertando em `aria-live`.
    - Suporte a extensões: PDF, DOCX, PPTX, PNG, JPG, JPEG e TXT (limite até 50MB).
 
 4.3. Histórico Imutável de Versões (Trilha de Auditoria do Documento):
@@ -148,12 +158,7 @@ SUMÁRIO
 
 5.3. Player de Áudio Nativo com Controle de Velocidade (Audiolivro MP3):
    - Componente `<audio>` HTML5 completo com controles padrão acessíveis (barra de progresso, volume e tempo decorrido).
-   - Seletor rápido de velocidade de reprodução com 5 cadências:
-     * 0.75x: Cadência lenta (ideal para estudantes com déficit de atenção ou compreensão de termos técnicos complexos).
-     * 1.0x: Velocidade padrão natural.
-     * 1.25x: Aceleração leve.
-     * 1.5x: Aceleração média.
-     * 2.0x: Aceleração rápida (amplamente utilizada por estudantes cegos experientes com sintetizadores).
+   - Seletor rápido de velocidade de reprodução com 5 cadências (0.75x a 2.0x).
    - Feedback sonoro/verbal via `aria-status-announcer` anunciando a nova velocidade selecionada.
 
 ================================================================================
@@ -165,9 +170,10 @@ SUMÁRIO
    - Tabela de histórico de revisões recentemente concluídas com notas e pareceres emitidos.
 
 6.2. Tela de Análise Comparativa Lado a Lado (`/revisoes/:id/analise`):
-   - Layout em duas colunas sincronizadas (Visual Diff):
-     * Coluna da Esquerda: Documento original submetido pelo professor, metadados de arquivo e botão para download do arquivo bruto.
-     * Coluna da Direita: Versão acessível gerada pela IA, destacando hierarquia de cabeçalhos, notas de acessibilidade e descrições textuais das imagens geradas pelo modelo de visão computacional.
+   - Layout em duas colunas sincronizadas (Visual Diff) com opção de rolagem espelhada automática (*Sync Scroll*).
+   - Painel integrado de revisão inline de Alt-Texts de imagens geradas pela IA diretamente na tela comparativa.
+   - Coluna da Esquerda: Documento original submetido pelo professor, metadados de arquivo e botão para download do arquivo bruto.
+   - Coluna da Direita: Versão acessível gerada pela IA, destacando hierarquia de cabeçalhos, notas de acessibilidade e descrições textuais.
 
 6.3. Emissão de Parecer Técnico Conclusivo:
    - Formulário com CSRF para validação da equipe técnica:
@@ -236,8 +242,13 @@ SUMÁRIO
 
 10.4. Laudo Institucional de Conformidade com a Lei Brasileira de Inclusão (`/relatorios/conformidade-lbi.html`):
     - Relatório oficial emitido conforme os artigos 27 e 28 da Lei Federal nº 13.146/2015 (LBI) e Decretos de Acessibilidade da Educação Superior.
-    - Contém cabeçalho com brasão e chancela institucional da UFG / NAI, data por extenso, indicadores de cobertura, total de materiais adaptados, solicitações atendidas e demonstrativo tabular de acervo.
+    - Contém cabeçalho formal, data por extenso, indicadores de cobertura, total de materiais adaptados, solicitações atendidas e demonstrativo tabular de acervo.
+    - Bloco formal de assinatura da Comissão de Acessibilidade e Gestor de Acessibilidade Digital com proteção contra quebras (`page-break-inside: avoid`).
     - Folha de estilo otimizada para impressão física ou exportação em PDF via navegador (`@media print` com ocultação de menus e forçamento de contraste).
+
+10.5. Validador Interativo de Integridade Criptográfica (SHA-256 no Certificado Digital):
+    - Na página pública do Certificado Digital (`/certificados/:token`), o usuário pode selecionar um arquivo localmente.
+    - O sistema calcula o hash SHA-256 em tempo real via Web Crypto API do próprio navegador e compara com o hash homologado, atestando conformidade e ausência de adulteração.
 
 ================================================================================
 11. MONITORAMENTO DO MOTOR DE IA, FILA E BACKUP A QUENTE
@@ -251,10 +262,15 @@ SUMÁRIO
     - Indicadores em tempo real de tarefas em fila (`QUEUED`), em processamento (`PROCESSING`), concluídas com sucesso (`COMPLETED`) e eventuais falhas (`FAILED`).
     - Exibição do tamanho físico ocupado pela base SQLite em disco (em Megabytes).
 
-11.3. Sistema de Backup a Quente do Banco de Dados (SQLite Online Backup):
+11.3. Sistema de Backup a Quente com Rotação Automática (SQLite Online Backup):
     - Botão "💾 Gerar Backup a Quente" que invoca o `backupService`.
     - Realiza uma cópia segura e atômica do banco de dados em execução sem necessidade de travar as transações ativas dos usuários ou derrubar o servidor.
-    - Armazenamento com carimbo de data/hora (`backup_YYYY-MM-DD_HH-mm-ss.sqlite`) e listagem dos últimos 5 backups criados com data e tamanho em MB.
+    - Política de rotação automática: mantém os 10 backups mais recentes e remove cópias antigas para preservar o disco do servidor.
+    - Armazenamento com carimbo de data/hora (`backup_YYYY-MM-DD_HH-mm-ss.sqlite`).
+
+11.4. Suporte a Progressive Web App (PWA) e Service Worker:
+    - Manifesto `manifest.json` com especificações de tema, ícone e display standalone.
+    - Service worker `sw.js` com cache-first para folhas de estilo e scripts essenciais, garantindo carregamento ágil e suporte offline.
 
 ================================================================================
 12. INTEGRAÇÃO COM O MOTOR ACESSILIA CORE (IA / OCR / TTS)

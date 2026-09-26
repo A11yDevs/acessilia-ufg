@@ -60,8 +60,12 @@
             <input type="checkbox" id="check-all-materials" onclick="toggleSelectAll(this)" aria-label="Selecionar todos os materiais da página">
           </th>
         <% } %>
-        <th scope="col">Título</th>
-        <th scope="col">Disciplina</th>
+        <th scope="col" class="sortable-th" tabindex="0" onclick="sortTable(1)" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); sortTable(1); }">
+          Título <span class="sort-icon" aria-hidden="true">↕</span>
+        </th>
+        <th scope="col" class="sortable-th" tabindex="0" onclick="sortTable(2)" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); sortTable(2); }">
+          Disciplina <span class="sort-icon" aria-hidden="true">↕</span>
+        </th>
         <th scope="col">Docente</th>
         <th scope="col">Categoria</th>
         <th scope="col" class="col-status">Status do Processamento</th>
@@ -96,8 +100,26 @@
             <td style="color: var(--text-secondary);"><%= m.teacher_name %></td>
             <td><%= m.category %></td>
             <td class="col-status">
-              <span id="mat-badge-<%= m.id %>" class="role-tag" style="background: <%= m.current_status === 'APROVADO' ? 'var(--color-success)' : (m.current_status === 'PROCESSANDO' ? 'var(--color-warning)' : 'var(--color-primary)') %>;">
-                <%= m.current_status %>
+              <% 
+                let badgeClass = 'status-badge-revisao';
+                let statusIcon = '👁️';
+                if (m.current_status === 'APROVADO' || m.current_status === 'PUBLICADO') {
+                  badgeClass = 'status-badge-aprovado';
+                  statusIcon = '🛡️';
+                } else if (m.current_status === 'PROCESSANDO' || m.current_status === 'AGUARDANDO_PROCESSAMENTO') {
+                  badgeClass = 'status-badge-processando';
+                  statusIcon = '⏳';
+                } else if (m.current_status === 'FALHA_PROCESSAMENTO') {
+                  badgeClass = 'status-badge-falha';
+                  statusIcon = '⚠️';
+                } else if (m.current_status === 'CORRECAO_SOLICITADA') {
+                  badgeClass = 'status-badge-correcao';
+                  statusIcon = '🔄';
+                }
+              %>
+              <span id="mat-badge-<%= m.id %>" class="status-badge <%= badgeClass %>">
+                <span aria-hidden="true"><%= statusIcon %></span>
+                <span><%= m.current_status %></span>
               </span>
             </td>
             <td class="col-actions">
@@ -376,13 +398,123 @@
     }
   }
 
+  // ORDENAÇÃO ACESSÍVEL DE TABELA
+  let currentSortCol = -1;
+  let currentSortAsc = true;
+
+  function sortTable(colIndex) {
+    const table = document.getElementById('tabela-materiais');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.hasAttribute('data-title'));
+    if (!rows.length) return;
+
+    if (currentSortCol === colIndex) {
+      currentSortAsc = !currentSortAsc;
+    } else {
+      currentSortCol = colIndex;
+      currentSortAsc = true;
+    }
+
+    rows.sort((a, b) => {
+      let valA = a.children[colIndex].textContent.trim().toLowerCase();
+      let valB = b.children[colIndex].textContent.trim().toLowerCase();
+      return currentSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    });
+
+    rows.forEach(r => tbody.appendChild(r));
+
+    const colName = colIndex === 1 ? 'Título' : 'Disciplina';
+    const sortDir = currentSortAsc ? 'crescente' : 'decrescente';
+    const announcer = document.getElementById('aria-status-announcer');
+    if (announcer) announcer.textContent = `Tabela ordenada por ${colName} em ordem ${sortDir}`;
+  }
+
+  // ENVIO DE MATERIAL COM PROGRESSO VISUAL VIA XMLHTTPREQUEST
+  const formNovoMaterial = document.getElementById('form-novo-material');
+  if (formNovoMaterial) {
+    formNovoMaterial.addEventListener('submit', function(e) {
+      const file = fileInput ? fileInput.files[0] : null;
+      if (!file) return; // Deixa a validação HTML5 do form agir
+
+      e.preventDefault();
+      const submitBtn = document.getElementById('btn-submit-material');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Enviando documento...';
+      }
+
+      const progressContainer = document.getElementById('upload-progress-container');
+      const progressBar = document.getElementById('upload-progress-bar');
+      const percentageText = document.getElementById('upload-percentage');
+      if (progressContainer) progressContainer.style.display = 'block';
+
+      const formData = new FormData(formNovoMaterial);
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', formNovoMaterial.action, true);
+
+      xhr.upload.onprogress = function(evt) {
+        if (evt.lengthComputable) {
+          const percent = Math.round((evt.loaded / evt.total) * 100);
+          if (progressBar) progressBar.value = percent;
+          if (percentageText) percentageText.textContent = `${percent}%`;
+
+          if (percent === 50 || percent === 100) {
+            const announcer = document.getElementById('aria-status-announcer');
+            if (announcer) announcer.textContent = `Upload ${percent}% concluído`;
+          }
+        }
+      };
+
+      xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 400) {
+          if (percentageText) percentageText.textContent = 'Processando...';
+          const redirectUrl = xhr.responseURL || '/materiais';
+          window.location.href = redirectUrl;
+        } else {
+          alert('Erro no envio do material. Por favor tente novamente.');
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Enviar e Processar no Acessilia';
+          }
+        }
+      };
+
+      xhr.onerror = function() {
+        alert('Erro de conexão durante o envio.');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Enviar e Processar no Acessilia';
+        }
+      };
+
+      xhr.send(formData);
+    });
+  }
+
   // ATUALIZAÇÃO EM TEMPO REAL VIA SSE (SERVER-SENT EVENTS)
   window.addEventListener('materialStatusUpdated', function(e) {
     const { materialId, status } = e.detail;
     const badge = document.getElementById(`mat-badge-${materialId}`);
     if (badge) {
-      badge.textContent = status;
-      badge.style.background = status === 'APROVADO' ? 'var(--color-success)' : (status === 'PROCESSANDO' ? 'var(--color-warning)' : 'var(--color-primary)');
+      let icon = '👁️';
+      let badgeClass = 'status-badge-revisao';
+      if (status === 'APROVADO' || status === 'PUBLICADO') {
+        icon = '🛡️';
+        badgeClass = 'status-badge-aprovado';
+      } else if (status === 'PROCESSANDO' || status === 'AGUARDANDO_PROCESSAMENTO') {
+        icon = '⏳';
+        badgeClass = 'status-badge-processando';
+      } else if (status === 'FALHA_PROCESSAMENTO') {
+        icon = '⚠️';
+        badgeClass = 'status-badge-falha';
+      } else if (status === 'CORRECAO_SOLICITADA') {
+        icon = '🔄';
+        badgeClass = 'status-badge-correcao';
+      }
+
+      badge.className = `status-badge ${badgeClass}`;
+      badge.innerHTML = `<span aria-hidden="true">${icon}</span> <span>${status}</span>`;
+
       const announcer = document.getElementById('aria-status-announcer');
       if (announcer) {
         announcer.textContent = `Status do material atualizado em tempo real para ${status}`;
@@ -390,4 +522,5 @@
     }
   });
 </script>
+
 

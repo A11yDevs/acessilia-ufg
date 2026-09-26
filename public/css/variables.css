@@ -60,6 +60,45 @@ html.high-contrast {
   --focus-color: #ffff00 !important;
 }
 
+/* MODO DARK SLATE (ALTO CONTRASTE SUAVE / ERGONÔMICO) */
+html.dark-slate-theme {
+  --bg-primary: #0b1120 !important;
+  --bg-surface: #1e293b !important;
+  --bg-sidebar: #0f172a !important;
+  --text-primary: #f8fafc !important;
+  --text-secondary: #e2e8f0 !important;
+  --text-muted: #94a3b8 !important;
+  --text-inverse: #0b1120 !important;
+  --border-color: #38bdf8 !important;
+  --color-primary: #38bdf8 !important;
+  --color-primary-hover: #7dd3fc !important;
+  --color-primary-contrast: #0b1120 !important;
+  --focus-ring: #38bdf8 !important;
+  --focus-color: #fde047 !important;
+}
+
+/* RÉGUA DE LEITURA ACESSÍVEL (READING GUIDE) */
+#a11y-reading-ruler {
+  position: fixed;
+  left: 0;
+  width: 100vw;
+  height: 48px;
+  background: rgba(253, 224, 71, 0.22);
+  border-top: 2px solid #eab308;
+  border-bottom: 2px solid #eab308;
+  pointer-events: none;
+  z-index: 999999;
+  display: none;
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.25);
+  transition: transform 0.04s ease-out;
+}
+
+html.high-contrast #a11y-reading-ruler {
+  background: rgba(255, 255, 0, 0.28);
+  border-top: 3px solid #ffff00;
+  border-bottom: 3px solid #ffff00;
+}
+
 /* TIPOGRAFIA AMIGÁVEL PARA DISLEXIA */
 html.dyslexia-font {
   font-family: "Comic Sans MS", "Comic Sans", "Arial Rounded MT Bold", sans-serif !important;
