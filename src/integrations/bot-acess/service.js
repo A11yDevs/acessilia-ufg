@@ -32,6 +32,26 @@ export const botAcessService = {
     }
   },
 
+  // Notifica progresso em tempo real da tarefa (SSE)
+  async updateJobProgress(jobId, { progress, step }) {
+    const job = materialRepository.findJobById(jobId);
+    if (!job) return;
+    const version = materialRepository.findVersionById(job.material_version_id);
+    if (!version) return;
+
+    try {
+      const { notificationEvents } = await import('../../routes/api/notifications.api.js');
+      notificationEvents.emit('notify', {
+        type: 'PROCESSING_PROGRESS',
+        materialId: version.material_id,
+        jobId: job.id,
+        progress: typeof progress === 'number' ? Math.round(progress * 100) : null,
+        currentStep: step || 'Processando no motor Acessilia...',
+        status: 'PROCESSANDO'
+      });
+    } catch (_) {}
+  },
+
   // Sincroniza resultado final gerando a versão PROCESSADO_BOT
   async handleJobCompleted(jobId) {
     const job = materialRepository.findJobById(jobId);
@@ -76,6 +96,8 @@ export const botAcessService = {
           type: 'MATERIAL_UPDATED',
           materialId: originalVersion.material_id,
           status: 'AGUARDANDO_REVISAO',
+          progress: 100,
+          currentStep: 'Processamento concluído com sucesso',
           title: 'Material Processado',
           message: 'Processamento de IA concluído com sucesso. Aguardando revisão humana.'
         });
@@ -85,3 +107,4 @@ export const botAcessService = {
     }
   }
 };
+

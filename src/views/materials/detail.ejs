@@ -29,6 +29,32 @@
   </div>
 <% } %>
 
+<!-- BANNER DE PROGRESSO EM TEMPO REAL DO ACESSILIA CORE (SSE) -->
+<% if (material.current_status === 'PROCESSANDO' || material.current_status === 'AGUARDANDO_PROCESSAMENTO') { %>
+<div id="core-live-progress" class="core-processing-banner" role="status" aria-live="polite">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <span style="font-size: 1.25rem;" aria-hidden="true">⚙️</span>
+      <strong style="color: #0369a1; font-size: 1rem;">Processamento de Acessibilidade em Execução</strong>
+    </div>
+    <span id="core-progress-percent" style="font-weight: 700; color: #0284c7; font-size: 0.9375rem;">
+      <%= material.current_status === 'AGUARDANDO_PROCESSAMENTO' ? 'Aguardando fila...' : 'Processando...' %>
+    </span>
+  </div>
+
+  <div class="core-progress-track" role="progressbar" id="core-progressbar" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100">
+    <div id="core-progress-bar-fill" class="core-progress-fill pulse" style="width: <%= material.current_status === 'AGUARDANDO_PROCESSAMENTO' ? '15%' : '50%' %>;"></div>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8125rem; color: #475569;">
+    <span id="core-current-step">
+      Etapa: <strong><%= material.current_status === 'AGUARDANDO_PROCESSAMENTO' ? 'Enfileirado no Acessilia Core' : 'Executando pipeline semântico (Docling/PDDL/VLM)' %></strong>
+    </span>
+    <span style="font-size: 0.75rem; color: #64748b;">Conexão ativa SSE via motor Acessilia</span>
+  </div>
+</div>
+<% } %>
+
 <!-- CABEÇALHO DO SELO ACESSILIA & CERTIFICAÇÃO DIGITAL COM QR CODE -->
 <section aria-labelledby="tit-selo-acessilia" class="stat-card" style="border-left: 6px solid var(--color-primary); background: var(--bg-surface); margin-bottom: 2rem; padding: 1.5rem;">
   <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;">
@@ -220,6 +246,36 @@
           <figure style="display: none;" aria-hidden="true">
             <img alt="Logotipo institucional processado pelo Acessilia Core" src="">
           </figure>
+        </div>
+
+        <!-- COMPONENTE DE NOTAÇÃO MATEMÁTICA ACESSÍVEL (TOOLBOX math.verbalize) -->
+        <div class="a11y-math-card" role="region" aria-label="Notação Matemática Acessibilizada">
+          <div class="a11y-math-header">
+            <span class="a11y-math-tag">
+              <span aria-hidden="true">📐</span> Notação Matemática Estruturada (Acessilia Toolbox)
+            </span>
+            <span class="a11y-audiodesc-badge">LaTeX + math.verbalize</span>
+          </div>
+
+          <div class="a11y-math-display" aria-hidden="true">
+            \[ f(x) = \int_{0}^{\infty} \frac{\sin(x)}{x} \, dx = \frac{\pi}{2} \]
+          </div>
+
+          <div class="a11y-math-verbalization">
+            <span class="a11y-math-verbalization-label">🔊 Verbalização Acessível em Português (Para Leitores de Tela e Baixa Visão):</span>
+            <p class="a11y-math-verbalization-text" id="math-verbalized-sample">
+              "A função f de x é igual à integral definida de zero a infinito da fração com numerador seno de x e denominador x, em relação a x, cujo resultado é pi sobre dois."
+            </p>
+          </div>
+
+          <div class="a11y-audiodesc-actions">
+            <button type="button" class="btn btn-sm btn-a11y-speak" onclick="speakMath(this)" data-text="A função f de x é igual à integral definida de zero a infinito da fração com numerador seno de x e denominador x, em relação a x, cujo resultado é pi sobre dois." aria-label="Ouvir leitura falada da fórmula matemática">
+              🔊 Ouvir Equação Falada
+            </button>
+            <button type="button" class="btn btn-sm" onclick="copyAudiodesc(this, 'f(x) = \\int_{0}^{\\infty} \\frac{\\sin(x)}{x} dx = \\frac{\\pi}{2}')" aria-label="Copiar código LaTeX da fórmula">
+              📋 Copiar LaTeX
+            </button>
+          </div>
         </div>
       </div>
     </article>
@@ -557,14 +613,65 @@
     announceA11y('Reproduzindo audiodescrição da imagem');
   };
 
+  window.speakMath = function(btn) {
+    const text = btn.getAttribute('data-text');
+    if (!text || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'pt-BR';
+    utterance.rate = 0.90;
+    btn.textContent = '🔊 Verbalizando Fórmula...';
+    utterance.onend = () => {
+      btn.textContent = '🔊 Ouvir Equação Falada';
+    };
+    window.speechSynthesis.speak(utterance);
+    announceA11y('Verbalizando notação matemática');
+  };
+
   window.copyAudiodesc = function(btn, text) {
     navigator.clipboard.writeText(text).then(() => {
       const originalText = btn.textContent;
       btn.textContent = '✔ Copiado!';
-      announceA11y('Texto da audiodescrição copiado para a área de transferência');
+      announceA11y('Texto copiado para a área de transferência');
       setTimeout(() => {
         btn.textContent = originalText;
       }, 2000);
     });
   };
+
+  // ESCUTA DE EVENTOS SSE PARA PROGRESSO EM TEMPO REAL DO CORE
+  (function initLiveProgressSSE() {
+    const isProcessing = '<%= material.current_status %>' === 'PROCESSANDO' || '<%= material.current_status %>' === 'AGUARDANDO_PROCESSAMENTO';
+    if (!isProcessing) return;
+
+    try {
+      const eventSource = new EventSource('/api/v1/notifications/stream');
+      eventSource.onmessage = function(event) {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.materialId && Number(data.materialId) === Number('<%= material.id %>')) {
+            const percentLabel = document.getElementById('core-progress-percent');
+            const fillBar = document.getElementById('core-progress-bar-fill');
+            const stepLabel = document.getElementById('core-current-step');
+
+            if (data.type === 'PROCESSING_PROGRESS') {
+              if (percentLabel && data.progress !== null) percentLabel.textContent = data.progress + '%';
+              if (fillBar && data.progress !== null) fillBar.style.width = data.progress + '%';
+              if (stepLabel && data.currentStep) stepLabel.innerHTML = 'Etapa: <strong>' + data.currentStep + '</strong>';
+              announceA11y('Progresso da acessibilização: ' + data.currentStep);
+            }
+
+            if (data.type === 'MATERIAL_UPDATED' && (data.status === 'AGUARDANDO_REVISAO' || data.status === 'APROVADO')) {
+              if (percentLabel) percentLabel.textContent = '100% Concluído!';
+              if (fillBar) fillBar.style.width = '100%';
+              if (stepLabel) stepLabel.innerHTML = 'Etapa: <strong>Processamento Finalizado! Recarregando...</strong>';
+              setTimeout(function() {
+                window.location.reload();
+              }, 1200);
+            }
+          }
+        } catch (_) {}
+      };
+    } catch (_) {}
+  })();
 </script>
