@@ -234,3 +234,101 @@
   opacity: 0.6;
 }
 
+/* CARDS DE AUDIODESCRIÇÃO VISUAL (ACESSÍVEL PARA <figure><img src="" alt="...">) */
+.a11y-audiodesc-card {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-color);
+  border-left: 6px solid var(--color-primary);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.a11y-audiodesc-card:focus-within,
+.a11y-audiodesc-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+}
+
+.a11y-audiodesc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.a11y-audiodesc-tag {
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.a11y-audiodesc-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: rgba(3, 105, 161, 0.1);
+  color: var(--color-primary);
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(3, 105, 161, 0.2);
+}
+
+.a11y-audiodesc-content {
+  margin: 0 0 1rem 0;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.02);
+  padding: 0.875rem 1rem;
+  border-radius: 4px;
+  border-left: 3px solid var(--border-color);
+  font-style: italic;
+}
+
+.a11y-audiodesc-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* PAINEL DE METADADOS DO CORE (DOCLING + PDDL + VLM) */
+.core-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.core-meta-item {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  padding: 0.875rem;
+  border-radius: var(--border-radius);
+  display: flex;
+  flex-direction: column;
+}
+
+.core-meta-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.core-meta-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-top: 0.25rem;
+}
+
