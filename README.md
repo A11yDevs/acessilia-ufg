@@ -1,96 +1,128 @@
-# ACESSILIA GESTOR — Painel Institucional Web
+﻿# ACESSILIA GESTOR — Plataforma Institucional de Acessibilidade Acadêmica
 
-Painel Institucional Web independente para gestão de acessibilidade acadêmica, cursos, turmas, docentes, discentes, materiais e integração desacoplada com o motor de acessibilização **Acessilia**.
+[![Acessibilidade WCAG 2.2 AAA](https://img.shields.io/badge/Acessibilidade-WCAG%202.2%20AAA-success?style=flat-square)](docs/ACCESSIBILITY.md)
+[![Conformidade LBI](https://img.shields.io/badge/Conformidade-Lei%2013.146%2F2015-blue?style=flat-square)](docs/ACCESSIBILITY.md)
+[![Testes Automatizados](https://img.shields.io/badge/Testes-48%20passando-success?style=flat-square)](tests)
+[![Node.js](https://img.shields.io/badge/Node.js-v18%2B%20LTS-green?style=flat-square)](package.json)
+[![Fastify](https://img.shields.io/badge/Fastify-v4-black?style=flat-square)](src/app.js)
+[![SQLite WAL](https://img.shields.io/badge/SQLite-Modo%20WAL-lightgrey?style=flat-square)](database/connection.js)
 
----
-
-## 1. Visão Geral e Arquitetura
-
-O sistema foi concebido como um produto corporativo de alta confiabilidade, leveza para execução em VPS de baixo custo e conformidade estrita com normas de acessibilidade (**WCAG 2.2 / WAI-ARIA**).
-
-* **Backend**: Node.js com **Fastify** em arquitetura orientada a plugins e decorators.
-* **Banco de Dados**: **SQLite** em modo WAL (`better-sqlite3`), com chaves estrangeiras ativas e 30 tabelas normalizadas.
-* **Segurança e Criptografia**: **Argon2id** mandatório, sessões persistentes no SQLite, tokens CSRF nos formulários e proteção contra força bruta.
-* **Frontend**: HTML5 Semântico, CSS3 Moderno com suporte a Dark Mode e Vanilla JavaScript acessível.
-* **Integração com bot-acess**: Camada desacoplada em `src/integrations/bot-acess/` com rastreamento assíncrono via `processing_jobs` e idempotência rigorosa.
+Painel Institucional Web para gestão completa de acessibilidade acadêmica, cursos, turmas, docentes, discentes, acervo inclusivo e integração desacoplada com o motor de inteligência artificial **Acessilia Core** e **Acessilia Toolbox**.
 
 ---
 
-## 2. Instalação e Execução
+## 1. Destaques e Recursos Principais
+
+* **Selo Acessilia & Certificação Digital com QR Code:** Emissão de selos institucionais com carimbo de tempo, histórico imutável e validação pública instantânea via QR Code.
+* **Web Reader Acessível Integrado:** Leitor web com tipografia ajustável (incluindo fonte adaptada para Dislexia), modos de contraste (Alto Contraste e Dark Slate), espaçamento expansível e sintetizador de voz.
+* **Cards de Audiodescrição para Figuras:** Converte elementos visuais do Core em cards estruturados com audiodescrição completa e botão para reprodução por voz e cópia rápida.
+* **Notação Matemática Acessível com Verbalização:** Suporte a equações da Toolbox (`math.verbalize`), permitindo aos estudantes ouvir a fórmula descrita em português falado por extenso.
+* **Barra de Acessibilidade Fixa:** Régua de leitura virtual focal (atalho `Alt + R`), atalhos globais de teclado (`?`), saltos para conteúdo (*Skip Links*) e sincronização de preferências no banco de dados.
+* **Acompanhamento em Tempo Real via SSE:** Barra de progresso conectada às etapas granulares do Core (*Docling*, *PDDL Planner*, *Síntese MP3*) com recarregamento automático ao concluir.
+* **Segurança e RBAC Estrito:** Criptografia **Argon2id**, proteção contra ataques de força bruta, prevenção de IDOR com escopo por turma e matrícula, e proteção do último administrador.
+
+---
+
+## 2. Início Rápido (Quickstart)
 
 ### Pré-requisitos
-* Node.js v18+ (testado no Node.js v26 LTS)
-* npm v9+
+* **Node.js** v18+ LTS (recomendado v20+ ou v22+)
+* **npm** v9+
 
-### Passos
+### Passos de Instalação
 
 1. Clone o repositório e instale as dependências:
    ```bash
+   git clone https://github.com/A11yDevs/acessilia-ufg.git
+   cd acessilia-ufg
    npm install
    ```
 
-2. Configure as variáveis de ambiente:
+2. Configure o arquivo de variáveis de ambiente:
    ```bash
    cp .env.example .env
    ```
 
-3. Execute as migrações do banco SQLite:
+3. Execute as migrações atômicas do banco SQLite:
    ```bash
    npm run migrate
    ```
 
-4. Popule os dados iniciais de desenvolvimento:
+4. Popule os dados iniciais de demonstração (departamentos, cursos, turmas e usuários):
    ```bash
    npm run seed
    ```
 
-5. Execute a suíte de testes:
+5. Execute a suíte completa de testes automatizados:
    ```bash
    npm test
    ```
 
-6. Inicie o servidor:
+6. Inicie o servidor em modo de desenvolvimento:
    ```bash
    npm run dev
-   # ou para produção:
-   npm start
    ```
 
-Acesse em: `http://localhost:3000`
+Acesse no navegador: **`http://localhost:3000`**
 
 ---
 
-## 3. Credenciais de Teste (Ambiente de Desenvolvimento)
+## 3. Credenciais de Acesso (Ambiente de Desenvolvimento)
 
-A senha padrão para todos os usuários criados pelo seed é: `Temp@123456`
+A senha padrão para todos os usuários criados no seed é: `Temp@123456`
 
-| Papel | E-mail | Matrícula |
-| :--- | :--- | :--- |
-| **Administrador** | `admin@acessilia.ufg.br` | `ADM-001` |
-| **Professor** | `carlos.professor@acessilia.ufg.br` | `DOC-1020` |
-| **Revisora** | `ana.revisora@acessilia.ufg.br` | `REV-3040` |
-| **Estudante** | `lucas.aluno@acessilia.ufg.br` | `ALU-202601` |
+| Papel (Perfil) | E-mail Institucional | Matrícula | Principais Acessos |
+|---|---|---|---|
+| **Administrador** | `admin@acessilia.ufg.br` | `ADM-001` | Acesso total, usuários, auditoria e backups |
+| **Gestor de Acessibilidade** | `gestor@acessilia.ufg.br` | `GST-002` | Supervisão geral do acervo e relatórios LBI |
+| **Docente (Professor)** | `carlos.professor@acessilia.ufg.br` | `DOC-1020` | Envio de materiais e agendamento de liberação |
+| **Revisora de Acessibilidade** | `ana.revisora@acessilia.ufg.br` | `REV-3040` | Revisão humana, aprovação de alt-texts e homologação |
+| **Discente (Estudante)** | `lucas.aluno@acessilia.ufg.br` | `ALU-202601` | Acesso aos materiais matriculados e Web Reader |
 
 ---
 
-## 4. Estrutura Modular
+## 4. Estrutura de Pastas do Projeto
 
 ```text
+acessilia-ufg/
 ├── database/
-│   ├── connection.js             # Conexão SQLite com pragmas WAL e foreign keys
-│   ├── migrate.js                # Runner atômico de migrações
-│   ├── seed.js                   # População de papéis, permissões e usuários
-│   └── migrations/               # Scripts DDL das 30 tabelas relacionais
+│   ├── connection.js             # Conexão SQLite com pragmas WAL e foreign keys ativas
+│   ├── migrate.js                # Executor atômico de migrações DDL
+│   ├── seed.js                   # População de papéis, permissões e usuários iniciais
+│   └── migrations/               # Scripts SQL das 30 tabelas relacionais
+├── docs/                         # Documentação técnica detalhada
+│   ├── ACCESSIBILITY.md          # Manual de conformidade WCAG 2.2 AAA e LBI
+│   ├── API.md                    # Referência completa de endpoints REST e SSE
+│   ├── ARCHITECTURE.md           # Engenharia, segurança e ciclo de versões
+│   ├── CORE_INTEGRATION.md       # Integração com Acessilia Core e Toolbox
+│   ├── DEPLOYMENT.md             # Guia de implantação em produção (Docker/Nginx)
+│   └── diagrams/                 # Diagramas de sequência e classes PlantUML
+├── public/                       # Folhas de estilo acessíveis, scripts e manifest PWA
 ├── src/
-│   ├── app.js                    # Configuração dos plugins Fastify
-│   ├── server.js                 # Inicialização do servidor HTTP
-│   ├── config/                   # Variáveis de ambiente e constantes
-│   ├── plugins/                  # Sessões no SQLite, RBAC e decorators
-│   ├── repositories/             # Camada de persistência e consultas preparadas
-│   ├── services/                 # Regras de negócio e validação de escopo
-│   ├── integrations/             # Cliente e serviços desacoplados do bot-acess
-│   └── views/                    # Templates EJS acessíveis com WCAG 2.2
+│   ├── app.js                    # Registro dos plugins Fastify, middlewares e rotas
+│   ├── server.js                 # Inicialização do servidor HTTP Fastify
+│   ├── integrations/             # Cliente HTTP desacoplado e serviços do bot-acess
+│   ├── repositories/             # Camada de persistência e prepared statements SQLite
+│   ├── services/                 # Regras de negócio, autorização e validação de escopo
+│   ├── utils/                    # Utilitários de hash Argon2id e parser de metadados do Core
+│   └── views/                    # Telas e componentes EJS estruturados
 └── tests/
-    ├── unit/                     # Testes de unidade e autenticação
-    └── integration/              # Testes de autorização, escopo e fluxo de materiais
+    ├── unit/                     # Testes unitários (Argon2id, parser, cliente)
+    └── integration/              # Testes de integração (fluxo acadêmico, RBAC, certificados)
 ```
+
+---
+
+## 5. Guias e Documentação Complementar
+
+* [Arquitetura e Engenharia de Software](docs/ARCHITECTURE.md)
+* [Referência Completa da API REST, Webhooks e SSE](docs/API.md)
+* [Integração Técnica com Acessilia Core e Toolbox](docs/CORE_INTEGRATION.md)
+* [Guia de Acessibilidade e Conformidade (WCAG 2.2 AAA / LBI)](docs/ACCESSIBILITY.md)
+* [Guia de Implantação e Operação em Produção](docs/DEPLOYMENT.md)
+
+---
+
+## 6. Licença e Direitos
+
+Desenvolvido para apoio à inclusão acadêmica em conformidade com a legislação brasileira de acessibilidade.
