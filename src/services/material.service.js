@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { materialRepository } from '../repositories/material.repository.js';
 import { academicRepository } from '../repositories/academic.repository.js';
 import { auditRepository } from '../repositories/audit.repository.js';
@@ -7,8 +9,19 @@ import { notificationEvents } from '../routes/api/notifications.api.js';
 export const materialService = {
   // Envio de Material (Cria v1 ORIGINAL) com suporte opcional a agendamento
   async uploadMaterial({ subjectId, classId = null, title, description, category, originalFilename, mimeType, fileSizeBytes, fileBuffer, publishAt = null }, actorUser) {
-    if (!title || !subjectId || !category) {
+    if (!title || !title.trim() || !subjectId || !category) {
       throw new Error('Título, disciplina e categoria são obrigatórios.');
+    }
+
+    // Validação da Disciplina e Categoria
+    const subject = academicRepository.findSubjectById(subjectId);
+    if (!subject) {
+      throw new Error('A disciplina selecionada não foi encontrada ou não existe.');
+    }
+
+    const VALID_CATEGORIES = ['LIVRO', 'APOSTILA', 'SLIDE', 'ARTIGO', 'EXERCICIO', 'OUTRO'];
+    if (category && !VALID_CATEGORIES.includes(category.toUpperCase())) {
+      throw new Error(`Categoria de material inválida (${category}).`);
     }
 
     // Checagem de Escopo: Se for professor, precisa estar associado à turma/disciplina se especificada
@@ -23,6 +36,16 @@ export const materialService = {
     const sha256Hash = crypto.createHash('sha256').update(fileBuffer || originalFilename).digest('hex');
     const storageKey = `mat_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     const storagePath = `/uploads/${storageKey}_${originalFilename}`;
+
+    // Grava o arquivo físico em disco para envio ao Core
+    if (fileBuffer && Buffer.isBuffer(fileBuffer) && fileBuffer.length > 0) {
+      const diskPath = path.resolve(process.cwd(), '.' + storagePath);
+      const uploadsDir = path.dirname(diskPath);
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      fs.writeFileSync(diskPath, fileBuffer);
+    }
 
     const material = materialRepository.createMaterial({
       subjectId,
@@ -161,6 +184,12 @@ export const materialService = {
     const version = materialRepository.findVersionById(materialVersionId);
     if (!version) throw new Error('Versão não encontrada.');
 
+    // Previne criação de múltiplas revisões abertas simultâneas para a mesma versão (M2)
+    const existingReview = materialRepository.findActiveReviewByVersionId(materialVersionId);
+    if (existingReview) {
+      return existingReview;
+    }
+
     const review = materialRepository.createReview({
       materialVersionId,
       reviewerUserId: reviewerUser.id
@@ -175,9 +204,22 @@ export const materialService = {
       throw new Error('Status de revisão inválido.');
     }
 
-    materialRepository.updateReviewStatus(reviewId, status);
     const review = materialRepository.findReviewById(reviewId);
+    if (!review) {
+      throw new Error('Revisão não encontrada.');
+    }
+
+    if (review.status !== 'EM_ANDAMENTO') {
+      throw new Error('Esta revisão já foi concluída anteriormente e não pode ser reavaliada.');
+    }
+
+    if ((status === 'CORRECAO_SOLICITADA' || status === 'REPROVADO') && (!notes || !notes.trim())) {
+      throw new Error('É obrigatório informar uma justificativa detalhada ao solicitar correção ou reprovar o material.');
+    }
+
+    materialRepository.updateReviewStatus(reviewId, status, notes ? notes.trim() : null);
     const version = materialRepository.findVersionById(review.material_version_id);
+    if (!version) throw new Error('Versão associada à revisão não encontrada.');
 
     const materialStatusMap = {
       APROVADO: 'APROVADO',

@@ -25,13 +25,16 @@
     <label for="filtro-status-materiais" class="form-label" style="font-size: 0.875rem;">Filtrar por Status</label>
     <select id="filtro-status-materiais" class="form-input" onchange="filtrarMateriais()">
       <option value="">Todos os status</option>
-      <option value="ENVIADO">ENVIADO</option>
-      <option value="AGUARDANDO_PROCESSAMENTO">AGUARDANDO_PROCESSAMENTO</option>
-      <option value="PROCESSANDO">PROCESSANDO</option>
-      <option value="AGUARDANDO_REVISAO">AGUARDANDO_REVISAO</option>
-      <option value="EM_REVISAO">EM_REVISAO</option>
-      <option value="APROVADO">APROVADO</option>
-      <option value="PUBLICADO">PUBLICADO</option>
+      <option value="ENVIADO">Enviado</option>
+      <option value="AGUARDANDO_PROCESSAMENTO">Aguardando Processamento</option>
+      <option value="PROCESSANDO">Em Processamento</option>
+      <option value="AGUARDANDO_REVISAO">Aguardando Revisão</option>
+      <option value="EM_REVISAO">Em Revisão</option>
+      <option value="CORRECAO_SOLICITADA">Correção Solicitada</option>
+      <option value="APROVADO">Aprovado</option>
+      <option value="PUBLICADO">Publicado</option>
+      <option value="REPROVADO">Reprovado</option>
+      <option value="FALHA_PROCESSAMENTO">Falha no Processamento</option>
     </select>
   </div>
 </div>
@@ -130,6 +133,11 @@
           </tr>
         <% }) %>
       <% } %>
+      <tr id="linha-nenhum-resultado-filtro" style="display: none;">
+        <td colspan="<%= totalCols %>" style="padding: 2rem; text-align: center; color: var(--text-muted);">
+          Nenhum material encontrado com os critérios de busca selecionados.
+        </td>
+      </tr>
     </tbody>
   </table>
 </div>
@@ -240,10 +248,13 @@
     const termo = (document.getElementById('input-busca-materiais').value || '').toLowerCase().trim();
     const statusFiltro = (document.getElementById('filtro-status-materiais').value || '').trim();
     const linhas = document.querySelectorAll('#tabela-materiais tbody tr');
+    let visibleCount = 0;
+    let totalItems = 0;
 
     linhas.forEach(linha => {
-      // Ignora linha de estado vazio
+      // Ignora linha de estado vazio e linha de nenhum resultado
       if (!linha.hasAttribute('data-title')) return;
+      totalItems++;
 
       const titulo = linha.getAttribute('data-title') || '';
       const disciplina = linha.getAttribute('data-subject') || '';
@@ -252,8 +263,18 @@
       const matchTermo = !termo || titulo.includes(termo) || disciplina.includes(termo);
       const matchStatus = !statusFiltro || status === statusFiltro;
 
-      linha.style.display = (matchTermo && matchStatus) ? '' : 'none';
+      if (matchTermo && matchStatus) {
+        linha.style.display = '';
+        visibleCount++;
+      } else {
+        linha.style.display = 'none';
+      }
     });
+
+    const noResultsRow = document.getElementById('linha-nenhum-resultado-filtro');
+    if (noResultsRow && totalItems > 0) {
+      noResultsRow.style.display = (visibleCount === 0) ? '' : 'none';
+    }
   }
 
   // CONTROLE DO MODAL DE ENVIO DE MATERIAL (FOCUS TRAP & ESC KEY)

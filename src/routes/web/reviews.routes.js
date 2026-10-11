@@ -29,6 +29,7 @@ export async function reviewsWebRoutes(fastify, opts) {
       JOIN material_versions mv ON mv.id = r.material_version_id
       JOIN materials m ON m.id = mv.material_id
       JOIN users u ON u.id = r.reviewer_user_id
+      WHERE r.status != 'EM_ANDAMENTO'
       ORDER BY r.created_at DESC
       LIMIT 10
     `).all();

@@ -154,6 +154,17 @@ export const materialRepository = {
     return db.prepare('SELECT * FROM processing_jobs WHERE id = ?').get(id);
   },
 
+  findActiveJobForMaterial(materialId) {
+    return db.prepare(`
+      SELECT pj.* 
+      FROM processing_jobs pj
+      JOIN material_versions mv ON mv.id = pj.material_version_id
+      WHERE mv.material_id = ? AND pj.status IN ('PENDING', 'QUEUED', 'PROCESSING')
+      ORDER BY pj.id DESC
+      LIMIT 1
+    `).get(materialId);
+  },
+
   // Revisões
   createReview({ materialVersionId, reviewerUserId, notes = null }) {
     const stmt = db.prepare(`
@@ -164,18 +175,28 @@ export const materialRepository = {
     return db.prepare('SELECT * FROM reviews WHERE id = ?').get(info.lastInsertRowid);
   },
 
-  updateReviewStatus(reviewId, status) {
+  updateReviewStatus(reviewId, status, notes = null) {
     const stmt = db.prepare(`
       UPDATE reviews
       SET status = ?,
+          general_notes = COALESCE(?, general_notes),
           finished_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
-    return stmt.run(status, reviewId);
+    return stmt.run(status, notes, reviewId);
   },
 
   findReviewById(id) {
     return db.prepare('SELECT * FROM reviews WHERE id = ?').get(id);
+  },
+
+  findActiveReviewByVersionId(materialVersionId) {
+    return db.prepare(`
+      SELECT * FROM reviews 
+      WHERE material_version_id = ? AND status = 'EM_ANDAMENTO'
+      ORDER BY id DESC
+      LIMIT 1
+    `).get(materialVersionId);
   },
 
   getApprovalReviewForMaterial(materialId) {

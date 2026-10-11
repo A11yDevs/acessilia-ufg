@@ -1,4 +1,4 @@
-﻿import { db } from '../../../database/connection.js';
+import { db } from '../../../database/connection.js';
 import { hashPassword } from '../../utils/password.js';
 import { auditRepository } from '../../repositories/audit.repository.js';
 
@@ -40,25 +40,40 @@ export async function usersWebRoutes(fastify, opts) {
     const { name, email, registrationNumber, roleId, password } = request.body || {};
 
     try {
-      if (!name || !email || !roleId) {
-        throw new Error('Nome, e-mail e função são obrigatórios.');
+      if (!name || !name.trim()) {
+        throw new Error('O nome do usuário é obrigatório e não pode conter apenas espaços.');
+      }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        throw new Error('Formato de e-mail inválido.');
+      }
+      if (!roleId) {
+        throw new Error('A função do usuário é obrigatória.');
+      }
+
+      const role = db.prepare('SELECT id FROM roles WHERE id = ?').get(parseInt(roleId, 10));
+      if (!role) {
+        throw new Error('A função selecionada é inválida ou inexistente.');
       }
 
       const defaultPassword = password || 'Temp@123456';
       const passwordHash = await hashPassword(defaultPassword);
 
-      const insertStmt = db.prepare(`
-        INSERT INTO users (name, email, registration_number, password_hash, status)
-        VALUES (?, ?, ?, ?, 'ACTIVE')
-      `);
+      let newUserId;
+      const createUserTx = db.transaction(() => {
+        const insertStmt = db.prepare(`
+          INSERT INTO users (name, email, registration_number, password_hash, status)
+          VALUES (?, ?, ?, ?, 'ACTIVE')
+        `);
+        const info = insertStmt.run(name.trim(), email.trim().toLowerCase(), registrationNumber ? registrationNumber.trim() : null, passwordHash);
+        newUserId = info.lastInsertRowid;
 
-      const info = insertStmt.run(name.trim(), email.trim().toLowerCase(), registrationNumber || null, passwordHash);
-      const newUserId = info.lastInsertRowid;
+        db.prepare(`
+          INSERT INTO user_roles (user_id, role_id, is_primary)
+          VALUES (?, ?, 1)
+        `).run(newUserId, parseInt(roleId, 10));
+      });
 
-      db.prepare(`
-        INSERT INTO user_roles (user_id, role_id, is_primary)
-        VALUES (?, ?, 1)
-      `).run(newUserId, parseInt(roleId, 10));
+      createUserTx();
 
       auditRepository.createLog({
         userId: request.user.id,

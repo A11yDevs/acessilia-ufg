@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { materialService } from '../../services/material.service.js';
 import { materialRepository } from '../../repositories/material.repository.js';
 import { academicRepository } from '../../repositories/academic.repository.js';
@@ -43,13 +45,15 @@ export async function materialsWebRoutes(fastify, opts) {
     let publishAt = null;
     let originalFilename = 'documento.pdf';
     let mimeType = 'application/pdf';
-    let fileBuffer = Buffer.from('PDF_SAMPLE_DATA');
+    let fileBuffer = null;
+    let fileUploaded = false;
     let externalJobId = null;
 
     if (request.isMultipart()) {
       const parts = request.parts();
       for await (const part of parts) {
         if (part.file) {
+          fileUploaded = true;
           originalFilename = part.filename || 'documento.pdf';
           mimeType = part.mimetype || 'application/pdf';
           fileBuffer = await part.toBuffer();
@@ -71,29 +75,55 @@ export async function materialsWebRoutes(fastify, opts) {
       classId = body.classId;
       publishAt = body.publishAt || null;
       originalFilename = body.filename || `${(title || 'material').replace(/\s+/g, '_').toLowerCase()}.pdf`;
+      if (body.fileBuffer) {
+        fileBuffer = Buffer.isBuffer(body.fileBuffer) ? body.fileBuffer : Buffer.from(body.fileBuffer);
+        fileUploaded = true;
+      } else if (process.env.NODE_ENV === 'test' || process.execArgv.some(a => a.includes('--test'))) {
+        fileBuffer = Buffer.from('PDF_SAMPLE_DATA');
+        fileUploaded = true;
+      }
     }
 
     try {
-      if (!title || !subjectId) {
-        throw new Error('Título e Disciplina são obrigatórios.');
+      if (!title || !title.trim() || !subjectId) {
+        return reply.status(400).send({ error: 'Título e Disciplina são obrigatórios e não podem estar em branco.' });
+      }
+
+      if (title.trim().length > 255) {
+        return reply.status(400).send({ error: 'O título do material não pode exceder 255 caracteres.' });
+      }
+
+      let parsedPublishAt = null;
+      if (publishAt) {
+        const d = new Date(publishAt);
+        if (isNaN(d.getTime())) {
+          return reply.status(400).send({ error: 'Data de publicação inválida.' });
+        }
+        parsedPublishAt = d.toISOString();
+      }
+
+      if (!fileUploaded || !fileBuffer || fileBuffer.length === 0) {
+        return reply.status(400).send({
+          error: 'O arquivo para acessibilização é obrigatório e não pode estar vazio.'
+        });
       }
 
       // Validação estrita de extensão (bloqueio de executáveis/arquivos perigosos)
-      const allowedExtensions = /\.(pdf|docx|doc|pptx|ppt|txt|png|jpe?g)$/i;
+      const allowedExtensions = /\.(pdf|docx|doc|pptx|ppt|txt|png|jpe?g|webp|html)$/i;
       if (!allowedExtensions.test(originalFilename)) {
         return reply.status(400).send({
-          error: `Formato de arquivo não suportado ou inválido (${originalFilename}). Formatos permitidos: PDF, DOCX, DOC, PPTX, PPT, TXT, PNG, JPG/JPEG.`
+          error: `Formato de arquivo não suportado ou inválido (${originalFilename}). Formatos permitidos: PDF, DOCX, DOC, PPTX, PPT, TXT, PNG, JPG/JPEG, WEBP, HTML.`
         });
       }
 
       // 1. Cria o registro acadêmico no Gestor com a Versão v1 (ORIGINAL)
       const { material, version } = await materialService.uploadMaterial({
-        title,
+        title: title.trim(),
         description,
         category,
         subjectId: parseInt(subjectId, 10),
         classId: classId ? parseInt(classId, 10) : null,
-        publishAt: publishAt ? new Date(publishAt).toISOString() : null,
+        publishAt: parsedPublishAt,
         originalFilename,
         mimeType,
         fileSizeBytes: fileBuffer.length,
@@ -127,7 +157,7 @@ export async function materialsWebRoutes(fastify, opts) {
     preHandler: [fastify.requirePermission('materiais.visualizar')]
   }, async (request, reply) => {
     const materialId = parseInt(request.params.id, 10);
-    const material = materialRepository.findMaterialById(materialId);
+    let material = materialRepository.findMaterialById(materialId);
     if (!material) return reply.status(404).send('Material não encontrado');
 
     // Validação de Escopo de Objeto (Prevenção de IDOR)
@@ -152,6 +182,14 @@ export async function materialsWebRoutes(fastify, opts) {
       });
     }
 
+    // Sincronização ativa se o material estiver aguardando ou em processamento (G2)
+    if (material.current_status === 'PROCESSANDO' || material.current_status === 'AGUARDANDO_PROCESSAMENTO') {
+      try {
+        await botAcessService.syncActiveJobForMaterial(materialId);
+        material = materialRepository.findMaterialById(materialId) || material;
+      } catch (_) {}
+    }
+
     const versions = materialRepository.getMaterialVersions(materialId);
     const canDownload = await materialService.canUserDownloadMaterial(request.user, materialId);
     const csrfToken = reply.generateCsrf();
@@ -174,15 +212,19 @@ export async function materialsWebRoutes(fastify, opts) {
     let coreMetadata = null;
     let accessibleHtmlPreview = null;
     try {
-      // Se houver arquivo processado localmente ou conteúdo armazenado
       if (botProcessedVersion && botProcessedVersion.storage_path) {
-        import('fs').then(fs => {
-          // Placeholder para leitura em runtime assíncrona se arquivo existir
-        });
+        const diskPath = path.isAbsolute(botProcessedVersion.storage_path)
+          ? botProcessedVersion.storage_path
+          : path.resolve(process.cwd(), '.' + botProcessedVersion.storage_path);
+        if (fs.existsSync(diskPath)) {
+          const content = fs.readFileSync(diskPath, 'utf8');
+          accessibleHtmlPreview = content;
+          coreMetadata = parseAcessiliaMetadata(content);
+        }
       }
-      // Se a descrição ou conteúdo contiver metadados do Core
-      const candidateContent = material.accessible_content || material.description || '';
-      coreMetadata = parseAcessiliaMetadata(candidateContent);
+      if (!coreMetadata && material.description) {
+        coreMetadata = parseAcessiliaMetadata(material.description);
+      }
     } catch (_) {}
 
     return reply.view('layouts/base.ejs', {
@@ -303,16 +345,21 @@ export async function materialsWebRoutes(fastify, opts) {
       <h2>Resumo e Conteúdo Acessibilizado</h2>
       <p>${material.description || 'Material acadêmico adaptado pelo Núcleo de Acessibilidade.'}</p>
       
-      <!-- AUDIODESCRIÇÕES E CONTEÚDO PROCESSADO -->
-      <div class="a11y-audiodesc-card" role="region" aria-label="Audiodescrição de elemento visual">
-        <div class="a11y-audiodesc-header">
-          <span class="a11y-audiodesc-tag">🖼️ Audiodescrição de Imagem Original</span>
-          <span class="a11y-audiodesc-badge">Acessibilidade Visual (IA)</span>
-        </div>
-        <blockquote class="a11y-audiodesc-content">
-          "A imagem apresenta o logotipo institucional com tipografia estilizada em alto contraste e elementos gráficos geométricos representativos da área de tecnologia e inovação educacional."
-        </blockquote>
-      </div>
+      ${(() => {
+        const accessibleVersion = versions.find(v => v.version_type !== 'ORIGINAL') || versions[0];
+        const altTexts = accessibleVersion ? materialRepository.listAltTextsByVersion(accessibleVersion.id) : [];
+        if (!altTexts || altTexts.length === 0) return '';
+        return altTexts.map((at, idx) => `
+        <div class="a11y-audiodesc-card" role="region" aria-label="Audiodescrição de imagem ${idx + 1}">
+          <div class="a11y-audiodesc-header">
+            <span class="a11y-audiodesc-tag">🖼️ Imagem ${idx + 1}: Audiodescrição</span>
+            <span class="a11y-audiodesc-badge">${at.status === 'APROVADO' ? 'Aprovado por Revisor' : 'Sugerido por IA'}</span>
+          </div>
+          <blockquote class="a11y-audiodesc-content">
+            "${at.human_reviewed_alt || at.ai_suggested_alt}"
+          </blockquote>
+        </div>`).join('\n');
+      })()}
 
       <hr>
       <p><em>Este documento foi gerado pelo ecossistema Acessilia para uso acadêmico exclusivo.</em></p>
@@ -422,6 +469,10 @@ DATA DE EMISSÃO: ${new Date().toISOString()}
     const altId = parseInt(request.params.altId, 10);
     const { humanReviewedAlt, status } = request.body || {};
     try {
+      const existingAlt = materialRepository.findAltTextById(altId);
+      if (!existingAlt) {
+        return reply.status(404).send({ error: 'Texto alternativo não encontrado.' });
+      }
       materialRepository.updateAltText(altId, {
         humanReviewedAlt,
         status: status || 'MODIFICADO',

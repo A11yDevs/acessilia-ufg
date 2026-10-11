@@ -1,20 +1,28 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Acesso Proibido — Painel Acessilia Gestor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acesso Não Autorizado — Painel Acessilia Gestor</title>
   <link rel="stylesheet" href="/public/css/reset.css">
   <link rel="stylesheet" href="/public/css/variables.css">
   <link rel="stylesheet" href="/public/css/components.css">
   <link rel="stylesheet" href="/public/css/layout.css">
 </head>
-<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
-  <main class="auth-card" role="main" style="text-align: center;">
-    <h1 style="color: var(--color-error); font-size: 2rem; margin-bottom: 1rem;">403 — Acesso Proibido</h1>
-    <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">
-      Seu perfil (<%= user ? user.roleName : 'Convidado' %>) não possui a permissão necessária (<code><%= requiredPermission %></code>) para acessar este recurso.
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1.5rem;">
+  <main class="auth-card" role="main" style="text-align: center; max-width: 480px;">
+    <div style="font-size: 3rem; margin-bottom: 0.75rem;" aria-hidden="true">🔒</div>
+    <h1 style="color: var(--color-error); font-size: 1.75rem; margin-bottom: 1rem; font-weight: 700;">Acesso Não Autorizado</h1>
+    <p style="margin-bottom: 1.25rem; color: var(--text-secondary); line-height: 1.6;">
+      Seu perfil (<strong><%= user ? user.roleName : 'Convidado' %></strong>) não possui autorização para acessar esta funcionalidade.
     </p>
-    <a href="/dashboard" class="btn btn-primary">Voltar para o Início</a>
+    <% if (locals.requiredPermission) { %>
+      <details style="margin-bottom: 1.5rem; font-size: 0.8125rem; color: var(--text-muted); cursor: pointer; text-align: left; background: var(--bg-primary); padding: 0.5rem 0.75rem; border-radius: 4px; border: 1px solid var(--border-color);">
+        <summary style="font-weight: 600;">Detalhes técnicos do acesso</summary>
+        <p style="margin-top: 0.5rem; margin-bottom: 0;">Permissão requerida: <code><%= requiredPermission %></code></p>
+      </details>
+    <% } %>
+    <a href="/dashboard" class="btn btn-primary" style="display: inline-flex;">Voltar para o Início</a>
   </main>
 </body>
 </html>

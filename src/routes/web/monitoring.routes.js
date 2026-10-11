@@ -11,11 +11,11 @@ export async function monitoringWebRoutes(fastify) {
     const engineHealth = await botAcessClient.checkHealth();
 
     const totalMaterials = db.prepare('SELECT COUNT(*) as count FROM materials').get()?.count || 0;
-    const totalConversions = db.prepare('SELECT COUNT(*) as count FROM conversion_jobs').get()?.count || 0;
-    const queuedJobs = db.prepare("SELECT COUNT(*) as count FROM conversion_jobs WHERE status = 'QUEUED'").get()?.count || 0;
-    const processingJobs = db.prepare("SELECT COUNT(*) as count FROM conversion_jobs WHERE status = 'PROCESSING'").get()?.count || 0;
-    const failedJobs = db.prepare("SELECT COUNT(*) as count FROM conversion_jobs WHERE status = 'FAILED'").get()?.count || 0;
-    const completedJobs = db.prepare("SELECT COUNT(*) as count FROM conversion_jobs WHERE status = 'COMPLETED'").get()?.count || 0;
+    const totalConversions = db.prepare('SELECT COUNT(*) as count FROM processing_jobs').get()?.count || 0;
+    const queuedJobs = db.prepare("SELECT COUNT(*) as count FROM processing_jobs WHERE status IN ('QUEUED', 'PENDING')").get()?.count || 0;
+    const processingJobs = db.prepare("SELECT COUNT(*) as count FROM processing_jobs WHERE status = 'PROCESSING'").get()?.count || 0;
+    const failedJobs = db.prepare("SELECT COUNT(*) as count FROM processing_jobs WHERE status = 'FAILED'").get()?.count || 0;
+    const completedJobs = db.prepare("SELECT COUNT(*) as count FROM processing_jobs WHERE status = 'COMPLETED'").get()?.count || 0;
 
     let dbSizeBytes = 0;
     try {

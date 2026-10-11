@@ -23,7 +23,6 @@ export class BotAcessClient {
    */
   async sendDocumentForProcessing({ jobId, fileUrl, fileBuffer, filename = 'documento.pdf', mimeType = 'application/pdf', customPrompt = '', mode = 'normal' }) {
     const isTestEnv = process.env.NODE_ENV === 'test' ||
-                      process.argv.some(arg => arg.includes('test')) ||
                       process.execArgv.some(arg => arg.includes('--test'));
     if (isTestEnv) {
       return {
@@ -35,9 +34,16 @@ export class BotAcessClient {
       };
     }
 
+    if (!fileBuffer || fileBuffer.length === 0) {
+      return {
+        success: false,
+        error: 'Arquivo vazio ou não encontrado no disco para envio ao Acessilia Core.'
+      };
+    }
+
     try {
       const formData = new FormData();
-      const blob = new Blob([fileBuffer || Buffer.from('PDF_SAMPLE')], { type: mimeType });
+      const blob = new Blob([fileBuffer], { type: mimeType });
       // O FastAPI do Core espera 'document_file' (backend/api/routes/jobs.py)
       formData.append('document_file', blob, filename);
       // Mantém fallback 'file' para máxima compatibilidade retroativa
@@ -114,7 +120,6 @@ export class BotAcessClient {
       }
 
       const isTestEnv = process.env.NODE_ENV === 'test' ||
-                        process.argv.some(arg => arg.includes('test')) ||
                         process.execArgv.some(arg => arg.includes('--test'));
       if (isTestEnv) {
         return {
@@ -144,7 +149,6 @@ export class BotAcessClient {
   async checkJobStatus(externalJobId) {
     const isMockId = typeof externalJobId === 'string' && externalJobId.startsWith('ext_acessilia_');
     const isTestEnv = process.env.NODE_ENV === 'test' ||
-                      process.argv.some(arg => arg.includes('test')) ||
                       process.execArgv.some(arg => arg.includes('--test'));
 
     if (isMockId || isTestEnv) {
@@ -181,9 +185,6 @@ export class BotAcessClient {
       }
 
       // Fallback apenas para ambiente de teste
-      const isTestEnv = process.env.NODE_ENV === 'test' ||
-                        process.argv.some(arg => arg.includes('test')) ||
-                        process.execArgv.some(arg => arg.includes('--test'));
       if (isTestEnv) {
         return {
           externalJobId,

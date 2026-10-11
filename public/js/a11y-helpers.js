@@ -13,6 +13,47 @@
   if (savedFont) root.classList.add(savedFont);
   if (savedDyslexia === 'true') root.classList.add('dyslexia-font');
 
+  // RÉGUA DE LEITURA VISUAL (READING GUIDE)
+  const readingRuler = document.getElementById('a11y-reading-ruler');
+  let rulerActive = false;
+
+  function updateA11yToolbarState() {
+    const isHighContrast = root.classList.contains('high-contrast');
+    const isDarkSlate = root.classList.contains('dark-slate-theme');
+    const isDyslexia = root.classList.contains('dyslexia-font');
+    const isFontXl = root.classList.contains('font-xl');
+    const isFontLg = root.classList.contains('font-lg');
+    const isFontNormal = !isFontXl && !isFontLg;
+
+    const btnContrast = document.getElementById('btn-a11y-contrast');
+    if (btnContrast) btnContrast.setAttribute('aria-pressed', isHighContrast ? 'true' : 'false');
+
+    const btnSlate = document.getElementById('btn-a11y-slate');
+    if (btnSlate) btnSlate.setAttribute('aria-pressed', isDarkSlate ? 'true' : 'false');
+
+    const btnDyslexia = document.getElementById('btn-a11y-dyslexia');
+    if (btnDyslexia) btnDyslexia.setAttribute('aria-pressed', isDyslexia ? 'true' : 'false');
+
+    const btnFontNormal = document.getElementById('btn-a11y-font-normal');
+    if (btnFontNormal) btnFontNormal.setAttribute('aria-pressed', isFontNormal ? 'true' : 'false');
+
+    const btnFontLg = document.getElementById('btn-a11y-font-lg');
+    if (btnFontLg) btnFontLg.setAttribute('aria-pressed', isFontLg ? 'true' : 'false');
+
+    const btnFontXl = document.getElementById('btn-a11y-font-xl');
+    if (btnFontXl) btnFontXl.setAttribute('aria-pressed', isFontXl ? 'true' : 'false');
+
+    const btnRuler = document.getElementById('btn-a11y-ruler');
+    if (btnRuler) btnRuler.setAttribute('aria-pressed', rulerActive ? 'true' : 'false');
+  }
+
+  // Inicializa estado dos botões ao carregar o DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', updateA11yToolbarState);
+  } else {
+    updateA11yToolbarState();
+  }
+
   window.toggleHighContrast = function() {
     root.classList.remove('dark-slate-theme');
     localStorage.removeItem('a11y_dark_slate');
@@ -20,6 +61,7 @@
     const isHigh = root.classList.contains('high-contrast');
     localStorage.setItem('a11y_contrast', isHigh ? 'high' : 'normal');
     announceA11y(`Modo alto contraste amarelo e preto ${isHigh ? 'ativado' : 'desativado'}`);
+    updateA11yToolbarState();
     syncPreferencesToServer();
   };
 
@@ -30,6 +72,7 @@
     const isDark = root.classList.contains('dark-slate-theme');
     localStorage.setItem('a11y_dark_slate', isDark ? 'true' : 'false');
     announceA11y(`Modo noturno dark slate suave ${isDark ? 'ativado' : 'desativado'}`);
+    updateA11yToolbarState();
   };
 
   window.changeFontSize = function(delta) {
@@ -50,6 +93,7 @@
       localStorage.removeItem('a11y_font_size');
     }
     announceA11y(msg);
+    updateA11yToolbarState();
     syncPreferencesToServer();
   };
 
@@ -58,18 +102,16 @@
     const isDyslexia = root.classList.contains('dyslexia-font');
     localStorage.setItem('a11y_dyslexia', isDyslexia ? 'true' : 'false');
     announceA11y(`Fonte amigável para dislexia ${isDyslexia ? 'ativada' : 'desativada'}`);
+    updateA11yToolbarState();
     syncPreferencesToServer();
   };
-
-  // RÉGUA DE LEITURA VISUAL (READING GUIDE)
-  const readingRuler = document.getElementById('a11y-reading-ruler');
-  let rulerActive = false;
 
   window.toggleReadingGuide = function() {
     if (!readingRuler) return;
     rulerActive = !rulerActive;
     readingRuler.style.display = rulerActive ? 'block' : 'none';
     announceA11y(`Régua de leitura visual ${rulerActive ? 'ativada' : 'desativada'}`);
+    updateA11yToolbarState();
   };
 
   document.addEventListener('mousemove', function(e) {

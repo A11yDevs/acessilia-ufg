@@ -1,6 +1,6 @@
 /* COMPONENTES ACESSÍVEIS */
 
-/* BOTÕES REAIS */
+/* BOTÕES REAIS (WCAG AAA - Contraste mínimo >= 7:1) */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -9,20 +9,107 @@
   font-size: 1rem;
   font-weight: 600;
   border-radius: var(--border-radius);
-  border: 2px solid transparent;
+  border: 2px solid var(--border-color);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
   cursor: pointer;
   text-decoration: none;
   min-height: 44px; /* WCAG 2.5.5 / 2.5.8 Touch Target */
   min-width: 44px;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn:hover {
+  background-color: var(--bg-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .btn-primary {
-  background-color: var(--color-primary);
-  color: var(--color-primary-contrast);
+  background-color: var(--color-primary) !important;
+  color: var(--color-primary-contrast) !important;
+  border-color: var(--color-primary) !important;
 }
 
 .btn-primary:hover {
-  background-color: var(--color-primary-hover);
+  background-color: var(--color-primary-hover) !important;
+  border-color: var(--color-primary-hover) !important;
+  color: var(--color-primary-contrast) !important;
+}
+
+.btn-danger-outline {
+  color: var(--color-error) !important;
+  border-color: var(--color-error) !important;
+  background-color: var(--bg-surface) !important;
+}
+
+.btn-danger-outline:hover {
+  background-color: var(--color-error) !important;
+  color: var(--bg-surface) !important;
+}
+
+.btn-success-outline {
+  color: var(--color-success) !important;
+  border-color: var(--color-success) !important;
+  background-color: var(--bg-surface) !important;
+}
+
+.btn-success-outline:hover {
+  background-color: var(--color-success) !important;
+  color: var(--bg-surface) !important;
+}
+
+.a11y-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  min-height: 36px;
+  min-width: 36px;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.a11y-btn[aria-pressed="true"] {
+  background-color: var(--color-primary) !important;
+  color: var(--color-primary-contrast) !important;
+  border-color: var(--color-primary) !important;
+}
+
+/* OVERRIDES ALTO CONTRASTE PARA BOTÕES (WCAG AAA) */
+html.high-contrast .btn {
+  background-color: #000000 !important;
+  color: #ffff00 !important;
+  border: 2px solid #ffff00 !important;
+}
+
+html.high-contrast .btn:hover,
+html.high-contrast .btn:focus {
+  background-color: #ffff00 !important;
+  color: #000000 !important;
+  border-color: #ffffff !important;
+}
+
+html.high-contrast .btn-primary {
+  background-color: #ffff00 !important;
+  color: #000000 !important;
+  border: 2px solid #ffff00 !important;
+}
+
+html.high-contrast .btn-primary:hover,
+html.high-contrast .btn-primary:focus {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #ffff00 !important;
+}
+
+html.high-contrast .a11y-btn[aria-pressed="true"] {
+  background-color: #ffff00 !important;
+  color: #000000 !important;
+  border-color: #ffff00 !important;
 }
 
 /* CAMPOS DE FORMULÁRIO */
@@ -181,6 +268,10 @@
   text-transform: uppercase;
   letter-spacing: 0.025em;
   border: 1px solid transparent;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
 }
 
 .status-badge-aprovado {
@@ -214,6 +305,34 @@
   background-color: #f3e8ff;
   color: #6b21a8;
   border-color: #9333ea;
+}
+
+/* ROLE TAGS E BADGES INSTITUCIONAIS */
+.role-tag, .badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-primary);
+  color: var(--color-primary-contrast);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+  border: 1px solid transparent;
+}
+
+html.high-contrast .status-badge,
+html.high-contrast .role-tag,
+html.high-contrast .badge {
+  background-color: #000000 !important;
+  color: #ffff00 !important;
+  border: 1px solid #ffff00 !important;
 }
 
 /* CABEÇALHOS DE TABELA ORDENÁVEIS */

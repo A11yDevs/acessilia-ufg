@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { botAcessClient } from './client.js';
 import { materialRepository } from '../../repositories/material.repository.js';
 import { auditRepository } from '../../repositories/audit.repository.js';
@@ -9,10 +11,22 @@ export const botAcessService = {
     if (!job) throw new Error('Job não encontrado');
 
     const version = materialRepository.findVersionById(job.material_version_id);
+    if (!version) throw new Error('Versão não encontrada');
 
-    // 1. Enviar para API do bot-acess (Acessilia)
+    // 1. Resolver o arquivo físico e carregar o buffer real
+    const diskPath = path.isAbsolute(version.storage_path)
+      ? version.storage_path
+      : path.resolve(process.cwd(), '.' + version.storage_path);
+
+    let fileBuffer = null;
+    if (fs.existsSync(diskPath)) {
+      fileBuffer = fs.readFileSync(diskPath);
+    }
+
+    // 2. Enviar para API do bot-acess (Acessilia)
     const response = await botAcessClient.sendDocumentForProcessing({
       jobId: job.id,
+      fileBuffer,
       fileUrl: version.storage_path,
       filename: version.original_filename,
       mimeType: version.mime_type
@@ -28,8 +42,29 @@ export const botAcessService = {
       materialRepository.updateProcessingJobStatus(job.id, 'FAILED', {
         errorMessage: response.error
       });
+      materialRepository.updateMaterialStatus(version.material_id, 'FALHA_PROCESSAMENTO');
       return { success: false, error: response.error };
     }
+  },
+
+  // Sincroniza ativamente o status de um material em processamento
+  async syncActiveJobForMaterial(materialId) {
+    const activeJob = materialRepository.findActiveJobForMaterial(materialId);
+    if (!activeJob || !activeJob.external_job_id) return null;
+
+    try {
+      const statusRes = await botAcessClient.checkJobStatus(activeJob.external_job_id);
+      if (statusRes.status === 'COMPLETED') {
+        return await this.handleJobCompleted(activeJob.id);
+      } else if (statusRes.status === 'FAILED') {
+        materialRepository.updateProcessingJobStatus(activeJob.id, 'FAILED', {
+          errorMessage: statusRes.error || 'Falha no processamento do motor Acessilia.'
+        });
+        materialRepository.updateMaterialStatus(materialId, 'FALHA_PROCESSAMENTO');
+        return { failed: true, error: statusRes.error };
+      }
+    } catch (_) {}
+    return null;
   },
 
   // Notifica progresso em tempo real da tarefa (SSE)

@@ -74,6 +74,9 @@
               <span>Revisões</span>
             </a>
           </li>
+          <% } %>
+
+          <% if (user && (user.roleCode === 'ADMINISTRADOR' || user.roleCode === 'ALUNO' || user.permissions.includes('revisoes.visualizar') || user.permissions.includes('solicitacoes.visualizar_proprias') || user.permissions.includes('solicitacoes.criar'))) { %>
           <li>
             <a href="/solicitacoes" class="nav-link" <%= currentPath.startsWith('/solicitacoes') ? 'aria-current="page"' : '' %>>
               <span aria-hidden="true">📋</span>
@@ -120,21 +123,21 @@
         </div>
 
         <!-- BARRA RÁPIDA DE ACESSIBILIDADE WCAG -->
-        <div role="region" aria-label="Ajustes de Acessibilidade Visual" style="display: flex; align-items: center; gap: 0.375rem; background: rgba(0,0,0,0.03); padding: 0.25rem 0.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); flex-wrap: wrap;">
-          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px; min-width: 36px;" onclick="changeFontSize(0)" title="Fonte Normal" aria-label="Tamanho de fonte normal">A</button>
-          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px; min-width: 36px; font-weight: bold;" onclick="changeFontSize(1)" title="Aumentar Fonte" aria-label="Aumentar tamanho da fonte">A+</button>
-          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px; min-width: 36px; font-weight: 900;" onclick="changeFontSize(2)" title="Fonte Muito Grande" aria-label="Tamanho de fonte muito grande">A++</button>
-          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onclick="toggleHighContrast()" title="Alternar Alto Contraste (Amarelo/Preto)" aria-label="Alternar modo de alto contraste preto e amarelo">🌓 Contraste</button>
-          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onclick="toggleDarkSlateTheme()" title="Modo Noturno Dark Slate" aria-label="Alternar modo escuro suave">🌙 Slate</button>
-          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onclick="toggleDyslexiaFont()" title="Fonte para Dislexia" aria-label="Alternar tipografia amigável para dislexia">📖 Dislexia</button>
-          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onclick="toggleReadingGuide()" title="Régua de Leitura Visual (Alt + R)" aria-label="Ativar ou desativar régua de leitura visual">📏 Régua</button>
-          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onclick="openKeyboardShortcutsModal()" title="Atalhos de Teclado (?)" aria-label="Ver todos os atalhos de teclado da plataforma">⌨ ?</button>
+        <div role="region" aria-label="Ajustes de Acessibilidade Visual" class="a11y-toolbar">
+          <button type="button" id="btn-a11y-font-normal" class="btn a11y-btn" onclick="changeFontSize(0)" title="Fonte Normal" aria-label="Tamanho de fonte normal" aria-pressed="true">A</button>
+          <button type="button" id="btn-a11y-font-lg" class="btn a11y-btn" style="font-weight: bold;" onclick="changeFontSize(1)" title="Aumentar Fonte" aria-label="Aumentar tamanho da fonte" aria-pressed="false">A+</button>
+          <button type="button" id="btn-a11y-font-xl" class="btn a11y-btn" style="font-weight: 900;" onclick="changeFontSize(2)" title="Fonte Muito Grande" aria-label="Tamanho de fonte muito grande" aria-pressed="false">A++</button>
+          <button type="button" id="btn-a11y-contrast" class="btn a11y-btn" onclick="toggleHighContrast()" title="Alternar Alto Contraste (Amarelo/Preto)" aria-label="Alternar modo de alto contraste preto e amarelo" aria-pressed="false">🌓 Contraste</button>
+          <button type="button" id="btn-a11y-slate" class="btn a11y-btn" onclick="toggleDarkSlateTheme()" title="Modo Noturno Dark Slate" aria-label="Alternar modo escuro suave" aria-pressed="false">🌙 Slate</button>
+          <button type="button" id="btn-a11y-dyslexia" class="btn a11y-btn" onclick="toggleDyslexiaFont()" title="Fonte para Dislexia" aria-label="Alternar tipografia amigável para dislexia" aria-pressed="false">📖 Dislexia</button>
+          <button type="button" id="btn-a11y-ruler" class="btn a11y-btn" onclick="toggleReadingGuide()" title="Régua de Leitura Visual (Alt + R)" aria-label="Ativar ou desativar régua de leitura visual" aria-pressed="false">📏 Régua</button>
+          <button type="button" id="btn-a11y-shortcuts" class="btn a11y-btn" onclick="openKeyboardShortcutsModal()" title="Atalhos de Teclado (?)" aria-label="Ver todos os atalhos de teclado da plataforma">⌨ ?</button>
         </div>
 
         <div class="user-profile-badge">
           <!-- SINO DE NOTIFICAÇÕES PERSISTENTE -->
           <div class="notification-container">
-            <button type="button" id="btn-notifications-toggle" class="btn" style="background: transparent; border: 1px solid var(--border-color); padding: 0.375rem 0.625rem; font-size: 1rem; position: relative;" onclick="toggleNotificationDropdown()" aria-label="Central de Notificações" aria-expanded="false" aria-controls="notification-dropdown-panel">
+            <button type="button" id="btn-notifications-toggle" class="btn" style="padding: 0.375rem 0.625rem; font-size: 1rem; position: relative;" onclick="toggleNotificationDropdown()" aria-label="Central de Notificações" aria-expanded="false" aria-controls="notification-dropdown-panel">
               🔔
               <span id="notification-counter" class="notification-badge-count" style="display: none;">0</span>
             </button>
@@ -153,7 +156,7 @@
           <span style="font-weight: 600;"><%= user ? (user.socialName || user.name) : '' %></span>
           <form action="/logout" method="POST" style="display: inline;">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button type="submit" class="btn" style="background: transparent; border: 1px solid var(--border-color); padding: 0.375rem 0.75rem; font-size: 0.875rem;">
+            <button type="submit" class="btn" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
               Sair
             </button>
           </form>

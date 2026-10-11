@@ -55,12 +55,13 @@
 </div>
 <% } %>
 
-<!-- CABEÇALHO DO SELO ACESSILIA & CERTIFICAÇÃO DIGITAL COM QR CODE -->
+<!-- CABEÇALHO DO SELO ACESSILIA & CERTIFICAÇÃO DIGITAL COM QR CODE (CONDICIONAL) -->
+<% if (material.current_status === 'APROVADO' || material.current_status === 'PUBLICADO' || material.current_status === 'AGUARDANDO_REVISAO' || material.current_status === 'EM_REVISAO' || material.current_status === 'PROCESSADO') { %>
 <section aria-labelledby="tit-selo-acessilia" class="stat-card" style="border-left: 6px solid var(--color-primary); background: var(--bg-surface); margin-bottom: 2rem; padding: 1.5rem;">
   <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;">
     <div style="flex: 1; min-width: 280px;">
       <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-        <span class="role-tag" style="background: var(--color-primary); color: white; font-weight: 700; font-size: 0.75rem;">
+        <span class="role-tag" style="background: var(--color-primary); color: var(--color-primary-contrast); font-weight: 700; font-size: 0.75rem;">
           SELO ACESSILIA
         </span>
         <span style="font-size: 0.8125rem; color: var(--text-muted);">
@@ -107,6 +108,76 @@
     <% } %>
   </div>
 </section>
+<% } else if (material.current_status === 'FALHA_PROCESSAMENTO') { %>
+<div class="stat-card" style="border-left: 5px solid var(--color-error); background: var(--bg-surface); margin-bottom: 2rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <div style="font-size: 2.5rem;" aria-hidden="true">⚠️</div>
+      <div>
+        <h3 style="font-size: 1.125rem; font-weight: 700; color: var(--color-error); margin-bottom: 0.25rem;">Falha no Processamento Automático</h3>
+        <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0;">
+          Não foi possível concluir a conversão deste documento no motor Acessilia Core. O arquivo original foi preservado.
+        </p>
+      </div>
+    </div>
+    <form action="/materiais/bulk" method="POST" style="margin: 0;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="materialIds" value="<%= material.id %>">
+      <input type="hidden" name="action" value="reprocess">
+      <button type="submit" class="btn btn-primary btn-sm">🔄 Reprocessar Material</button>
+    </form>
+  </div>
+</div>
+<% } else if (material.current_status === 'CORRECAO_SOLICITADA') { %>
+<div class="stat-card" style="border-left: 5px solid var(--color-warning); background: var(--bg-surface); margin-bottom: 2rem;">
+  <div style="display: flex; align-items: center; gap: 1rem;">
+    <div style="font-size: 2.5rem;" aria-hidden="true">🔄</div>
+    <div>
+      <h3 style="font-size: 1.125rem; font-weight: 700; color: var(--color-warning); margin-bottom: 0.25rem;">Correção Solicitada pelo Revisor</h3>
+      <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0;">
+        Este material requer ajustes adicionais antes de ser homologado pelo Núcleo de Acessibilidade.
+      </p>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<!-- SEÇÃO DE DOWNLOAD DE FORMATOS ACESSÍVEIS (WCAG 2.2 AAA) -->
+<% if (canDownload && (material.current_status === 'PROCESSADO' || material.current_status === 'AGUARDANDO_REVISAO' || material.current_status === 'EM_REVISAO' || material.current_status === 'APROVADO' || material.current_status === 'PUBLICADO')) { %>
+<section id="sec-downloads" aria-labelledby="tit-downloads" class="stat-card" style="border-left: 5px solid #2563eb; background: var(--bg-surface); margin-bottom: 2rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+    <div>
+      <h2 id="tit-downloads" style="font-size: 1.25rem; font-weight: 700; color: #1d4ed8; margin-bottom: 0.25rem;">
+        📥 Baixar Documento Acessibilizado
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">
+        Escolha o formato ideal para seu leitor de tela, linha Braille ou dispositivo assistivo:
+      </p>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+    <a href="/materiais/<%= material.id %>/download?format=html" class="btn btn-primary" title="Baixar HTML com semântica estrita, audiodescrição e MathJax">
+      🌐 HTML Acessível
+    </a>
+    <a href="/materiais/<%= material.id %>/download?format=txt" class="btn" style="border: 2px solid var(--border-color); color: var(--text-primary);" title="Baixar Texto Puro sem formatação complexa para linha Braille">
+      📄 Texto Puro (.txt)
+    </a>
+    <a href="/materiais/<%= material.id %>/download?format=docx" class="btn" style="border: 2px solid var(--border-color); color: var(--text-primary);" title="Baixar Documento Word Acessível">
+      📝 DOCX Acessível
+    </a>
+    <a href="/materiais/<%= material.id %>/download?format=pdf_ua" class="btn" style="border: 2px solid var(--border-color); color: var(--text-primary);" title="Baixar PDF/UA com tags semânticas">
+      📑 PDF/UA
+    </a>
+    <a href="/materiais/<%= material.id %>/download?format=mp3" class="btn" style="border: 2px solid var(--border-color); color: var(--text-primary);" title="Baixar Audiolivro Sintetizado em MP3">
+      🎧 Áudio MP3
+    </a>
+    <a href="/materiais/<%= material.id %>/download?format=zip" class="btn" style="border: 2px solid #2563eb; color: #2563eb; font-weight: 700;" title="Baixar todos os formatos acessíveis em um único arquivo compactado">
+      📦 Pacote Completo (.zip)
+    </a>
+  </div>
+</section>
+<% } %>
 
 <!-- HISTÓRICO DE VERSÕES DO MATERIAL -->
 <section aria-labelledby="sec-versoes" style="margin-bottom: 2.5rem;">
@@ -147,6 +218,7 @@
 </section>
 
 <!-- LEITOR ACESSÍVEL INTEGRADO COM SÍNTESE DE VOZ E CONTROLE DE TIPOGRAFIA -->
+<% if (material.current_status === 'PROCESSADO' || material.current_status === 'AGUARDANDO_REVISAO' || material.current_status === 'EM_REVISAO' || material.current_status === 'APROVADO' || material.current_status === 'PUBLICADO') { %>
 <section aria-labelledby="sec-leitor" style="margin-bottom: 2.5rem;">
   <div class="stat-card" style="border-left: 5px solid var(--color-primary);">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
@@ -154,9 +226,9 @@
         <h2 id="sec-leitor" style="font-size: 1.25rem; font-weight: 700;">📖 Leitor Acessível Integrado (Web Reader)</h2>
         <p style="color: var(--text-muted); font-size: 0.875rem;">Ajuste a tipografia e o espaçamento para uma experiência de leitura confortável</p>
       </div>
-      <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+      <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; max-width: 100%;">
         <!-- CONTROLES DE TIPOGRAFIA DO LEITOR -->
-        <div role="group" aria-label="Controles de Tipografia" style="display: flex; gap: 0.25rem; background: rgba(0,0,0,0.04); padding: 0.25rem; border-radius: var(--border-radius);">
+        <div role="group" aria-label="Controles de Tipografia" style="display: flex; gap: 0.25rem; background: rgba(0,0,0,0.04); padding: 0.25rem; border-radius: var(--border-radius); flex-wrap: wrap; max-width: 100%;">
           <button type="button" class="btn btn-sm" onclick="setReaderFont('system-ui')" title="Fonte Padrão">Padrão</button>
           <button type="button" class="btn btn-sm" onclick="setReaderFont('OpenDyslexic, sans-serif')" title="Fonte para Dislexia">Dislexia</button>
           <button type="button" class="btn btn-sm" onclick="setReaderLineHeight('1.5')" title="Espaçamento 1.5">1.5x</button>
@@ -181,7 +253,7 @@
       <!-- CABEÇALHO DO SELO ACESSILIA NO LEITOR -->
       <div style="border-bottom: 2px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-          <span class="badge" style="background: var(--color-primary); color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">
+          <span class="badge" style="background: var(--color-primary); color: var(--color-primary-contrast); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">
             Selo Acessilia
           </span>
           <% if (locals.certData) { %>
@@ -213,76 +285,41 @@
       <p style="margin-bottom: 1rem;">
         <strong>Resumo Pedagógico:</strong> <%= material.description || 'Material acadêmico disponibilizado para a disciplina ' + material.subject_name + '.' %>
       </p>
-      <div style="padding: 1rem; background: var(--bg-surface); border-radius: var(--border-radius); border: 1px dashed var(--border-color); margin-bottom: 1rem;">
-        <p style="font-style: italic; color: var(--text-secondary);">
-          "Este material foi estruturado segundo as diretrizes WCAG 2.2. Os elementos gráficos possuem descrições textuais alternativas enriquecidas, os títulos seguem hierarquia estrita para navegação facilitada e o contraste cromático respeita o nível AAA."
-        </p>
-      </div>
+
       <div id="material-full-text">
-        <p>Abaixo encontra-se a síntese do texto transcrito e adaptado para leitura em telas ampliadas e linhas Braille:</p>
-        <p>1. Introdução aos conceitos fundamentais da disciplina <%= material.subject_name %>.</p>
-        <p>2. Metodologia de estudo e análise crítica dos conteúdos programáticos.</p>
-        <p>3. Conclusões e orientações para exercícios práticos.</p>
-
-        <!-- EXEMPLOS DE AUDIODESCRIÇÃO PROCESSADA PELO ACESSILIA CORE -->
-        <div class="a11y-audiodesc-card" role="region" aria-label="Audiodescrição de elemento visual">
-          <div class="a11y-audiodesc-header">
-            <span class="a11y-audiodesc-tag">
-              <span aria-hidden="true">🖼️</span> Audiodescrição de Imagem Original
-            </span>
-            <span class="a11y-audiodesc-badge">Acessibilidade Visual (IA + Acessilia)</span>
+        <% if (locals.altTexts && altTexts.length > 0) { %>
+          <div style="margin-top: 1rem;">
+            <% altTexts.forEach(function(at, idx) { %>
+              <div class="a11y-audiodesc-card" role="region" aria-label="Audiodescrição de elemento visual <%= idx + 1 %>">
+                <div class="a11y-audiodesc-header">
+                  <span class="a11y-audiodesc-tag">
+                    <span aria-hidden="true">🖼️</span> Imagem <%= idx + 1 %>: Audiodescrição
+                  </span>
+                  <span class="a11y-audiodesc-badge"><%= at.status === 'APROVADO' ? 'Aprovado por Revisor' : 'Sugerido por IA' %></span>
+                </div>
+                <blockquote class="a11y-audiodesc-content">
+                  "<%= at.human_reviewed_alt || at.ai_suggested_alt %>"
+                </blockquote>
+                <div class="a11y-audiodesc-actions">
+                  <button type="button" class="btn btn-sm btn-a11y-speak" onclick="speakAudiodesc(this)" data-text="<%= (at.human_reviewed_alt || at.ai_suggested_alt).replace(/"/g, '&quot;') %>" aria-label="Ouvir audiodescrição da imagem <%= idx + 1 %>">
+                    🔊 Ouvir Descrição
+                  </button>
+                  <button type="button" class="btn btn-sm" onclick="copyAudiodesc(this, '<%= (at.human_reviewed_alt || at.ai_suggested_alt).replace(/'/g, "\\'") %>')" aria-label="Copiar texto da audiodescrição">
+                    📋 Copiar Texto
+                  </button>
+                </div>
+              </div>
+            <% }); %>
           </div>
-          <blockquote class="a11y-audiodesc-content">
-            "A imagem apresenta o logotipo institucional com tipografia estilizada em alto contraste e elementos gráficos geométricos representativos da área de tecnologia e inovação educacional."
-          </blockquote>
-          <div class="a11y-audiodesc-actions">
-            <button type="button" class="btn btn-sm btn-a11y-speak" onclick="speakAudiodesc(this)" data-text="A imagem apresenta o logotipo institucional com tipografia estilizada em alto contraste e elementos gráficos geométricos representativos da área de tecnologia e inovação educacional." aria-label="Ouvir audiodescrição da imagem">
-              🔊 Ouvir Descrição
-            </button>
-            <button type="button" class="btn btn-sm" onclick="copyAudiodesc(this, 'A imagem apresenta o logotipo institucional com tipografia estilizada em alto contraste e elementos gráficos geométricos representativos da área de tecnologia e inovação educacional.')" aria-label="Copiar texto da audiodescrição">
-              📋 Copiar Texto
-            </button>
-          </div>
-          <figure style="display: none;" aria-hidden="true">
-            <img alt="Logotipo institucional processado pelo Acessilia Core" src="">
-          </figure>
-        </div>
-
-        <!-- COMPONENTE DE NOTAÇÃO MATEMÁTICA ACESSÍVEL (TOOLBOX math.verbalize) -->
-        <div class="a11y-math-card" role="region" aria-label="Notação Matemática Acessibilizada">
-          <div class="a11y-math-header">
-            <span class="a11y-math-tag">
-              <span aria-hidden="true">📐</span> Notação Matemática Estruturada (Acessilia Toolbox)
-            </span>
-            <span class="a11y-audiodesc-badge">LaTeX + math.verbalize</span>
-          </div>
-
-          <div class="a11y-math-display" aria-hidden="true">
-            \[ f(x) = \int_{0}^{\infty} \frac{\sin(x)}{x} \, dx = \frac{\pi}{2} \]
-          </div>
-
-          <div class="a11y-math-verbalization">
-            <span class="a11y-math-verbalization-label">🔊 Verbalização Acessível em Português (Para Leitores de Tela e Baixa Visão):</span>
-            <p class="a11y-math-verbalization-text" id="math-verbalized-sample">
-              "A função f de x é igual à integral definida de zero a infinito da fração com numerador seno de x e denominador x, em relação a x, cujo resultado é pi sobre dois."
-            </p>
-          </div>
-
-          <div class="a11y-audiodesc-actions">
-            <button type="button" class="btn btn-sm btn-a11y-speak" onclick="speakMath(this)" data-text="A função f de x é igual à integral definida de zero a infinito da fração com numerador seno de x e denominador x, em relação a x, cujo resultado é pi sobre dois." aria-label="Ouvir leitura falada da fórmula matemática">
-              🔊 Ouvir Equação Falada
-            </button>
-            <button type="button" class="btn btn-sm" onclick="copyAudiodesc(this, 'f(x) = \\int_{0}^{\\infty} \\frac{\\sin(x)}{x} dx = \\frac{\\pi}{2}')" aria-label="Copiar código LaTeX da fórmula">
-              📋 Copiar LaTeX
-            </button>
-          </div>
-        </div>
+        <% } %>
       </div>
     </article>
   </div>
 </section>
+<% } %>
 
 <!-- PAINEL DE METADADOS TÉCNICOS DO ACESSILIA CORE (DOCLING + PDDL + VLM) -->
+<% if (locals.coreMetadata && (material.current_status === 'PROCESSADO' || material.current_status === 'AGUARDANDO_REVISAO' || material.current_status === 'EM_REVISAO' || material.current_status === 'APROVADO' || material.current_status === 'PUBLICADO')) { %>
 <section id="sec-core-metadata" aria-labelledby="tit-core-metadata" style="margin-bottom: 2.5rem;">
   <div class="stat-card" style="border-left: 5px solid #0284c7; background: var(--bg-surface);">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -300,25 +337,25 @@
     <div class="core-meta-grid">
       <div class="core-meta-item">
         <span class="core-meta-label">Motor de Planejamento</span>
-        <span class="core-meta-value"><%= (locals.coreMetadata && coreMetadata.pipelineEngine) ? coreMetadata.pipelineEngine.toUpperCase() : 'PDDL' %></span>
+        <span class="core-meta-value"><%= coreMetadata.pipelineEngine ? coreMetadata.pipelineEngine.toUpperCase() : 'PDDL' %></span>
       </div>
       <div class="core-meta-item">
         <span class="core-meta-label">Imagens com Audiodescrição</span>
         <span class="core-meta-value">
-          <%= (locals.coreMetadata && coreMetadata.imagesCount) ? coreMetadata.imagesCount : ((locals.altTexts && altTexts.length > 0) ? altTexts.length : '2') %>
+          <%= coreMetadata.imagesCount !== undefined ? coreMetadata.imagesCount : ((locals.altTexts && altTexts.length > 0) ? altTexts.length : 0) %>
         </span>
       </div>
       <div class="core-meta-item">
         <span class="core-meta-label">Páginas Processadas</span>
-        <span class="core-meta-value"><%= (locals.coreMetadata && coreMetadata.pageCount) ? coreMetadata.pageCount : '1' %></span>
+        <span class="core-meta-value"><%= coreMetadata.pageCount || 1 %></span>
       </div>
       <div class="core-meta-item">
         <span class="core-meta-label">Total de Elementos Docling</span>
-        <span class="core-meta-value"><%= (locals.coreMetadata && coreMetadata.totalBlocks) ? coreMetadata.totalBlocks : '25' %></span>
+        <span class="core-meta-value"><%= coreMetadata.totalBlocks || 0 %></span>
       </div>
       <div class="core-meta-item">
         <span class="core-meta-label">Tempo Estimado de Leitura</span>
-        <span class="core-meta-value"><%= (locals.coreMetadata && coreMetadata.estimatedReadingTimeMinutes) ? coreMetadata.estimatedReadingTimeMinutes : '2' %> min</span>
+        <span class="core-meta-value"><%= coreMetadata.estimatedReadingTimeMinutes || 1 %> min</span>
       </div>
       <div class="core-meta-item">
         <span class="core-meta-label">Status da Execução</span>
@@ -329,8 +366,10 @@
     </div>
   </div>
 </section>
+<% } %>
 
 <!-- PLAYER DE ÁUDIO NATIVO COM ATALHOS DE TECLADO (AUDIOLIVRO ACESSÍVEL) -->
+<% if (material.current_status === 'APROVADO' || material.current_status === 'PUBLICADO') { %>
 <section aria-labelledby="sec-audioplayer" style="margin-bottom: 2.5rem;">
   <div class="stat-card" style="border-left: 5px solid var(--color-success); background: var(--bg-surface);">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
@@ -367,6 +406,7 @@
     </div>
   </div>
 </section>
+<% } %>
 
 <!-- SEÇÃO DE REVISÃO E VALIDAÇÃO DE ALT-TEXTS DE IMAGENS (HUMAN-IN-THE-LOOP) -->
 <% if (locals.altTexts && altTexts.length > 0) { %>
@@ -395,6 +435,7 @@
               <% } %>
             </div>
 
+            <% if (user && (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('revisoes.avaliar'))) { %>
             <form action="/materiais/<%= material.id %>/alt-texts/<%= at.id %>" method="POST">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <div class="form-group" style="margin-bottom: 0.75rem;">
@@ -406,6 +447,12 @@
                 <button type="submit" name="status" value="MODIFICADO" class="btn btn-sm" style="border: 1px solid var(--border-color);">💾 Salvar Ajuste</button>
               </div>
             </form>
+            <% } else { %>
+              <div style="background: var(--bg-surface); border: 1px solid var(--border-color); padding: 0.75rem; border-radius: var(--border-radius);">
+                <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Descrição Alternativa:</span>
+                <p style="margin: 0; font-size: 0.875rem; color: var(--text-primary);"><%= at.human_reviewed_alt || at.ai_suggested_alt %></p>
+              </div>
+            <% } %>
           </div>
         </div>
       </div>

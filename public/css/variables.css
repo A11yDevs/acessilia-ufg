@@ -51,11 +51,16 @@ html.high-contrast {
   --text-primary: #ffff00 !important;
   --text-secondary: #ffff00 !important;
   --text-muted: #ffff77 !important;
-  --text-inverse: #000000 !important;
+  --text-inverse: #ffff00 !important;
   --border-color: #ffff00 !important;
+  --border-focus: #ffffff !important;
   --color-primary: #ffff00 !important;
   --color-primary-hover: #ffffff !important;
   --color-primary-contrast: #000000 !important;
+  --color-success: #00ff00 !important;
+  --color-warning: #ffff00 !important;
+  --color-error: #ff5555 !important;
+  --color-info: #00ffff !important;
   --focus-ring: #ffff00 !important;
   --focus-color: #ffff00 !important;
 }
@@ -68,11 +73,16 @@ html.dark-slate-theme {
   --text-primary: #f8fafc !important;
   --text-secondary: #e2e8f0 !important;
   --text-muted: #94a3b8 !important;
-  --text-inverse: #0b1120 !important;
+  --text-inverse: #f8fafc !important;
   --border-color: #38bdf8 !important;
+  --border-focus: #7dd3fc !important;
   --color-primary: #38bdf8 !important;
   --color-primary-hover: #7dd3fc !important;
   --color-primary-contrast: #0b1120 !important;
+  --color-success: #4ade80 !important;
+  --color-warning: #fde047 !important;
+  --color-error: #f87171 !important;
+  --color-info: #38bdf8 !important;
   --focus-ring: #38bdf8 !important;
   --focus-color: #fde047 !important;
 }
@@ -116,7 +126,7 @@ html.dyslexia-font {
     --text-primary: #ffffff; /* Contraste 17.5:1 */
     --text-secondary: #e2e8f0; /* Contraste 13.8:1 */
     --text-muted: #cbd5e1; /* Contraste 10.4:1 sobre #131b2e (WCAG AAA >= 7:1) */
-    --text-inverse: #0f172a;
+    --text-inverse: #ffffff;
 
     --border-color: #64748b; /* Contraste 3.8:1 */
     --border-focus: #7dd3fc;

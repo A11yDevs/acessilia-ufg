@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- MIGRAÇÃO 001: ESTRUTURA INSTITUCIONAL, RBAC, USUÁRIOS E SEGURANÇA
 -- ============================================================================
 
@@ -241,7 +241,7 @@ CREATE TABLE IF NOT EXISTS materials (
     current_status TEXT NOT NULL DEFAULT 'ENVIADO' CHECK (current_status IN (
         'ENVIADO', 'AGUARDANDO_PROCESSAMENTO', 'PROCESSANDO', 'PROCESSADO',
         'AGUARDANDO_REVISAO', 'EM_REVISAO', 'CORRECAO_SOLICITADA',
-        'APROVADO', 'REPROVADO', 'PUBLICADO', 'ARQUIVADO'
+        'APROVADO', 'REPROVADO', 'PUBLICADO', 'ARQUIVADO', 'FALHA_PROCESSAMENTO'
     )),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP

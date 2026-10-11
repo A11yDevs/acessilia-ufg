@@ -45,8 +45,8 @@ export async function dashboardWebRoutes(fastify, opts) {
       const pendingJobs = db.prepare("SELECT COUNT(*) as count FROM materials WHERE teacher_user_id = ? AND current_status = 'AGUARDANDO_PROCESSAMENTO'").get(user.id).count;
       stats = { myMaterials, myApprovedMaterials, pendingJobs };
     } else if (user.roleCode === 'REVISOR') {
-      const pendingReviews = db.prepare("SELECT COUNT(*) as count FROM materials WHERE current_status = 'AGUARDANDO_REVISAO'").get().count;
-      const inProgressReviews = db.prepare("SELECT COUNT(*) as count FROM reviews WHERE reviewer_user_id = ? AND status = 'EM_ANDAMENTO'").get(user.id).count;
+      const pendingReviews = db.prepare("SELECT COUNT(*) as count FROM materials WHERE current_status IN ('AGUARDANDO_REVISAO', 'CORRECAO_SOLICITADA')").get().count;
+      const inProgressReviews = db.prepare("SELECT COUNT(*) as count FROM materials WHERE current_status = 'EM_REVISAO'").get().count;
       stats = { pendingReviews, inProgressReviews };
     } else {
       // ALUNO

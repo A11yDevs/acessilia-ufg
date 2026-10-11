@@ -59,7 +59,7 @@
               <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('solicitacoes.gerenciar')) { %>
                 <form action="/solicitacoes/<%= r.id %>/status" method="POST" style="display: inline-flex; gap: 0.25rem;">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <select name="status" class="form-input" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onchange="this.form.submit()">
+                  <select name="status" class="form-input" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; min-height: 36px;" onchange="this.form.submit()" aria-label="Atualizar status da solicitação do material <%= r.material_title %>">
                     <option value="SOLICITADA" <%= r.status === 'SOLICITADA' ? 'selected' : '' %>>SOLICITADA</option>
                     <option value="EM_ATENDIMENTO" <%= r.status === 'EM_ATENDIMENTO' ? 'selected' : '' %>>EM ATENDIMENTO</option>
                     <option value="PROCESSANDO" <%= r.status === 'PROCESSANDO' ? 'selected' : '' %>>PROCESSANDO</option>
@@ -88,9 +88,14 @@
       <div class="form-group">
         <label for="sel-mat-solic" class="form-label">Material Acadêmico Necessário <span class="required-indicator">*</span></label>
         <select id="sel-mat-solic" name="materialId" class="form-input" required>
-          <% availableMaterials.forEach(m => { %>
-            <option value="<%= m.id %>"><%= m.title %></option>
-          <% }) %>
+          <% if (availableMaterials.length === 0) { %>
+            <option value="" disabled selected>Nenhum material disponível para sua turma</option>
+          <% } else { %>
+            <option value="" disabled selected>Selecione um material...</option>
+            <% availableMaterials.forEach(m => { %>
+              <option value="<%= m.id %>"><%= m.title %></option>
+            <% }) %>
+          <% } %>
         </select>
       </div>
 
