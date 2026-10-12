@@ -257,6 +257,10 @@ export async function materialsWebRoutes(fastify, opts) {
   }, async (request, reply) => {
     const materialId = parseInt(request.params.id, 10);
     const format = (request.query.format || 'html').toLowerCase();
+    const supportedFormats = ['html', 'txt', 'pdf', 'pdf_ua', 'docx', 'mp3', 'zip'];
+    if (!supportedFormats.includes(format)) {
+      return reply.status(400).send({ error: `Formato de download não suportado (${format}). Formatos disponíveis: HTML, TXT, PDF, PDF/UA, DOCX, MP3 e ZIP.` });
+    }
 
     const canDownload = await materialService.canUserDownloadMaterial(request.user, materialId);
     if (!canDownload) {

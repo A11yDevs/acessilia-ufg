@@ -49,6 +49,10 @@ export async function usersWebRoutes(fastify, opts) {
       if (!roleId) {
         throw new Error('A função do usuário é obrigatória.');
       }
+      const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.trim().toLowerCase());
+      if (existing) {
+        throw new Error('Já existe um usuário cadastrado com este e-mail.');
+      }
 
       const role = db.prepare('SELECT id FROM roles WHERE id = ?').get(parseInt(roleId, 10));
       if (!role) {

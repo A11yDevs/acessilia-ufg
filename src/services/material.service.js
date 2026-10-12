@@ -304,6 +304,11 @@ export const materialService = {
       throw new Error('Tipo do problema e descrição são obrigatórios.');
     }
 
+    const allowedIssueTypes = ['FORMULA', 'IMAGEM_ALT', 'TABELA', 'AUDIO_SINTESE', 'OUTRO'];
+    if (!allowedIssueTypes.includes(issueType)) {
+      throw new Error('Tipo de problema inválido. Escolha uma das opções do formulário.');
+    }
+
     const material = materialRepository.findMaterialById(materialId);
     if (!material) throw new Error('Material não encontrado.');
 

@@ -9,6 +9,9 @@ export async function webhookApiRoutes(fastify, opts) {
     if (!externalJobId || !status) {
       return reply.status(400).send({ error: 'externalJobId e status são obrigatórios' });
     }
+    if (!['COMPLETED', 'FAILED'].includes(status)) {
+      return reply.status(400).send({ error: `Status desconhecido (${status}). Permitidos: COMPLETED, FAILED.` });
+    }
 
     // Localizar o job pelo externalJobId
     const job = fastify.db ? fastify.db.prepare('SELECT * FROM processing_jobs WHERE external_job_id = ?').get(externalJobId)
@@ -19,6 +22,13 @@ export async function webhookApiRoutes(fastify, opts) {
     }
 
     const version = materialRepository.findVersionById(job.material_version_id);
+
+    // Idempotência: o job pode já ter sido concluído pela sincronização ativa
+    // (consulta ao Core) ou por um aviso anterior. Repetir não cria outra versão
+    // nem desfaz o que já foi concluído.
+    if (job.status === 'COMPLETED') {
+      return reply.send({ success: true, message: 'Job já concluído anteriormente; nenhuma alteração feita.' });
+    }
 
     if (status === 'COMPLETED') {
       const nextVersionNumber = version.version_number + 1;
@@ -50,7 +60,8 @@ export async function webhookApiRoutes(fastify, opts) {
       return reply.send({ success: true, message: 'Material processado e pronto para revisão humana', versionId: newVersion.id });
     } else {
       materialRepository.updateProcessingJobStatus(job.id, 'FAILED', { errorMessage });
-      materialRepository.updateMaterialStatus(version.material_id, 'CORRECAO_SOLICITADA');
+      // Falha técnica do motor não é correção a cargo do professor
+      materialRepository.updateMaterialStatus(version.material_id, 'FALHA_PROCESSAMENTO');
 
       auditRepository.createLog({
         userId: null,
