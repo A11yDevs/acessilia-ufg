@@ -171,11 +171,15 @@ export class BotAcessClient {
 
       if (response && response.ok) {
         const data = await response.json();
-        // Acessilia status: QUEUED, PROCESSING, DONE, FAILED
-        const isDone = data.status === 'DONE' || data.status === 'COMPLETED';
+        // O Core responde em minúsculas: queued, processing, done, error, cancelled
+        // (backend/api/worker.py). A comparação ignora maiúsculas/minúsculas.
+        const coreStatus = String(data.status || '').toLowerCase();
+        const isDone = coreStatus === 'done' || coreStatus === 'completed';
+        const isFailed = ['error', 'failed', 'cancelled', 'canceled'].includes(coreStatus);
         return {
           externalJobId,
-          status: isDone ? 'COMPLETED' : (data.status === 'FAILED' ? 'FAILED' : 'PROCESSING'),
+          status: isDone ? 'COMPLETED' : (isFailed ? 'FAILED' : 'PROCESSING'),
+          error: isFailed ? ((data.erros || []).join('; ') || `Processamento encerrado no Core com status "${coreStatus}".`) : undefined,
           progress: data.progresso || 0,
           currentStep: data.etapa_atual || '',
           downloadUrl: data.download_url,
@@ -194,15 +198,17 @@ export class BotAcessClient {
         };
       }
 
+      // Core fora do ar ou resposta inesperada: não é falha do processamento.
+      // O material continua em processamento e a consulta é refeita depois.
       return {
         externalJobId,
-        status: 'FAILED',
+        status: 'UNAVAILABLE',
         error: 'Não foi possível obter o status da tarefa no motor Acessilia.'
       };
     } catch (err) {
       return {
         externalJobId,
-        status: 'FAILED',
+        status: 'UNAVAILABLE',
         error: err.message
       };
     }
@@ -254,6 +260,41 @@ export class BotAcessClient {
    */
   getDownloadUrl(token, format = 'html') {
     return `${this.baseUrl}/api/v1/download/${token}/${format}`;
+  }
+
+  /**
+   * Extrai o token de download da URL devolvida pelo Core em download_url
+   * (ex.: https://core/download/<token> ou /api/v1/download/<token>/html).
+   */
+  extractDownloadToken(downloadUrl) {
+    if (typeof downloadUrl !== 'string') return null;
+    const match = downloadUrl.match(/\/download\/([A-Za-z0-9._~-]+)/);
+    return match ? match[1] : null;
+  }
+
+  /**
+   * Baixa do Core o arquivo processado em um formato (GET /api/v1/download/{token}/{format}).
+   */
+  async fetchProcessedFile(token, format = 'html') {
+    try {
+      const response = await fetch(this.getDownloadUrl(token, format), {
+        method: 'GET',
+        headers: this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {},
+        signal: AbortSignal.timeout(30000)
+      }).catch(() => null);
+
+      if (!response) return { ok: false, status: 0 };
+      if (!response.ok) return { ok: false, status: response.status };
+
+      return {
+        ok: true,
+        status: response.status,
+        buffer: Buffer.from(await response.arrayBuffer()),
+        contentType: response.headers.get('content-type') || 'application/octet-stream'
+      };
+    } catch (err) {
+      return { ok: false, status: 0, error: err.message };
+    }
   }
 }
 
