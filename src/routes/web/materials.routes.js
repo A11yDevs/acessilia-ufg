@@ -4,6 +4,7 @@ import { materialService } from '../../services/material.service.js';
 import { materialRepository } from '../../repositories/material.repository.js';
 import { academicRepository } from '../../repositories/academic.repository.js';
 import { botAcessService } from '../../integrations/bot-acess/service.js';
+import { botAcessClient } from '../../integrations/bot-acess/client.js';
 import { certificateService } from '../../services/certificate.service.js';
 import { parseAcessiliaMetadata, enhanceAccessibleHtml } from '../../utils/meta-parser.js';
 
@@ -257,6 +258,10 @@ export async function materialsWebRoutes(fastify, opts) {
   }, async (request, reply) => {
     const materialId = parseInt(request.params.id, 10);
     const format = (request.query.format || 'html').toLowerCase();
+    const supportedFormats = ['html', 'txt', 'pdf', 'pdf_ua', 'docx', 'mp3', 'zip'];
+    if (!supportedFormats.includes(format)) {
+      return reply.status(400).send({ error: `Formato de download não suportado (${format}). Formatos disponíveis: HTML, TXT, PDF, PDF/UA, DOCX, MP3 e ZIP.` });
+    }
 
     const canDownload = await materialService.canUserDownloadMaterial(request.user, materialId);
     if (!canDownload) {
@@ -272,6 +277,26 @@ export async function materialsWebRoutes(fastify, opts) {
     const host = request.headers.host || 'localhost:3000';
     const protocol = request.protocol || 'http';
     const cert = certificateService.getCertificateData(materialId, host, protocol);
+
+    // Arquivo real produzido pelo Core: a versão processada guarda o download_url do job.
+    const processedVersion = versions.find(v => v.version_type === 'PROCESSADO_BOT');
+    const coreToken = processedVersion ? botAcessClient.extractDownloadToken(processedVersion.storage_path) : null;
+    if (coreToken) {
+      const file = await botAcessClient.fetchProcessedFile(coreToken, format);
+      if (!file.ok) {
+        const notFound = file.status === 404;
+        return reply.status(notFound ? 404 : 502).send({
+          error: notFound
+            ? `O formato ${format.toUpperCase()} não está disponível para este material no Acessilia Core.`
+            : 'Não foi possível obter o arquivo no Acessilia Core no momento. Tente novamente em instantes.'
+        });
+      }
+      const extension = format === 'pdf_ua' ? 'pdf' : format;
+      reply.header('Content-Type', file.contentType);
+      reply.header('Content-Disposition', `attachment; filename="${baseFilename}_acessivel${format === 'pdf_ua' ? '_pdf_ua' : ''}.${extension}"`);
+      return reply.send(file.buffer);
+    }
+
     const qrCodeDataUrl = cert ? await certificateService.generateQrCodeDataUrl(cert.certificateUrl) : '';
 
     if (format === 'html') {

@@ -14,12 +14,18 @@ export const botAcessService = {
     if (!version) throw new Error('Versão não encontrada');
 
     // 1. Resolver o arquivo físico e carregar o buffer real
-    const diskPath = path.isAbsolute(version.storage_path)
-      ? version.storage_path
-      : path.resolve(process.cwd(), '.' + version.storage_path);
+    // storage_path é gravado como '/uploads/<arquivo>', relativo à raiz do projeto
+    // (material.service.js). Como começa com '/', path.isAbsolute() o trata como
+    // caminho absoluto do sistema; por isso a raiz do projeto é tentada primeiro.
+    const storagePath = version.storage_path || '';
+    const candidates = [
+      path.resolve(process.cwd(), '.' + (storagePath.startsWith('/') ? storagePath : '/' + storagePath)),
+      storagePath
+    ];
+    const diskPath = candidates.find(p => p && fs.existsSync(p) && fs.statSync(p).isFile());
 
     let fileBuffer = null;
-    if (fs.existsSync(diskPath)) {
+    if (diskPath) {
       fileBuffer = fs.readFileSync(diskPath);
     }
 

@@ -11,6 +11,11 @@ export async function certificateWebRoutes(fastify, opts) {
     if (!certData) {
       return reply.status(404).send('Certificado não encontrado ou material inexistente.');
     }
+    // O certificado só existe depois que o Core processou o documento (automático,
+    // ainda sem revisão) ou depois da aprovação humana.
+    if (!certData.isProcessed && !certData.isApproved) {
+      return reply.status(404).send('Certificado ainda não disponível: o material não foi processado pelo Acessilia.');
+    }
 
     const qrCodeDataUrl = await certificateService.generateQrCodeDataUrl(certData.certificateUrl);
 
