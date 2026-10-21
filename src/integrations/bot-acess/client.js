@@ -23,7 +23,7 @@ export class BotAcessClient {
    */
   async sendDocumentForProcessing({ jobId, fileUrl, fileBuffer, filename = 'documento.pdf', mimeType = 'application/pdf', customPrompt = '', mode = 'normal' }) {
     const isTestEnv = process.env.NODE_ENV === 'test' ||
-                      process.execArgv.some(arg => arg.includes('--test'));
+                      (process.env.NODE_ENV !== 'development' && process.execArgv.some(arg => arg.includes('--test')));
     if (isTestEnv) {
       return {
         success: true,
@@ -122,7 +122,7 @@ export class BotAcessClient {
       }
 
       const isTestEnv = process.env.NODE_ENV === 'test' ||
-                        process.execArgv.some(arg => arg.includes('--test'));
+                        (process.env.NODE_ENV !== 'development' && process.execArgv.some(arg => arg.includes('--test')));
       if (isTestEnv) {
         return {
           success: true,
@@ -151,7 +151,7 @@ export class BotAcessClient {
   async checkJobStatus(externalJobId, jobToken = null) {
     const isMockId = typeof externalJobId === 'string' && externalJobId.startsWith('ext_acessilia_');
     const isTestEnv = process.env.NODE_ENV === 'test' ||
-                      process.execArgv.some(arg => arg.includes('--test'));
+                      (process.env.NODE_ENV !== 'development' && process.execArgv.some(arg => arg.includes('--test')));
 
     if (isMockId || isTestEnv) {
       return {
