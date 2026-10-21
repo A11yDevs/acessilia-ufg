@@ -79,9 +79,6 @@ export async function materialsWebRoutes(fastify, opts) {
       if (body.fileBuffer) {
         fileBuffer = Buffer.isBuffer(body.fileBuffer) ? body.fileBuffer : Buffer.from(body.fileBuffer);
         fileUploaded = true;
-      } else if (process.env.NODE_ENV === 'test' || process.execArgv.some(a => a.includes('--test'))) {
-        fileBuffer = Buffer.from('PDF_SAMPLE_DATA');
-        fileUploaded = true;
       }
     }
 
@@ -479,8 +476,9 @@ Documento acessível gerado pelo Acessilia.
     }
 
     if (format === 'mp3') {
-      // Retorna amostra de áudio acessível ou redireciona
-      return reply.redirect('/public/audio/sample_acessivel.mp3');
+      return reply.status(404).send({
+        error: 'O arquivo de áudio MP3 completo ainda não foi gerado pelo Acessilia Core para este material. Utilize a leitura neural em tempo real no Leitor Acessível integrado.'
+      });
     }
 
     // Para docx, pdf_ua e zip: todos incluem o cabeçalho oficial do Selo Acessilia com link/validação e status

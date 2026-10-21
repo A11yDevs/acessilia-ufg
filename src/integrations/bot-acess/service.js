@@ -178,17 +178,6 @@ export const botAcessService = {
             status: 'PENDENTE'
           });
         }
-      } else {
-        // Fallback apenas em ambiente de teste automatizado para fixtures de teste
-        const isTestEnv = process.env.NODE_ENV === 'test' || process.execArgv.some(arg => arg.includes('--test'));
-        if (isTestEnv) {
-          materialRepository.createAltText({
-            materialVersionId: newVersion.id,
-            imageUrlOrPath: '/public/images/sample_slide_fig1.png',
-            aiSuggestedAlt: 'Gráfico de barras ilustrando a distribuição de memória RAM por processo no sistema operacional.',
-            status: 'PENDENTE'
-          });
-        }
       }
 
       // Emite SSE para atualizar instantaneamente qualquer usuário com a lista aberta

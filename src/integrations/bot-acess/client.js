@@ -22,15 +22,13 @@ export class BotAcessClient {
    * Suporta Buffer, Blob ou Stream direto.
    */
   async sendDocumentForProcessing({ jobId, fileUrl, fileBuffer, filename = 'documento.pdf', mimeType = 'application/pdf', customPrompt = '', mode = 'normal' }) {
-    const isTestEnv = process.env.NODE_ENV === 'test' ||
-                      (process.env.NODE_ENV !== 'development' && process.execArgv.some(arg => arg.includes('--test')));
-    if (isTestEnv) {
+    if (process.env.NODE_ENV === 'test') {
       return {
         success: true,
         externalJobId: `ext_acessilia_${jobId || Date.now()}_${Math.floor(Math.random() * 1000)}`,
         position: 1,
         status: 'QUEUED',
-        message: 'Documento enfileirado no motor Acessilia (modo desacoplado/emulado de teste)'
+        message: 'Documento enfileirado no motor Acessilia (modo desacoplado de teste)'
       };
     }
 
@@ -121,18 +119,6 @@ export class BotAcessClient {
         };
       }
 
-      const isTestEnv = process.env.NODE_ENV === 'test' ||
-                        (process.env.NODE_ENV !== 'development' && process.execArgv.some(arg => arg.includes('--test')));
-      if (isTestEnv) {
-        return {
-          success: true,
-          externalJobId: `ext_acessilia_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-          fileBuffer: buffer,
-          filename: filePart.filename,
-          mimeType: filePart.mimetype
-        };
-      }
-
       return {
         success: false,
         error: 'Motor Acessilia Core indisponível para streaming multipart no momento.'
@@ -149,11 +135,16 @@ export class BotAcessClient {
    * Consulta status de processamento do job no Acessilia (/api/v1/jobs/{task_id})
    */
   async checkJobStatus(externalJobId, jobToken = null) {
-    const isMockId = typeof externalJobId === 'string' && externalJobId.startsWith('ext_acessilia_');
-    const isTestEnv = process.env.NODE_ENV === 'test' ||
-                      (process.env.NODE_ENV !== 'development' && process.execArgv.some(arg => arg.includes('--test')));
+    if (!externalJobId) {
+      return {
+        externalJobId: null,
+        status: 'FAILED',
+        error: 'Identificador de tarefa (externalJobId) não fornecido.'
+      };
+    }
 
-    if (isMockId || isTestEnv) {
+    // Apenas em execução explícita da suíte de testes unitários/integração
+    if (process.env.NODE_ENV === 'test') {
       return {
         externalJobId,
         status: 'COMPLETED',
@@ -191,16 +182,6 @@ export class BotAcessClient {
           downloadUrl: data.download_url,
           processedDocumentUrl: data.download_url || `/uploads/accessible_${externalJobId}.html`,
           errors: data.erros || []
-        };
-      }
-
-      // Fallback apenas para ambiente de teste
-      if (isTestEnv) {
-        return {
-          externalJobId,
-          status: 'COMPLETED',
-          processedDocumentUrl: `/uploads/accessible_${externalJobId}.html`,
-          confidenceScore: 0.98
         };
       }
 
