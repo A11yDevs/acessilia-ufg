@@ -2,6 +2,16 @@
 (function() {
   const root = document.documentElement;
 
+  // Helper para preservar o prefixo de rota sob proxy reverso (evita duplicações como /gestor/gestor)
+  function getAppUrl(path) {
+    const clean = path.startsWith('/') ? path : '/' + path;
+    if (clean.indexOf('gestor') !== -1) {
+      return clean;
+    }
+    const isGestor = window.location.pathname.indexOf('gestor') !== -1;
+    return (isGestor ? '/gestor' : '') + clean;
+  }
+
   // Restaurar preferências salvas
   const savedContrast = localStorage.getItem('a11y_contrast');
   const savedFont = localStorage.getItem('a11y_font_size');
@@ -216,7 +226,7 @@
       const contrastMode = root.classList.contains('high-contrast') ? 'high' : 'normal';
       const fontSize = root.classList.contains('font-xl') ? 'font-xl' : (root.classList.contains('font-lg') ? 'font-lg' : 'normal');
       const dyslexiaFont = root.classList.contains('dyslexia-font');
-      fetch('/api/v1/usuarios/preferencias', {
+      fetch(getAppUrl('/api/v1/usuarios/preferencias'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contrastMode, fontSize, dyslexiaFont })
@@ -277,25 +287,25 @@
       window.toggleDyslexiaFont();
     } else if (e.altKey && e.key === '1') {
       e.preventDefault();
-      window.location.href = '/dashboard';
+      window.location.href = getAppUrl('/dashboard');
     } else if (e.altKey && e.key === '2') {
       e.preventDefault();
-      window.location.href = '/materiais';
+      window.location.href = getAppUrl('/materiais');
     } else if (e.altKey && e.key === '3') {
       e.preventDefault();
-      window.location.href = '/solicitacoes';
+      window.location.href = getAppUrl('/solicitacoes');
     }
   });
 
   // REGISTRO DE SERVICE WORKER PARA SUPORTE A PWA
   if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-    navigator.serviceWorker.register('/public/sw.js').catch(() => {});
+    navigator.serviceWorker.register(getAppUrl('/public/sw.js')).catch(() => {});
   }
 
   // CONEXÃO COM O CANAL SSE DE NOTIFICAÇÕES EM TEMPO REAL
   if (typeof EventSource !== 'undefined') {
     try {
-      const evtSource = new EventSource('/api/v1/notifications/stream');
+      const evtSource = new EventSource(getAppUrl('/api/v1/notifications/stream'));
       evtSource.onmessage = function(event) {
         try {
           const data = JSON.parse(event.data);
@@ -385,7 +395,7 @@
 
     function performAutoLogout() {
       announceA11y('Sua sessão expirou por inatividade. Redirecionando...');
-      window.location.href = '/login?reason=timeout';
+      window.location.href = getAppUrl('/login?reason=timeout');
     }
 
     window.resetUserInactivity = resetTimers;

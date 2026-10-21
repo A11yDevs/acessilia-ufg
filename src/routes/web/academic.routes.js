@@ -125,7 +125,8 @@ export async function academicWebRoutes(fastify, opts) {
         description: description || null,
         workloadHours: parseInt(workloadHours, 10)
       }, request.user);
-      return reply.redirect(redirectUrl || '/academico/disciplinas');
+      const cleanRedirectUrl = (redirectUrl || '/academico/disciplinas').replace(/^\/gestor/, '');
+      return reply.redirect(cleanRedirectUrl);
     } catch (err) {
       return reply.status(400).send({ error: err.message });
     }

@@ -42,6 +42,9 @@ export async function buildApp(opts = {}) {
     trustProxy: true,
     rewriteUrl: (req) => {
       // Normaliza URLs caso o proxy reverso Apache envie /gestor/ no início ou no meio
+      if (req.url === '/gestor') {
+        return '/';
+      }
       if (req.url && req.url.startsWith('/gestor/')) {
         return req.url.slice(7);
       }

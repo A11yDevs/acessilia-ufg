@@ -489,7 +489,14 @@
       xhr.onload = function() {
         if (xhr.status >= 200 && xhr.status < 400) {
           if (percentageText) percentageText.textContent = 'Processando...';
-          const redirectUrl = xhr.responseURL || '/materiais';
+          let redirectUrl = xhr.responseURL || '/materiais';
+          if (window.location.pathname.includes('/gestor')) {
+            if (redirectUrl.startsWith('/materiais')) {
+              redirectUrl = '/gestor' + redirectUrl;
+            } else if (redirectUrl.includes('://') && !redirectUrl.includes('/gestor/')) {
+              redirectUrl = redirectUrl.replace(/(\/\/[^\/]+)(\/.*)?$/, '$1/gestor$2');
+            }
+          }
           window.location.href = redirectUrl;
         } else {
           alert('Erro no envio do material. Por favor tente novamente.');

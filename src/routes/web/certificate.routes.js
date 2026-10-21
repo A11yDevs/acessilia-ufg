@@ -5,7 +5,9 @@ export async function certificateWebRoutes(fastify, opts) {
   const certificateHandler = async (request, reply) => {
     const materialId = parseInt(request.params.id, 10);
     const host = request.headers.host || 'localhost:3000';
-    const protocol = request.protocol || 'http';
+    const protocol = request.headers['x-forwarded-proto'] ||
+                     (request.headers.referer?.startsWith('https') ? 'https' : null) ||
+                     (host.includes('localhost') || host.includes('127.0.0.1') ? (request.protocol || 'http') : 'https');
     const isGestor = request.headers['x-forwarded-prefix'] === '/gestor' ||
                      request.headers.referer?.includes('/gestor') ||
                      request.raw?.url?.includes('/gestor') ||

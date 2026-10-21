@@ -205,7 +205,9 @@ export async function materialsWebRoutes(fastify, opts) {
 
     // Certificado Digital e QR Code
     const host = request.headers.host || 'localhost:3000';
-    const protocol = request.protocol || 'http';
+    const protocol = request.headers['x-forwarded-proto'] ||
+                     (request.headers.referer?.startsWith('https') ? 'https' : null) ||
+                     (host.includes('localhost') || host.includes('127.0.0.1') ? (request.protocol || 'http') : 'https');
     const isGestor = request.headers['x-forwarded-prefix'] === '/gestor' ||
                      request.headers.referer?.includes('/gestor') ||
                      request.raw?.url?.includes('/gestor') ||
@@ -310,7 +312,9 @@ export async function materialsWebRoutes(fastify, opts) {
     const baseFilename = material.title.toLowerCase().replace(/[^a-z0-9]/gi, '_').substring(0, 40);
 
     const host = request.headers.host || 'localhost:3000';
-    const protocol = request.protocol || 'http';
+    const protocol = request.headers['x-forwarded-proto'] ||
+                     (request.headers.referer?.startsWith('https') ? 'https' : null) ||
+                     (host.includes('localhost') || host.includes('127.0.0.1') ? (request.protocol || 'http') : 'https');
     const isGestor = request.headers['x-forwarded-prefix'] === '/gestor' ||
                      request.headers.referer?.includes('/gestor') ||
                      request.raw?.url?.includes('/gestor') ||

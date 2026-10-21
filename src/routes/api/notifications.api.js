@@ -1,13 +1,11 @@
-﻿import { EventEmitter } from 'events';
+import { EventEmitter } from 'events';
 
 class NotificationEmitter extends EventEmitter {}
 export const notificationEvents = new NotificationEmitter();
 
 export async function notificationsApiRoutes(fastify, opts) {
   // Endpoint Server-Sent Events (SSE) em tempo real
-  fastify.get('/api/v1/notifications/stream', {
-    preHandler: [fastify.requireAuth]
-  }, (request, reply) => {
+  const sseHandler = (request, reply) => {
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -29,5 +27,13 @@ export async function notificationsApiRoutes(fastify, opts) {
     request.raw.on('close', () => {
       notificationEvents.removeListener('notify', onNotification);
     });
-  });
+  };
+
+  fastify.get('/api/v1/notifications/stream', {
+    preHandler: [fastify.requireAuth]
+  }, sseHandler);
+
+  fastify.get('/gestor/api/v1/notifications/stream', {
+    preHandler: [fastify.requireAuth]
+  }, sseHandler);
 }

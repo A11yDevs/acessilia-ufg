@@ -55,7 +55,13 @@ export const certificateService = {
     if (cleanPrefix && !cleanPrefix.startsWith('/')) cleanPrefix = '/' + cleanPrefix;
     if (cleanPrefix.endsWith('/')) cleanPrefix = cleanPrefix.slice(0, -1);
 
-    const certificateUrl = `${reqProtocol}://${reqHost}${cleanPrefix}/certificados/material/${material.id}`;
+    // Garante https em ambientes de produção com domínio institucional
+    let finalProtocol = reqProtocol || 'http';
+    if (reqHost && !reqHost.includes('localhost') && !reqHost.includes('127.0.0.1')) {
+      finalProtocol = 'https';
+    }
+
+    const certificateUrl = `${finalProtocol}://${reqHost}${cleanPrefix}/certificados/material/${material.id}`;
 
     return {
       materialId: material.id,

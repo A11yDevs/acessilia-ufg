@@ -1031,7 +1031,8 @@
     if (!isProcessing) return;
 
     try {
-      const eventSource = new EventSource('/api/v1/notifications/stream');
+      const sseUrl = buildApiUrl(['api', 'v1', 'notifications', 'stream']);
+      const eventSource = new EventSource(sseUrl);
       eventSource.onmessage = function(event) {
         try {
           const data = JSON.parse(event.data);
@@ -1112,7 +1113,10 @@
     // 5. Garante que todos os links do certificado digital utilizem o prefixo /gestor
     if (window.location.pathname.includes('/gestor')) {
       document.querySelectorAll('a[href*="/certificados/material/"]').forEach(a => {
-        if (!a.href.includes('/gestor/')) {
+        const rawHref = a.getAttribute('href') || '';
+        if (rawHref.startsWith('/certificados/')) {
+          a.setAttribute('href', '/gestor' + rawHref);
+        } else if (!a.href.includes('/gestor/')) {
           a.href = a.href.replace(/(\/\/[^\/]+)(\/certificados\/)/, '$1/gestor$2');
         }
       });
