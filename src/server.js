@@ -1,6 +1,7 @@
 import { buildApp } from './app.js';
 import { env } from './config/env.js';
 import { runMigrations } from '../database/migrate.js';
+import { botAcessService } from './integrations/bot-acess/service.js';
 
 async function startServer() {
   try {
@@ -10,6 +11,9 @@ async function startServer() {
     const app = await buildApp();
     await app.listen({ port: env.PORT, host: env.HOST });
     console.log(`[ACESSILIA GESTOR] Servidor ativo em http://${env.HOST}:${env.PORT}`);
+
+    // Inicia poller em segundo plano para sincronização de jobs com Acessilia Core
+    botAcessService.startBackgroundPoller(5000);
   } catch (err) {
     console.error('[SERVER ERROR] Falha ao iniciar aplicacao:', err);
     process.exit(1);

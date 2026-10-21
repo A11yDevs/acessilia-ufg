@@ -1,4 +1,4 @@
-﻿# Estagio 1: Build das dependencias nativas (better-sqlite3, argon2)
+# Estagio 1: Build das dependencias nativas (better-sqlite3, argon2)
 FROM node:22-alpine AS builder
 
 WORKDIR /app
@@ -23,6 +23,7 @@ ENV DATABASE_PATH=/app/database/database.sqlite
 COPY --from=builder /app/node_modules ./node_modules
 COPY package*.json ./
 COPY database ./database
+COPY database ./database_template
 COPY public ./public
 COPY src ./src
 
@@ -33,4 +34,4 @@ USER node
 
 EXPOSE 3000
 
-CMD ["dumb-init", "sh", "-c", "node database/migrate.js && node src/server.js"]
+CMD ["dumb-init", "sh", "-c", "mkdir -p /app/database/migrations && cp -u /app/database_template/migrations/*.sql /app/database/migrations/ 2>/dev/null || true; node database/migrate.js && node src/server.js"]

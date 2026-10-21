@@ -40,10 +40,11 @@ export const botAcessService = {
 
     if (response.success) {
       materialRepository.updateProcessingJobStatus(job.id, 'PROCESSING', {
-        externalJobId: response.externalJobId
+        externalJobId: response.externalJobId,
+        jobToken: response.jobToken
       });
       materialRepository.updateMaterialStatus(version.material_id, 'PROCESSANDO');
-      return { success: true, externalJobId: response.externalJobId };
+      return { success: true, externalJobId: response.externalJobId, jobToken: response.jobToken };
     } else {
       materialRepository.updateProcessingJobStatus(job.id, 'FAILED', {
         errorMessage: response.error
@@ -59,9 +60,15 @@ export const botAcessService = {
     if (!activeJob || !activeJob.external_job_id) return null;
 
     try {
-      const statusRes = await botAcessClient.checkJobStatus(activeJob.external_job_id);
+      const statusRes = await botAcessClient.checkJobStatus(activeJob.external_job_id, activeJob.job_token);
       if (statusRes.status === 'COMPLETED') {
-        return await this.handleJobCompleted(activeJob.id);
+        return await this.handleJobCompleted(activeJob.id, statusRes);
+      } else if (statusRes.status === 'PROCESSING') {
+        await this.updateJobProgress(activeJob.id, {
+          progress: statusRes.progress,
+          step: statusRes.currentStep
+        });
+        return { processing: true, progress: statusRes.progress, step: statusRes.currentStep };
       } else if (statusRes.status === 'FAILED') {
         materialRepository.updateProcessingJobStatus(activeJob.id, 'FAILED', {
           errorMessage: statusRes.error || 'Falha no processamento do motor Acessilia.'
@@ -94,11 +101,11 @@ export const botAcessService = {
   },
 
   // Sincroniza resultado final gerando a versão PROCESSADO_BOT
-  async handleJobCompleted(jobId) {
+  async handleJobCompleted(jobId, prefetchedResult = null) {
     const job = materialRepository.findJobById(jobId);
     if (!job || !job.external_job_id) throw new Error('Job inválido para sincronização');
 
-    const result = await botAcessClient.checkJobStatus(job.external_job_id);
+    const result = prefetchedResult || await botAcessClient.checkJobStatus(job.external_job_id, job.job_token);
 
     if (result.status === 'COMPLETED') {
       const originalVersion = materialRepository.findVersionById(job.material_version_id);
@@ -145,6 +152,53 @@ export const botAcessService = {
       } catch (_) {}
 
       return newVersion;
+    }
+  },
+
+  _pollerTimer: null,
+  _isPolling: false,
+
+  startBackgroundPoller(intervalMs = 5000) {
+    if (this._pollerTimer) return;
+    this._pollerTimer = setInterval(async () => {
+      if (this._isPolling) return;
+      this._isPolling = true;
+      try {
+        const activeJobs = materialRepository.listActiveJobs();
+        for (const job of activeJobs) {
+          if (!job.external_job_id) continue;
+          try {
+            const statusRes = await botAcessClient.checkJobStatus(job.external_job_id, job.job_token);
+            if (statusRes.status === 'COMPLETED') {
+              await this.handleJobCompleted(job.id, statusRes);
+            } else if (statusRes.status === 'PROCESSING') {
+              await this.updateJobProgress(job.id, {
+                progress: statusRes.progress,
+                step: statusRes.currentStep
+              });
+            } else if (statusRes.status === 'FAILED') {
+              materialRepository.updateProcessingJobStatus(job.id, 'FAILED', {
+                errorMessage: statusRes.error || 'Falha no processamento do motor Acessilia.'
+              });
+              materialRepository.updateMaterialStatus(job.material_id, 'FALHA_PROCESSAMENTO');
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
+      finally {
+        this._isPolling = false;
+      }
+    }, intervalMs);
+
+    if (this._pollerTimer && this._pollerTimer.unref) {
+      this._pollerTimer.unref();
+    }
+  },
+
+  stopBackgroundPoller() {
+    if (this._pollerTimer) {
+      clearInterval(this._pollerTimer);
+      this._pollerTimer = null;
     }
   }
 };

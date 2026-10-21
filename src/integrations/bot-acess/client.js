@@ -66,6 +66,7 @@ export class BotAcessClient {
         return {
           success: true,
           externalJobId: data.task_id,
+          jobToken: data.job_token || null,
           position: data.position,
           status: 'QUEUED',
           message: data.message || 'Documento enfileirado no Acessilia'
@@ -112,6 +113,7 @@ export class BotAcessClient {
         return {
           success: true,
           externalJobId: data.task_id,
+          jobToken: data.job_token || null,
           position: data.position,
           fileBuffer: buffer,
           filename: filePart.filename,
@@ -146,7 +148,7 @@ export class BotAcessClient {
   /**
    * Consulta status de processamento do job no Acessilia (/api/v1/jobs/{task_id})
    */
-  async checkJobStatus(externalJobId) {
+  async checkJobStatus(externalJobId, jobToken = null) {
     const isMockId = typeof externalJobId === 'string' && externalJobId.startsWith('ext_acessilia_');
     const isTestEnv = process.env.NODE_ENV === 'test' ||
                       process.execArgv.some(arg => arg.includes('--test'));
@@ -163,9 +165,13 @@ export class BotAcessClient {
     }
 
     try {
+      const headers = {};
+      if (this.apiKey) headers['Authorization'] = `Bearer ${this.apiKey}`;
+      if (jobToken) headers['X-Job-Token'] = jobToken;
+
       const response = await fetch(`${this.baseUrl}/api/v1/jobs/${externalJobId}`, {
         method: 'GET',
-        headers: this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {},
+        headers,
         signal: AbortSignal.timeout(4000)
       }).catch(() => null);
 
@@ -217,11 +223,15 @@ export class BotAcessClient {
   /**
    * Cancela uma tarefa em andamento no Acessilia (/api/v1/jobs/{task_id}/cancel)
    */
-  async cancelJob(externalJobId) {
+  async cancelJob(externalJobId, jobToken = null) {
     try {
+      const headers = {};
+      if (this.apiKey) headers['Authorization'] = `Bearer ${this.apiKey}`;
+      if (jobToken) headers['X-Job-Token'] = jobToken;
+
       const response = await fetch(`${this.baseUrl}/api/v1/jobs/${externalJobId}/cancel`, {
         method: 'POST',
-        headers: this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {},
+        headers,
         signal: AbortSignal.timeout(3000)
       }).catch(() => null);
 

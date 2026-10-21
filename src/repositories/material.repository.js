@@ -136,22 +136,33 @@ export const materialRepository = {
     return db.prepare('SELECT * FROM processing_jobs WHERE idempotency_key = ?').get(idempotencyKey);
   },
 
-  updateProcessingJobStatus(jobId, status, { externalJobId = null, errorMessage = null } = {}) {
+  updateProcessingJobStatus(jobId, status, { externalJobId = null, errorMessage = null, jobToken = null } = {}) {
     const stmt = db.prepare(`
       UPDATE processing_jobs
       SET status = ?,
           external_job_id = COALESCE(?, external_job_id),
+          job_token = COALESCE(?, job_token),
           error_message = COALESCE(?, error_message),
           started_at = CASE WHEN ? = 'PROCESSING' AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END,
           finished_at = CASE WHEN ? IN ('COMPLETED', 'FAILED', 'CANCELLED') THEN CURRENT_TIMESTAMP ELSE finished_at END,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
-    return stmt.run(status, externalJobId, errorMessage, status, status, jobId);
+    return stmt.run(status, externalJobId, jobToken, errorMessage, status, status, jobId);
   },
 
   findJobById(id) {
     return db.prepare('SELECT * FROM processing_jobs WHERE id = ?').get(id);
+  },
+
+  listActiveJobs() {
+    return db.prepare(`
+      SELECT pj.*, mv.material_id 
+      FROM processing_jobs pj
+      JOIN material_versions mv ON mv.id = pj.material_version_id
+      WHERE pj.status IN ('PENDING', 'QUEUED', 'PROCESSING')
+      ORDER BY pj.id ASC
+    `).all();
   },
 
   findActiveJobForMaterial(materialId) {
