@@ -31,6 +31,7 @@ import { reportsWebRoutes } from './routes/web/reports.routes.js';
 import { monitoringWebRoutes } from './routes/web/monitoring.routes.js';
 import { preferencesApiRoutes } from './routes/api/preferences.api.js';
 import { certificateWebRoutes } from './routes/web/certificate.routes.js';
+import { ttsApiRoutes } from './routes/api/tts.api.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -124,6 +125,7 @@ export async function buildApp(opts = {}) {
   await fastify.register(notificationsApiRoutes);
   await fastify.register(preferencesApiRoutes);
   await fastify.register(certificateWebRoutes);
+  await fastify.register(ttsApiRoutes);
 
   return fastify;
 }

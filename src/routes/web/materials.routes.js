@@ -209,7 +209,7 @@ export async function materialsWebRoutes(fastify, opts) {
     const certData = certificateService.getCertificateData(materialId, host, protocol);
     const qrCodeDataUrl = certData ? await certificateService.generateQrCodeDataUrl(certData.certificateUrl) : null;
 
-    // Extração de Metadados Técnicos do Core (<aside class="meta">)
+    // Extração de Metadados Técnicos do Core e Carregamento do HTML Acessibilizado
     let coreMetadata = null;
     let accessibleHtmlPreview = null;
     try {
@@ -218,9 +218,23 @@ export async function materialsWebRoutes(fastify, opts) {
           ? botProcessedVersion.storage_path
           : path.resolve(process.cwd(), '.' + botProcessedVersion.storage_path);
         if (fs.existsSync(diskPath)) {
-          const content = fs.readFileSync(diskPath, 'utf8');
-          accessibleHtmlPreview = content;
-          coreMetadata = parseAcessiliaMetadata(content);
+          accessibleHtmlPreview = fs.readFileSync(diskPath, 'utf8');
+        } else {
+          // Se não existir em disco, tenta buscar do Core via token
+          const coreToken = botAcessClient.extractDownloadToken(botProcessedVersion.storage_path);
+          if (coreToken) {
+            const fileRes = await botAcessClient.fetchProcessedFile(coreToken, 'html');
+            if (fileRes.ok && fileRes.buffer) {
+              accessibleHtmlPreview = fileRes.buffer.toString('utf8');
+              const filename = `accessible_${botProcessedVersion.id}.html`;
+              const fullDiskPath = path.resolve(process.cwd(), 'uploads', filename);
+              try { fs.writeFileSync(fullDiskPath, fileRes.buffer); } catch (_) {}
+            }
+          }
+        }
+        if (accessibleHtmlPreview) {
+          coreMetadata = parseAcessiliaMetadata(accessibleHtmlPreview);
+          accessibleHtmlPreview = enhanceAccessibleHtml(accessibleHtmlPreview);
         }
       }
       if (!coreMetadata && material.description) {
@@ -246,6 +260,7 @@ export async function materialsWebRoutes(fastify, opts) {
         certData,
         qrCodeDataUrl,
         coreMetadata,
+        accessibleHtmlPreview,
         user: request.user,
         csrfToken
       })

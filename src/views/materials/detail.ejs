@@ -1,3 +1,13 @@
+<style>
+  .a11y-reading-highlight {
+    background-color: rgba(250, 204, 21, 0.35) !important;
+    outline: 2px solid #eab308 !important;
+    border-radius: 4px !important;
+    padding: 0.15rem 0.35rem;
+    transition: all 0.25s ease-in-out;
+  }
+</style>
+
 <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
   <div>
     <a href="/materiais" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">
@@ -238,10 +248,35 @@
           <button type="button" class="btn btn-sm" onclick="setReaderTheme('default')" title="Tema Normal">Reset</button>
         </div>
 
-        <button type="button" id="btn-play-voice" class="btn btn-primary" onclick="toggleSpeech()" aria-label="Iniciar ou pausar leitura em voz alta">
-          🔊 Ler em Voz Alta
+        <!-- CONTROLES DO EDGE-TTS NEURAL COM CHUNKS -->
+        <div role="group" aria-label="Controles de Voz Edge-TTS" style="display: flex; gap: 0.35rem; align-items: center; background: rgba(0,0,0,0.04); padding: 0.25rem 0.5rem; border-radius: var(--border-radius); flex-wrap: wrap;">
+          <label for="tts-voice-select" class="sr-only">Voz Neural</label>
+          <select id="tts-voice-select" class="btn btn-sm" style="border: 1px solid var(--border-color); background: var(--bg-surface); font-size: 0.8125rem; padding: 0.2rem 0.4rem;" aria-label="Selecionar voz neural Edge-TTS">
+            <option value="pt-BR-FranciscaNeural" selected>Francisca (Feminina)</option>
+            <option value="pt-BR-AntonioNeural">Antônio (Masculino)</option>
+            <option value="pt-BR-ThalitaMultilingualNeural">Thalita (Expressiva)</option>
+          </select>
+
+          <label for="tts-rate-select" class="sr-only">Velocidade de Leitura</label>
+          <select id="tts-rate-select" class="btn btn-sm" style="border: 1px solid var(--border-color); background: var(--bg-surface); font-size: 0.8125rem; padding: 0.2rem 0.4rem;" aria-label="Velocidade da fala">
+            <option value="0.75">0.75x</option>
+            <option value="1.0" selected>1.0x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2.0">2.0x</option>
+          </select>
+
+          <div role="group" aria-label="Navegação por Chunks" style="display: flex; gap: 0.15rem; align-items: center;">
+            <button type="button" class="btn btn-sm" onclick="prevTtsChunk()" title="Parágrafo anterior" aria-label="Parágrafo anterior">⏮</button>
+            <span id="tts-chunk-indicator" style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); padding: 0 0.35rem; min-width: 60px; text-align: center;">Bloco 1/-</span>
+            <button type="button" class="btn btn-sm" onclick="nextTtsChunk()" title="Próximo parágrafo" aria-label="Próximo parágrafo">⏭</button>
+          </div>
+        </div>
+
+        <button type="button" id="btn-play-voice" class="btn btn-primary" onclick="toggleTtsPlayback()" aria-label="Iniciar ou pausar leitura em voz alta com Edge-TTS Neural">
+          🔊 Ler em Voz Alta (Edge-TTS)
         </button>
-        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="stopSpeech()" aria-label="Parar leitura em voz alta">
+        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="stopTtsPlayback()" aria-label="Parar leitura em voz alta">
           ⏹ Parar
         </button>
       </div>
@@ -287,8 +322,21 @@
       </p>
 
       <div id="material-full-text">
+        <% if (locals.accessibleHtmlPreview) { %>
+          <div id="accessible-book-content" class="accessible-book-content" style="margin-top: 1.5rem; line-height: 1.9; font-size: 1.05rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+            <%- accessibleHtmlPreview %>
+          </div>
+        <% } else { %>
+          <div style="background: rgba(0,0,0,0.02); border: 1px dashed var(--border-color); padding: 1rem; border-radius: var(--border-radius); margin: 1rem 0; font-size: 0.875rem; color: var(--text-muted);">
+            ℹ O conteúdo integral adaptado está disponível para leitura através dos botões de download acima (HTML, TXT, DOCX e PDF/UA). Caso deseje sintetizar por parágrafos via Edge-TTS, clique no botão "Ler em Voz Alta".
+          </div>
+        <% } %>
+
         <% if (locals.altTexts && altTexts.length > 0) { %>
-          <div style="margin-top: 1rem;">
+          <div style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--color-primary);">
+              🖼 Audiodescrições de Elementos Visuais Detectados
+            </h4>
             <% altTexts.forEach(function(at, idx) { %>
               <div class="a11y-audiodesc-card" role="region" aria-label="Audiodescrição de elemento visual <%= idx + 1 %>">
                 <div class="a11y-audiodesc-header">
@@ -302,7 +350,7 @@
                 </blockquote>
                 <div class="a11y-audiodesc-actions">
                   <button type="button" class="btn btn-sm btn-a11y-speak" onclick="speakAudiodesc(this)" data-text="<%= (at.human_reviewed_alt || at.ai_suggested_alt).replace(/"/g, '&quot;') %>" aria-label="Ouvir audiodescrição da imagem <%= idx + 1 %>">
-                    🔊 Ouvir Descrição
+                    🔊 Ouvir Descrição (Neural)
                   </button>
                   <button type="button" class="btn btn-sm" onclick="copyAudiodesc(this, '<%= (at.human_reviewed_alt || at.ai_suggested_alt).replace(/'/g, "\\'") %>')" aria-label="Copiar texto da audiodescrição">
                     📋 Copiar Texto
@@ -606,58 +654,261 @@
     if (el) el.textContent = msg;
   }
 
-  // LEITOR POR SÍNTESE DO NAVEGADOR
-  let isSpeaking = false;
-  function toggleSpeech() {
-    if (!('speechSynthesis' in window)) {
-      alert('Síntese de voz não suportada neste navegador.');
+  // REPRODUTOR INTELIGENTE EDGE-TTS NEURAL COM CHUNKS, CSS SPEECH E LÉXICOS
+  const ttsPlayer = {
+    audio: new Audio(),
+    chunks: [],
+    currentIndex: 0,
+    isPlaying: false,
+    materialId: <%= material.id %>,
+    highlightEl: null,
+    domElements: []
+  };
+
+  async function loadTtsChunks() {
+    if (ttsPlayer.chunks.length > 0) return ttsPlayer.chunks;
+    try {
+      const res = await fetch(`/api/v1/materials/${ttsPlayer.materialId}/tts/chunks`);
+      if (res.ok) {
+        const data = await res.json();
+        ttsPlayer.chunks = data.chunks || [];
+        updateChunkIndicator();
+        indexDomElementsForHighlight();
+      }
+    } catch (e) {
+      console.warn('[TTS] Falha ao carregar chunks do material:', e);
+    }
+    return ttsPlayer.chunks;
+  }
+
+  function indexDomElementsForHighlight() {
+    const container = document.getElementById('accessible-book-content') || document.getElementById('material-accessible-content');
+    if (!container) return;
+    // Seleciona blocos de parágrafos, cabeçalhos, citações e itens
+    const blocks = Array.from(container.querySelectorAll('h1, h2, h3, h4, h5, h6, p, blockquote, .a11y-audiodesc-card'));
+    ttsPlayer.domElements = blocks;
+  }
+
+  function updateChunkIndicator() {
+    const el = document.getElementById('tts-chunk-indicator');
+    if (el) {
+      const total = ttsPlayer.chunks.length || 1;
+      const current = Math.min(ttsPlayer.currentIndex + 1, total);
+      el.textContent = `Bloco ${current}/${total}`;
+    }
+  }
+
+  async function toggleTtsPlayback() {
+    const btn = document.getElementById('btn-play-voice');
+    if (ttsPlayer.isPlaying) {
+      ttsPlayer.audio.pause();
+      ttsPlayer.isPlaying = false;
+      if (btn) btn.textContent = '🔊 Retomar Leitura';
+      announceA11y('Leitura pausada');
       return;
     }
-    if (isSpeaking) {
-      window.speechSynthesis.pause();
-      isSpeaking = false;
-      document.getElementById('btn-play-voice').textContent = '🔊 Retomar Leitura';
-    } else {
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
+
+    if (ttsPlayer.chunks.length === 0) {
+      if (btn) btn.textContent = '⏳ Carregando Voz Neural...';
+      await loadTtsChunks();
+    }
+
+    if (ttsPlayer.chunks.length === 0) {
+      // Fallback para síntese nativa do navegador se não houver chunks
+      fallbackBrowserSpeech();
+      return;
+    }
+
+    playCurrentTtsChunk();
+  }
+
+  function playCurrentTtsChunk() {
+    const btn = document.getElementById('btn-play-voice');
+    const voice = document.getElementById('tts-voice-select')?.value || 'pt-BR-FranciscaNeural';
+    const rate = document.getElementById('tts-rate-select')?.value || '1.0';
+
+    if (ttsPlayer.currentIndex >= ttsPlayer.chunks.length) {
+      stopTtsPlayback();
+      announceA11y('Fim da leitura do documento');
+      return;
+    }
+
+    const chunk = ttsPlayer.chunks[ttsPlayer.currentIndex];
+    highlightTtsElement(ttsPlayer.currentIndex);
+    updateChunkIndicator();
+
+    if (btn) btn.textContent = '⏸ Pausar Leitura';
+    ttsPlayer.isPlaying = true;
+
+    const audioUrl = `/api/v1/materials/${ttsPlayer.materialId}/tts/audio?chunkIndex=${ttsPlayer.currentIndex}&voice=${encodeURIComponent(voice)}&rate=${rate}&t=${Date.now()}`;
+    ttsPlayer.audio.src = audioUrl;
+
+    ttsPlayer.audio.onended = () => {
+      ttsPlayer.currentIndex++;
+      if (ttsPlayer.currentIndex < ttsPlayer.chunks.length) {
+        playCurrentTtsChunk();
       } else {
-        const text = document.getElementById('material-accessible-content').innerText;
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'pt-BR';
-        utterance.rate = 1.0;
-        utterance.onend = () => {
-          isSpeaking = false;
-          document.getElementById('btn-play-voice').textContent = '🔊 Ler em Voz Alta';
-        };
-        window.speechSynthesis.speak(utterance);
+        stopTtsPlayback();
+        announceA11y('Fim da leitura do documento');
       }
-      isSpeaking = true;
-      document.getElementById('btn-play-voice').textContent = '⏸ Pausar Leitura';
+    };
+
+    ttsPlayer.audio.onerror = () => {
+      console.warn('[TTS] Erro ao reproduzir chunk via Edge-TTS. Tentando próximo ou fallback...');
+      // Fallback gracioso
+      if ('speechSynthesis' in window && chunk) {
+        const u = new SpeechSynthesisUtterance(chunk.text);
+        u.lang = 'pt-BR';
+        u.onend = () => {
+          ttsPlayer.currentIndex++;
+          if (ttsPlayer.currentIndex < ttsPlayer.chunks.length) {
+            playCurrentTtsChunk();
+          } else {
+            stopTtsPlayback();
+          }
+        };
+        window.speechSynthesis.speak(u);
+      }
+    };
+
+    ttsPlayer.audio.play().catch(e => {
+      console.warn('[TTS] Reprodução bloqueada por política de áudio do navegador:', e);
+    });
+
+    announceA11y(`Lendo bloco ${ttsPlayer.currentIndex + 1} de ${ttsPlayer.chunks.length}`);
+  }
+
+  function highlightTtsElement(index) {
+    if (ttsPlayer.highlightEl) {
+      ttsPlayer.highlightEl.classList.remove('a11y-reading-highlight');
+    }
+
+    if (ttsPlayer.domElements.length === 0) {
+      indexDomElementsForHighlight();
+    }
+
+    const target = ttsPlayer.domElements[index];
+    if (target) {
+      target.classList.add('a11y-reading-highlight');
+      ttsPlayer.highlightEl = target;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
 
-  function stopSpeech() {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      isSpeaking = false;
-      document.getElementById('btn-play-voice').textContent = '🔊 Ler em Voz Alta';
+  function prevTtsChunk() {
+    if (ttsPlayer.currentIndex > 0) {
+      ttsPlayer.currentIndex--;
+      if (ttsPlayer.isPlaying) {
+        playCurrentTtsChunk();
+      } else {
+        highlightTtsElement(ttsPlayer.currentIndex);
+        updateChunkIndicator();
+      }
     }
   }
 
-  // AUXILIARES DE AUDIODESCRIÇÃO (TTS e Cópia)
-  window.speakAudiodesc = function(btn) {
-    const text = btn.getAttribute('data-text');
-    if (!text || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
+  function nextTtsChunk() {
+    if (ttsPlayer.chunks.length === 0) return;
+    if (ttsPlayer.currentIndex < ttsPlayer.chunks.length - 1) {
+      ttsPlayer.currentIndex++;
+      if (ttsPlayer.isPlaying) {
+        playCurrentTtsChunk();
+      } else {
+        highlightTtsElement(ttsPlayer.currentIndex);
+        updateChunkIndicator();
+      }
+    }
+  }
+
+  function stopTtsPlayback() {
+    ttsPlayer.audio.pause();
+    ttsPlayer.audio.currentTime = 0;
+    ttsPlayer.isPlaying = false;
+    ttsPlayer.currentIndex = 0;
+
+    if (ttsPlayer.highlightEl) {
+      ttsPlayer.highlightEl.classList.remove('a11y-reading-highlight');
+      ttsPlayer.highlightEl = null;
+    }
+
+    updateChunkIndicator();
+    const btn = document.getElementById('btn-play-voice');
+    if (btn) btn.textContent = '🔊 Ler em Voz Alta (Edge-TTS)';
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  }
+
+  // Atalhos de retrocompatibilidade
+  function toggleSpeech() { toggleTtsPlayback(); }
+  function stopSpeech() { stopTtsPlayback(); }
+
+  function fallbackBrowserSpeech() {
+    if (!('speechSynthesis' in window)) {
+      alert('Síntese de voz não suportada.');
+      return;
+    }
+    const text = document.getElementById('material-accessible-content').innerText;
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'pt-BR';
-    utterance.rate = 0.95;
-    btn.textContent = '🔊 Reproduzindo...';
     utterance.onend = () => {
-      btn.textContent = '🔊 Ouvir Descrição';
+      document.getElementById('btn-play-voice').textContent = '🔊 Ler em Voz Alta (Edge-TTS)';
     };
     window.speechSynthesis.speak(utterance);
-    announceA11y('Reproduzindo audiodescrição da imagem');
+    document.getElementById('btn-play-voice').textContent = '⏸ Lendo...';
+  }
+
+  // AUXILIARES DE AUDIODESCRIÇÃO (Edge-TTS Neural com Fallback)
+  window.speakAudiodesc = async function(btn) {
+    const text = btn.getAttribute('data-text');
+    if (!text) return;
+
+    const originalText = btn.textContent;
+    btn.textContent = '⏳ Gerando Áudio Neural...';
+    btn.disabled = true;
+
+    try {
+      const voice = document.getElementById('tts-voice-select')?.value || 'pt-BR-FranciscaNeural';
+      const rate = parseFloat(document.getElementById('tts-rate-select')?.value || '1.0');
+
+      const res = await fetch('/api/v1/tts/synthesize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice, rate })
+      });
+
+      if (res.ok) {
+        const blob = await res.blob();
+        const audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio(audioUrl);
+        btn.textContent = '🔊 Reproduzindo Audiodescrição...';
+        audio.onended = () => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+          URL.revokeObjectURL(audioUrl);
+        };
+        audio.play();
+        announceA11y('Reproduzindo audiodescrição em alta fidelidade');
+        return;
+      }
+    } catch (err) {
+      console.warn('[TTS] Falha ao sintetizar audiodescrição no servidor:', err);
+    }
+
+    // Fallback nativo
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'pt-BR';
+      btn.textContent = '🔊 Reproduzindo...';
+      utterance.onend = () => {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      };
+      window.speechSynthesis.speak(utterance);
+      announceA11y('Reproduzindo audiodescrição da imagem');
+    } else {
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
   };
 
   window.speakMath = function(btn) {
