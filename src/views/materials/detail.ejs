@@ -248,13 +248,14 @@
           <button type="button" class="btn btn-sm" onclick="setReaderTheme('default')" title="Tema Normal">Reset</button>
         </div>
 
-        <!-- CONTROLES DO EDGE-TTS NEURAL COM CHUNKS -->
-        <div role="group" aria-label="Controles de Voz Edge-TTS" style="display: flex; gap: 0.35rem; align-items: center; background: rgba(0,0,0,0.04); padding: 0.25rem 0.5rem; border-radius: var(--border-radius); flex-wrap: wrap;">
+        <!-- CONTROLES DO PIPER-TTS NEURAL COM CHUNKS -->
+        <div role="group" aria-label="Controles de Voz Piper-TTS" style="display: flex; gap: 0.35rem; align-items: center; background: rgba(0,0,0,0.04); padding: 0.25rem 0.5rem; border-radius: var(--border-radius); flex-wrap: wrap;">
           <label for="tts-voice-select" class="sr-only">Voz Neural</label>
-          <select id="tts-voice-select" class="btn btn-sm" style="border: 1px solid var(--border-color); background: var(--bg-surface); font-size: 0.8125rem; padding: 0.2rem 0.4rem;" aria-label="Selecionar voz neural Edge-TTS">
-            <option value="pt-BR-FranciscaNeural" selected>Francisca (Feminina)</option>
-            <option value="pt-BR-AntonioNeural">Antônio (Masculino)</option>
-            <option value="pt-BR-ThalitaMultilingualNeural">Thalita (Expressiva)</option>
+          <select id="tts-voice-select" class="btn btn-sm" style="border: 1px solid var(--border-color); background: var(--bg-surface); font-size: 0.8125rem; padding: 0.2rem 0.4rem;" aria-label="Selecionar voz neural Piper-TTS">
+            <option value="pt_BR-cadu-medium" selected>Cadu (pt-BR - Voz Estúdio Clara)</option>
+            <option value="pt_BR-faber-medium">Faber (pt-BR - Voz Feminina)</option>
+            <option value="pt_BR-jeff-medium">Jeff (pt-BR - Voz Natural)</option>
+            <option value="pt_BR-edresson-low">Edresson (pt-BR - Rápido)</option>
           </select>
 
           <label for="tts-rate-select" class="sr-only">Velocidade de Leitura</label>
@@ -273,8 +274,9 @@
           </div>
         </div>
 
-        <button type="button" id="btn-play-voice" class="btn btn-primary" onclick="toggleTtsPlayback()" aria-label="Iniciar ou pausar leitura em voz alta com Edge-TTS Neural">
-          🔊 Ler em Voz Alta (Edge-TTS)
+        <button type="button" id="btn-play-voice" class="btn btn-primary" onclick="toggleTtsPlayback()" aria-label="Iniciar ou pausar leitura em voz alta com Piper-TTS">
+          🔊 Ler em Voz Alta (Piper-TTS)
+        </button>
         </button>
         <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="stopTtsPlayback()" aria-label="Parar leitura em voz alta">
           ⏹ Parar
@@ -328,7 +330,7 @@
           </div>
         <% } else { %>
           <div style="background: rgba(0,0,0,0.02); border: 1px dashed var(--border-color); padding: 1rem; border-radius: var(--border-radius); margin: 1rem 0; font-size: 0.875rem; color: var(--text-muted);">
-            ℹ O conteúdo integral adaptado está disponível para leitura através dos botões de download acima (HTML, TXT, DOCX e PDF/UA). Caso deseje sintetizar por parágrafos via Edge-TTS, clique no botão "Ler em Voz Alta".
+            ℹ O conteúdo integral adaptado está disponível para leitura através dos botões de download acima (HTML, TXT, DOCX e PDF/UA). Caso deseje sintetizar por parágrafos via Piper-TTS, clique no botão "Ler em Voz Alta".
           </div>
         <% } %>
 
@@ -654,7 +656,7 @@
     if (el) el.textContent = msg;
   }
 
-  // REPRODUTOR INTELIGENTE EDGE-TTS NEURAL COM CHUNKS, CSS SPEECH E LÉXICOS
+  // REPRODUTOR INTELIGENTE PIPER-TTS LOCAL COM CHUNKS, CSS SPEECH E LÉXICOS
   const ttsPlayer = {
     audio: new Audio(),
     chunks: [],
@@ -665,10 +667,18 @@
     domElements: []
   };
 
+  const _SLASH = String.fromCharCode(47);
+  function buildApiUrl(parts) {
+    const isGestor = window.location.pathname.indexOf('gestor') !== -1;
+    const prefix = isGestor ? ['gestor'] : [];
+    return _SLASH + prefix.concat(parts).join(_SLASH);
+  }
+
   async function loadTtsChunks() {
     if (ttsPlayer.chunks.length > 0) return ttsPlayer.chunks;
     try {
-      const res = await fetch(`/api/v1/materials/${ttsPlayer.materialId}/tts/chunks`);
+      const chunksUrl = buildApiUrl(['api', 'v1', 'materials', String(ttsPlayer.materialId), 'tts', 'chunks']);
+      const res = await fetch(chunksUrl, { credentials: 'same-origin' });
       if (res.ok) {
         const data = await res.json();
         ttsPlayer.chunks = data.chunks || [];
@@ -722,9 +732,9 @@
     playCurrentTtsChunk();
   }
 
-  function playCurrentTtsChunk() {
+  async function playCurrentTtsChunk() {
     const btn = document.getElementById('btn-play-voice');
-    const voice = document.getElementById('tts-voice-select')?.value || 'pt-BR-FranciscaNeural';
+    const voice = document.getElementById('tts-voice-select')?.value || 'pt_BR-cadu-medium';
     const rate = document.getElementById('tts-rate-select')?.value || '1.0';
 
     if (ttsPlayer.currentIndex >= ttsPlayer.chunks.length) {
@@ -740,42 +750,55 @@
     if (btn) btn.textContent = '⏸ Pausar Leitura';
     ttsPlayer.isPlaying = true;
 
-    const audioUrl = `/api/v1/materials/${ttsPlayer.materialId}/tts/audio?chunkIndex=${ttsPlayer.currentIndex}&voice=${encodeURIComponent(voice)}&rate=${rate}&t=${Date.now()}`;
-    ttsPlayer.audio.src = audioUrl;
+    try {
+      const audioUrl = buildApiUrl(['api', 'v1', 'materials', String(ttsPlayer.materialId), 'tts', 'audio']) + '?chunkIndex=' + ttsPlayer.currentIndex + '&voice=' + encodeURIComponent(voice) + '&rate=' + rate + '&t=' + Date.now();
+      const res = await fetch(audioUrl, { credentials: 'same-origin' });
+      if (!res.ok) throw new Error('Status HTTP ' + res.status);
+      const data = await res.json();
 
-    ttsPlayer.audio.onended = () => {
-      ttsPlayer.currentIndex++;
-      if (ttsPlayer.currentIndex < ttsPlayer.chunks.length) {
-        playCurrentTtsChunk();
-      } else {
-        stopTtsPlayback();
-        announceA11y('Fim da leitura do documento');
-      }
-    };
+      if (!ttsPlayer.isPlaying) return;
 
-    ttsPlayer.audio.onerror = () => {
-      console.warn('[TTS] Erro ao reproduzir chunk via Edge-TTS. Tentando próximo ou fallback...');
-      // Fallback gracioso
-      if ('speechSynthesis' in window && chunk) {
-        const u = new SpeechSynthesisUtterance(chunk.text);
-        u.lang = 'pt-BR';
-        u.onend = () => {
-          ttsPlayer.currentIndex++;
-          if (ttsPlayer.currentIndex < ttsPlayer.chunks.length) {
-            playCurrentTtsChunk();
-          } else {
-            stopTtsPlayback();
-          }
-        };
-        window.speechSynthesis.speak(u);
-      }
-    };
+      ttsPlayer.audio.pause();
+      ttsPlayer.audio.currentTime = 0;
+      ttsPlayer.audio.src = data.audio;
 
-    ttsPlayer.audio.play().catch(e => {
-      console.warn('[TTS] Reprodução bloqueada por política de áudio do navegador:', e);
-    });
+      ttsPlayer.audio.onended = () => {
+        ttsPlayer.currentIndex++;
+        if (ttsPlayer.currentIndex < ttsPlayer.chunks.length) {
+          playCurrentTtsChunk();
+        } else {
+          stopTtsPlayback();
+          announceA11y('Fim da leitura do documento');
+        }
+      };
 
-    announceA11y(`Lendo bloco ${ttsPlayer.currentIndex + 1} de ${ttsPlayer.chunks.length}`);
+      ttsPlayer.audio.onerror = (e) => {
+        console.warn('[TTS] Erro ao reproduzir chunk via Piper-TTS:', e);
+        fallbackChunkSpeech(chunk);
+      };
+
+      await ttsPlayer.audio.play();
+      announceA11y(`Lendo bloco ${ttsPlayer.currentIndex + 1} de ${ttsPlayer.chunks.length}`);
+    } catch (err) {
+      console.warn('[TTS] Erro ao carregar chunk de áudio do servidor, usando fallback nativo:', err);
+      fallbackChunkSpeech(chunk);
+    }
+  }
+
+  function fallbackChunkSpeech(chunk) {
+    if ('speechSynthesis' in window && chunk) {
+      const u = new SpeechSynthesisUtterance(chunk.text);
+      u.lang = 'pt-BR';
+      u.onend = () => {
+        ttsPlayer.currentIndex++;
+        if (ttsPlayer.currentIndex < ttsPlayer.chunks.length) {
+          playCurrentTtsChunk();
+        } else {
+          stopTtsPlayback();
+        }
+      };
+      window.speechSynthesis.speak(u);
+    }
   }
 
   function highlightTtsElement(index) {
@@ -833,7 +856,7 @@
 
     updateChunkIndicator();
     const btn = document.getElementById('btn-play-voice');
-    if (btn) btn.textContent = '🔊 Ler em Voz Alta (Edge-TTS)';
+    if (btn) btn.textContent = '🔊 Ler em Voz Alta (Piper-TTS)';
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   }
 
@@ -850,13 +873,13 @@
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'pt-BR';
     utterance.onend = () => {
-      document.getElementById('btn-play-voice').textContent = '🔊 Ler em Voz Alta (Edge-TTS)';
+      document.getElementById('btn-play-voice').textContent = '🔊 Ler em Voz Alta (Piper-TTS)';
     };
     window.speechSynthesis.speak(utterance);
     document.getElementById('btn-play-voice').textContent = '⏸ Lendo...';
   }
 
-  // AUXILIARES DE AUDIODESCRIÇÃO (Edge-TTS Neural com Fallback)
+  // AUXILIARES DE AUDIODESCRIÇÃO (Piper-TTS Neural com Fallback)
   window.speakAudiodesc = async function(btn) {
     const text = btn.getAttribute('data-text');
     if (!text) return;
@@ -866,27 +889,30 @@
     btn.disabled = true;
 
     try {
-      const voice = document.getElementById('tts-voice-select')?.value || 'pt-BR-FranciscaNeural';
+      const voice = document.getElementById('tts-voice-select')?.value || 'pt_BR-cadu-medium';
       const rate = parseFloat(document.getElementById('tts-rate-select')?.value || '1.0');
 
-      const res = await fetch('/api/v1/tts/synthesize', {
+      const ttsUrl = buildApiUrl(['api', 'v1', 'tts', 'synthesize']);
+      const res = await fetch(ttsUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ text, voice, rate })
       });
 
       if (res.ok) {
-        const blob = await res.blob();
-        const audioUrl = URL.createObjectURL(blob);
-        const audio = new Audio(audioUrl);
+        const data = await res.json();
+        const audio = new Audio(data.audio);
         btn.textContent = '🔊 Reproduzindo Audiodescrição...';
         audio.onended = () => {
           btn.textContent = originalText;
           btn.disabled = false;
-          URL.revokeObjectURL(audioUrl);
         };
-        audio.play();
-        announceA11y('Reproduzindo audiodescrição em alta fidelidade');
+        audio.onerror = () => {
+          fallbackSpeech(text, btn, originalText);
+        };
+        await audio.play();
+        announceA11y('Reproduzindo audiodescrição em alta fidelidade com Piper-TTS');
         return;
       }
     } catch (err) {

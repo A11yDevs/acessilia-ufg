@@ -217,9 +217,20 @@ export async function materialsWebRoutes(fastify, opts) {
         const diskPath = path.isAbsolute(botProcessedVersion.storage_path)
           ? botProcessedVersion.storage_path
           : path.resolve(process.cwd(), '.' + botProcessedVersion.storage_path);
-        if (fs.existsSync(diskPath)) {
-          accessibleHtmlPreview = fs.readFileSync(diskPath, 'utf8');
-        } else {
+        const candidatePaths = [
+          diskPath,
+          path.resolve(process.cwd(), 'public/uploads', `accessible_${botProcessedVersion.id}.html`),
+          path.resolve(process.cwd(), 'uploads', `accessible_${botProcessedVersion.id}.html`)
+        ];
+        for (const cp of candidatePaths) {
+          if (cp && fs.existsSync(cp)) {
+            try {
+              accessibleHtmlPreview = fs.readFileSync(cp, 'utf8');
+              if (accessibleHtmlPreview) break;
+            } catch (_) {}
+          }
+        }
+        if (!accessibleHtmlPreview) {
           // Se não existir em disco, tenta buscar do Core via token
           const coreToken = botAcessClient.extractDownloadToken(botProcessedVersion.storage_path);
           if (coreToken) {
@@ -227,7 +238,11 @@ export async function materialsWebRoutes(fastify, opts) {
             if (fileRes.ok && fileRes.buffer) {
               accessibleHtmlPreview = fileRes.buffer.toString('utf8');
               const filename = `accessible_${botProcessedVersion.id}.html`;
-              const fullDiskPath = path.resolve(process.cwd(), 'uploads', filename);
+              const uploadsDir = path.resolve(process.cwd(), 'public/uploads');
+              if (!fs.existsSync(uploadsDir)) {
+                try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch (_) {}
+              }
+              const fullDiskPath = path.join(uploadsDir, filename);
               try { fs.writeFileSync(fullDiskPath, fileRes.buffer); } catch (_) {}
             }
           }

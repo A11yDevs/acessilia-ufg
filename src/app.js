@@ -40,6 +40,16 @@ export async function buildApp(opts = {}) {
   const fastify = Fastify({
     logger: env.NODE_ENV !== 'test',
     trustProxy: true,
+    rewriteUrl: (req) => {
+      // Normaliza URLs caso o proxy reverso Apache envie /gestor/ no início ou no meio
+      if (req.url && req.url.startsWith('/gestor/')) {
+        return req.url.slice(7);
+      }
+      if (req.url && req.url.includes('/gestor/')) {
+        return req.url.replace(/\/gestor\//g, '/');
+      }
+      return req.url;
+    },
     ...opts
   });
 
