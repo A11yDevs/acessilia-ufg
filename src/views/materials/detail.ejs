@@ -1108,5 +1108,14 @@
         }
       }
     });
+
+    // 5. Garante que todos os links do certificado digital utilizem o prefixo /gestor
+    if (window.location.pathname.includes('/gestor')) {
+      document.querySelectorAll('a[href*="/certificados/material/"]').forEach(a => {
+        if (!a.href.includes('/gestor/')) {
+          a.href = a.href.replace(/(\/\/[^\/]+)(\/certificados\/)/, '$1/gestor$2');
+        }
+      });
+    }
   })();
 </script>

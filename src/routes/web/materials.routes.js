@@ -206,7 +206,12 @@ export async function materialsWebRoutes(fastify, opts) {
     // Certificado Digital e QR Code
     const host = request.headers.host || 'localhost:3000';
     const protocol = request.protocol || 'http';
-    const certData = certificateService.getCertificateData(materialId, host, protocol);
+    const isGestor = request.headers['x-forwarded-prefix'] === '/gestor' ||
+                     request.headers.referer?.includes('/gestor') ||
+                     request.raw?.url?.includes('/gestor') ||
+                     (!host.includes('localhost') && !host.includes('127.0.0.1'));
+    const urlPrefix = isGestor ? '/gestor' : (process.env.APP_URL_PREFIX || '');
+    const certData = certificateService.getCertificateData(materialId, host, protocol, urlPrefix);
     const qrCodeDataUrl = certData ? await certificateService.generateQrCodeDataUrl(certData.certificateUrl) : null;
 
     // Extração de Metadados Técnicos do Core e Carregamento do HTML Acessibilizado
@@ -306,7 +311,12 @@ export async function materialsWebRoutes(fastify, opts) {
 
     const host = request.headers.host || 'localhost:3000';
     const protocol = request.protocol || 'http';
-    const cert = certificateService.getCertificateData(materialId, host, protocol);
+    const isGestor = request.headers['x-forwarded-prefix'] === '/gestor' ||
+                     request.headers.referer?.includes('/gestor') ||
+                     request.raw?.url?.includes('/gestor') ||
+                     (!host.includes('localhost') && !host.includes('127.0.0.1'));
+    const urlPrefix = isGestor ? '/gestor' : (process.env.APP_URL_PREFIX || '');
+    const cert = certificateService.getCertificateData(materialId, host, protocol, urlPrefix);
 
     // Arquivo real produzido pelo Core: a versão processada guarda o download_url do job.
     const processedVersion = versions.find(v => v.version_type === 'PROCESSADO_BOT');

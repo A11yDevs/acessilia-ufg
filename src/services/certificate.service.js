@@ -25,7 +25,7 @@ export const certificateService = {
   /**
    * Obtém os metadados completos de conformidade e auditoria de um material
    */
-  getCertificateData(materialId, reqHost = 'localhost:3000', reqProtocol = 'http') {
+  getCertificateData(materialId, reqHost = 'localhost:3000', reqProtocol = 'http', urlPrefix = null) {
     const material = materialRepository.findMaterialById(materialId);
     if (!material) return null;
 
@@ -42,7 +42,20 @@ export const certificateService = {
     const approvalDate = (approvalReview && approvalReview.finished_at) ? new Date(approvalReview.finished_at) : null;
     const reviewerName = (approvalReview && approvalReview.reviewer_name) ? approvalReview.reviewer_name : null;
 
-    const certificateUrl = `${reqProtocol}://${reqHost}/certificados/material/${material.id}`;
+    // Determina o prefixo de rota quando sob proxy reverso (ex: /gestor)
+    let cleanPrefix = '';
+    if (urlPrefix !== null && urlPrefix !== undefined) {
+      cleanPrefix = urlPrefix;
+    } else if (process.env.APP_URL_PREFIX) {
+      cleanPrefix = process.env.APP_URL_PREFIX;
+    } else if (reqHost && !reqHost.includes('localhost') && !reqHost.includes('127.0.0.1')) {
+      cleanPrefix = '/gestor';
+    }
+
+    if (cleanPrefix && !cleanPrefix.startsWith('/')) cleanPrefix = '/' + cleanPrefix;
+    if (cleanPrefix.endsWith('/')) cleanPrefix = cleanPrefix.slice(0, -1);
+
+    const certificateUrl = `${reqProtocol}://${reqHost}${cleanPrefix}/certificados/material/${material.id}`;
 
     return {
       materialId: material.id,
