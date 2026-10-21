@@ -5,6 +5,8 @@ database/*.sqlite-shm
 database/backups/
 uploads/*
 !uploads/.gitkeep
+public/uploads/*
+!public/uploads/.gitkeep
 logs/
 scratch/
 .env

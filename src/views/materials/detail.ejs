@@ -6,6 +6,68 @@
     padding: 0.15rem 0.35rem;
     transition: all 0.25s ease-in-out;
   }
+
+  /* Isolamento e proteção contra vazamento de estilos embutidos do Core */
+  #accessible-book-content aside.meta {
+    display: none !important;
+  }
+
+  /* Estilização moderna e acessível do Sumário (TOC) no E-reader */
+  .accessible-book-content nav.toc {
+    background: var(--bg-surface, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-left: 4px solid var(--color-primary, #2563eb);
+    border-radius: var(--border-radius, 8px);
+    padding: 1.25rem 1.5rem;
+    margin: 1.5rem 0 2rem 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .accessible-book-content nav.toc strong {
+    display: block;
+    font-size: 1.125rem;
+    color: var(--color-primary, #1e40af);
+    margin-bottom: 0.75rem;
+  }
+  .accessible-book-content nav.toc ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .accessible-book-content nav.toc li {
+    line-height: 1.5;
+  }
+  .accessible-book-content nav.toc li.lvl-1 {
+    font-weight: 700;
+    margin-top: 0.5rem;
+  }
+  .accessible-book-content nav.toc li.lvl-2 {
+    padding-left: 1rem;
+    font-size: 0.9375rem;
+  }
+  .accessible-book-content nav.toc a {
+    color: var(--color-primary, #2563eb);
+    text-decoration: underline;
+    display: inline-block;
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+  }
+  .accessible-book-content nav.toc a:hover,
+  .accessible-book-content nav.toc a:focus {
+    background: rgba(37, 99, 235, 0.1);
+  }
+
+  /* Margem de compensação de rolagem para âncoras diretas do sumário */
+  .accessible-book-content [id^="element-"],
+  .accessible-book-content h1,
+  .accessible-book-content h2,
+  .accessible-book-content h3,
+  .accessible-book-content p {
+    scroll-margin-top: 100px;
+  }
 </style>
 
 <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
@@ -997,5 +1059,54 @@
         } catch (_) {}
       };
     } catch (_) {}
+  })();
+  // SANITIZAÇÃO E NAVEGAÇÃO SUAVE DO E-READER (TOC e Âncoras)
+  (function enhanceEreaderContent() {
+    const book = document.getElementById('accessible-book-content');
+    if (!book) return;
+
+    // 1. Oculta ou remove metadados técnicos brutos do leitor
+    const metaAside = book.querySelector('aside.meta');
+    if (metaAside) metaAside.remove();
+
+    // 2. Limpa o Sumário: remove itens espúrios (parágrafos longos ou números soltos capturados pelo OCR)
+    const tocItems = book.querySelectorAll('nav.toc li');
+    tocItems.forEach(li => {
+      const a = li.querySelector('a');
+      if (a) {
+        const text = a.textContent.trim();
+        if (text.length > 120 || /^\d+$/.test(text)) {
+          li.remove();
+        }
+      }
+    });
+
+    // 3. Converte falsos títulos h1-h6 com texto longo (> 120 caracteres) em parágrafos normais
+    const headings = book.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    headings.forEach(h => {
+      if (h.closest('nav.toc')) return;
+      if (h.textContent.trim().length > 120) {
+        const p = document.createElement('p');
+        p.id = h.id;
+        p.className = h.className;
+        p.innerHTML = h.innerHTML;
+        h.parentNode.replaceChild(p, h);
+      }
+    });
+
+    // 4. Intercepta cliques nos links diretos do Sumário para rolagem suave com destaque
+    book.addEventListener('click', (e) => {
+      const link = e.target.closest('nav.toc a[href^="#"]');
+      if (link) {
+        const hash = link.getAttribute('href');
+        const target = book.querySelector(hash);
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          target.classList.add('a11y-reading-highlight');
+          setTimeout(() => target.classList.remove('a11y-reading-highlight'), 1600);
+        }
+      }
+    });
   })();
 </script>
