@@ -556,3 +556,25 @@ html.high-contrast .badge {
   margin: 0;
 }
 
+/* Suporte ao Tradutor de LIBRAS (VLibras) */
+[vw] {
+  z-index: 999999 !important;
+}
+
+[vw-access-button] {
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+[vw-access-button]:hover, [vw-access-button]:focus {
+  transform: scale(1.08);
+}
+
+.high-contrast [vw-access-button] {
+  filter: contrast(200%) brightness(120%);
+  outline: 2px solid #ffff00 !important;
+}
+
+.dark-slate-theme [vw-access-button] {
+  filter: brightness(90%);
+}
+

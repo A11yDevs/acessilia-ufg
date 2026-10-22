@@ -55,6 +55,24 @@
 
     const btnRuler = document.getElementById('btn-a11y-ruler');
     if (btnRuler) btnRuler.setAttribute('aria-pressed', rulerActive ? 'true' : 'false');
+
+    const isVLibras = localStorage.getItem('a11y_vlibras') === 'true';
+    const btnVLibras = document.getElementById('btn-a11y-vlibras');
+    if (btnVLibras) {
+      btnVLibras.setAttribute('aria-pressed', isVLibras ? 'true' : 'false');
+      if (isVLibras) btnVLibras.classList.add('active');
+      else btnVLibras.classList.remove('active');
+    }
+
+    const btnReaderVLibras = document.getElementById('btn-toggle-vlibras');
+    if (btnReaderVLibras) {
+      btnReaderVLibras.setAttribute('aria-pressed', isVLibras ? 'true' : 'false');
+      if (isVLibras) {
+        btnReaderVLibras.classList.add('btn-primary');
+      } else {
+        btnReaderVLibras.classList.remove('btn-primary');
+      }
+    }
   }
 
   // Inicializa estado dos botões ao carregar o DOM
@@ -226,10 +244,11 @@
       const contrastMode = root.classList.contains('high-contrast') ? 'high' : 'normal';
       const fontSize = root.classList.contains('font-xl') ? 'font-xl' : (root.classList.contains('font-lg') ? 'font-lg' : 'normal');
       const dyslexiaFont = root.classList.contains('dyslexia-font');
+      const vlibras = localStorage.getItem('a11y_vlibras') === 'true';
       fetch(getAppUrl('/api/v1/usuarios/preferencias'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contrastMode, fontSize, dyslexiaFont })
+        body: JSON.stringify({ contrastMode, fontSize, dyslexiaFont, vlibras })
       }).catch(() => {});
     } catch (_) {}
   }
@@ -285,6 +304,9 @@
     } else if (e.altKey && (e.key === 'd' || e.key === 'D')) {
       e.preventDefault();
       window.toggleDyslexiaFont();
+    } else if (e.altKey && (e.key === 'l' || e.key === 'L')) {
+      e.preventDefault();
+      window.toggleVLibras();
     } else if (e.altKey && e.key === '1') {
       e.preventDefault();
       window.location.href = getAppUrl('/dashboard');
@@ -407,4 +429,112 @@
 
     resetTimers();
   })();
+
+  // ========================================================
+  // INTEGRAÇÃO DE LIBRAS VIA VLIBRAS (GOVERNO FEDERAL / MGI)
+  // ========================================================
+  let vlibrasLoaded = false;
+
+  function initVLibras(callback) {
+    let container = document.getElementById('vlibras-widget-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'vlibras-widget-container';
+      container.setAttribute('vw', '');
+      container.className = 'enabled';
+      container.innerHTML = `
+        <div vw-access-button class="active"></div>
+        <div vw-plugin-wrapper>
+          <div class="vw-plugin-top-wrapper"></div>
+        </div>
+      `;
+      document.body.appendChild(container);
+    }
+    container.style.display = 'block';
+
+    if (vlibrasLoaded) {
+      if (typeof callback === 'function') callback();
+      return;
+    }
+
+    if (!document.getElementById('script-vlibras-plugin')) {
+      const script = document.createElement('script');
+      script.id = 'script-vlibras-plugin';
+      script.src = 'https://vlibras.gov.br/app/vlibras-plugin.js';
+      script.async = true;
+      script.onload = function() {
+        vlibrasLoaded = true;
+        try {
+          if (window.VLibras && window.VLibras.Widget) {
+            new window.VLibras.Widget('https://vlibras.gov.br/app');
+          }
+        } catch (err) {
+          console.warn('[VLibras] Widget carregado, inicialização pendente:', err);
+        }
+        if (typeof callback === 'function') callback();
+      };
+      script.onerror = function() {
+        console.warn('[VLibras] Falha ao carregar script do VLibras.');
+      };
+      document.head.appendChild(script);
+    }
+  }
+
+  function updateVLibrasUiState(isActive) {
+    const btns = [
+      document.getElementById('btn-a11y-vlibras'),
+      document.getElementById('btn-toggle-vlibras')
+    ];
+    btns.forEach(b => {
+      if (b) {
+        b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        if (isActive) {
+          b.classList.add('active');
+          b.style.fontWeight = '700';
+          b.style.borderColor = 'var(--color-primary)';
+        } else {
+          b.classList.remove('active');
+          b.style.fontWeight = 'normal';
+          b.style.borderColor = '';
+        }
+      }
+    });
+  }
+
+  window.toggleVLibras = function() {
+    const isCurrentlyActive = localStorage.getItem('a11y_vlibras') === 'true';
+    const nextState = !isCurrentlyActive;
+
+    if (nextState) {
+      initVLibras(function() {
+        setTimeout(function() {
+          const accessBtn = document.querySelector('[vw-access-button]');
+          if (accessBtn) accessBtn.click();
+        }, 500);
+      });
+      localStorage.setItem('a11y_vlibras', 'true');
+      announceA11y('Tradutor para Língua Brasileira de Sinais (LIBRAS) ativado.');
+      updateVLibrasUiState(true);
+    } else {
+      const container = document.getElementById('vlibras-widget-container');
+      if (container) container.style.display = 'none';
+      localStorage.setItem('a11y_vlibras', 'false');
+      announceA11y('Tradutor de LIBRAS desativado.');
+      updateVLibrasUiState(false);
+    }
+    syncPreferencesToServer();
+  };
+
+  // Se o usuário deixou ativado previamente, inicializa
+  if (localStorage.getItem('a11y_vlibras') === 'true') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        initVLibras();
+        updateVLibrasUiState(true);
+      });
+    } else {
+      initVLibras();
+      updateVLibrasUiState(true);
+    }
+  }
 })();
