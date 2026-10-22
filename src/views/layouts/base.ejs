@@ -56,6 +56,12 @@
               <span>Disciplinas</span>
             </a>
           </li>
+          <li>
+            <a href="/academico/turmas" class="nav-link" <%= currentPath.startsWith('/academico/turmas') ? 'aria-current="page"' : '' %>>
+              <span aria-hidden="true">🏛️</span>
+              <span>Turmas</span>
+            </a>
+          </li>
           <% } %>
 
           <% if (user && (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('materiais.visualizar'))) { %>

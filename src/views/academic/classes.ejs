@@ -1,0 +1,318 @@
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h1 style="font-size: 1.75rem; font-weight: 700;">Gestão de Turmas</h1>
+    <p style="color: var(--text-muted);">Administração de turmas, docentes responsáveis e estudantes enturmados</p>
+  </div>
+  <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('turmas.gerenciar') || user.roleCode === 'COORDENADOR') { %>
+    <button type="button" class="btn btn-primary" onclick="document.getElementById('modal-nova-turma').style.display='block'; document.getElementById('codigo-turma').focus();">
+      + Nova Turma
+    </button>
+  <% } %>
+</div>
+
+<!-- FILTROS DE PESQUISA -->
+<div class="stat-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+  <form method="GET" action="/academico/turmas" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+    <div style="flex: 1; min-width: 200px;">
+      <label for="filtro-curso" class="form-label" style="font-size: 0.8125rem;">Filtrar por Curso:</label>
+      <select id="filtro-curso" name="courseId" class="form-input">
+        <option value="">Todos os Cursos</option>
+        <% courses.forEach(c => { %>
+          <option value="<%= c.id %>" <%= filters.courseId == c.id ? 'selected' : '' %>><%= c.name %> (<%= c.code %>)</option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 200px;">
+      <label for="filtro-disciplina" class="form-label" style="font-size: 0.8125rem;">Filtrar por Disciplina:</label>
+      <select id="filtro-disciplina" name="subjectId" class="form-input">
+        <option value="">Todas as Disciplinas</option>
+        <% subjects.forEach(s => { %>
+          <option value="<%= s.id %>" <%= filters.subjectId == s.id ? 'selected' : '' %>><%= s.name %> (<%= s.code %>)</option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 160px;">
+      <label for="filtro-periodo" class="form-label" style="font-size: 0.8125rem;">Período Letivo:</label>
+      <select id="filtro-periodo" name="periodId" class="form-input">
+        <option value="">Todos os Períodos</option>
+        <% periods.forEach(p => { %>
+          <option value="<%= p.id %>" <%= (filters.periodId == p.id || (!filters.periodId && p.is_active)) ? 'selected' : '' %>><%= p.code %> <%= p.is_active ? '(Vigente)' : '' %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div style="display: flex; gap: 0.5rem;">
+      <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem;">Filtrar</button>
+      <a href="/academico/turmas" class="btn" style="border: 1px solid var(--border-color); padding: 0.5rem 1rem;">Limpar</a>
+    </div>
+  </form>
+</div>
+
+<!-- TABELA ACESSÍVEL DE TURMAS -->
+<div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
+  <table style="width: 100%; border-collapse: collapse; text-align: left;" aria-label="Lista de Turmas">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
+        <th scope="col" style="padding: 1rem;">Turma</th>
+        <th scope="col" style="padding: 1rem;">Disciplina</th>
+        <th scope="col" style="padding: 1rem;">Curso</th>
+        <th scope="col" style="padding: 1rem;">Período</th>
+        <th scope="col" style="padding: 1rem;">Docente(s)</th>
+        <th scope="col" style="padding: 1rem;">Horário / Sala</th>
+        <th scope="col" style="padding: 1rem;">Alunos</th>
+        <th scope="col" style="padding: 1rem;">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (classes.length === 0) { %>
+        <tr>
+          <td colspan="8" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
+            Nenhuma turma cadastrada com os filtros selecionados.
+          </td>
+        </tr>
+      <% } else { %>
+        <% classes.forEach(cl => { %>
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 1rem; font-weight: 700;">
+              <code><%= cl.code %></code>
+            </td>
+            <td style="padding: 1rem; font-weight: 600;">
+              <%= cl.subject_name %>
+              <br><span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;"><%= cl.subject_code %></span>
+            </td>
+            <td style="padding: 1rem; color: var(--text-secondary);">
+              <%= cl.course_name %>
+            </td>
+            <td style="padding: 1rem;">
+              <span class="role-tag" style="background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                <%= cl.period_code %>
+              </span>
+            </td>
+            <td style="padding: 1rem;">
+              <%= cl.teachers_names || 'Não atribuído' %>
+            </td>
+            <td style="padding: 1rem; font-size: 0.875rem;">
+              <%= cl.schedule_description || '-' %>
+              <% if (cl.location) { %>
+                <br><span style="color: var(--text-muted);">📍 <%= cl.location %></span>
+              <% } %>
+            </td>
+            <td style="padding: 1rem; font-weight: 600;">
+              <%= cl.total_students %> aluno(s)
+            </td>
+            <td style="padding: 1rem;">
+              <button type="button" class="btn" style="border: 1px solid var(--border-color); padding: 0.375rem 0.75rem; font-size: 0.875rem;" onclick="openManageClassModal(<%= cl.id %>, '<%= cl.code %>', '<%= cl.subject_name %>')">
+                👥 Gerenciar Enturmação
+              </button>
+            </td>
+          </tr>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<!-- MODAL CADASTRAR NOVA TURMA -->
+<div id="modal-nova-turma" role="dialog" aria-modal="true" aria-labelledby="modal-turma-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000; overflow-y: auto;">
+  <div class="auth-card" style="margin: 2rem auto; max-width: 550px;">
+    <h2 id="modal-turma-titulo" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">Cadastrar Nova Turma</h2>
+    <form action="/academico/turmas" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <div class="form-group">
+        <label for="codigo-turma" class="form-label">Código da Turma <span class="required-indicator">*</span></label>
+        <input type="text" id="codigo-turma" name="code" class="form-input" required placeholder="Ex: T01, Turma A, 2026-1">
+      </div>
+
+      <div class="form-group">
+        <label for="turma-curso" class="form-label">Curso Vinculado <span class="required-indicator">*</span></label>
+        <select id="turma-curso" name="courseId" class="form-input" required>
+          <% courses.forEach(c => { %>
+            <option value="<%= c.id %>"><%= c.name %> (<%= c.code %>)</option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="turma-disciplina" class="form-label">Disciplina <span class="required-indicator">*</span></label>
+        <select id="turma-disciplina" name="subjectId" class="form-input" required>
+          <% subjects.forEach(s => { %>
+            <option value="<%= s.id %>"><%= s.name %> (<%= s.code %>)</option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="turma-periodo" class="form-label">Período Letivo <span class="required-indicator">*</span></label>
+        <select id="turma-periodo" name="academicPeriodId" class="form-input" required>
+          <% periods.forEach(p => { %>
+            <option value="<%= p.id %>" <%= p.is_active ? 'selected' : '' %>><%= p.code %> <%= p.is_active ? '(Vigente)' : '' %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="turma-docente" class="form-label">Docente Responsável (Opcional)</label>
+        <select id="turma-docente" name="teacherUserId" class="form-input">
+          <option value="">Atribuir posteriormente...</option>
+          <% teachers.forEach(t => { %>
+            <option value="<%= t.id %>"><%= t.name %> (<%= t.email %>)</option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="turma-horario" class="form-label">Horário de Aulas</label>
+        <input type="text" id="turma-horario" name="scheduleDescription" class="form-input" placeholder="Ex: Seg e Qua 08:00 - 10:00">
+      </div>
+
+      <div class="form-group">
+        <label for="turma-sala" class="form-label">Localização / Sala</label>
+        <input type="text" id="turma-sala" name="location" class="form-input" placeholder="Ex: Laboratório 150 - INF">
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
+        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-nova-turma').style.display='none';">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+          Salvar Turma
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL GERENCIAR ENTURMAÇÃO (DOCENTES E ALUNOS) -->
+<div id="modal-gerenciar-enturmacao" role="dialog" aria-modal="true" aria-labelledby="modal-enturmacao-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000; overflow-y: auto;">
+  <div class="auth-card" style="margin: 2rem auto; max-width: 650px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
+      <div>
+        <h2 id="modal-enturmacao-titulo" style="font-size: 1.25rem; font-weight: 700;">Enturmação da Turma</h2>
+        <p id="subtitulo-enturmacao" style="color: var(--text-muted); font-size: 0.875rem;"></p>
+      </div>
+      <button type="button" class="btn" onclick="document.getElementById('modal-gerenciar-enturmacao').style.display='none';" aria-label="Fechar">✕</button>
+    </div>
+
+    <!-- SEÇÃO DOCENTES -->
+    <div style="margin-bottom: 1.75rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1rem; background: var(--bg-surface);">
+      <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;">👨‍🏫 Docentes da Turma</h3>
+      <div id="lista-professores-turma" style="margin-bottom: 1rem;">
+        <p style="color: var(--text-muted); font-size: 0.875rem;">Carregando...</p>
+      </div>
+
+      <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('turmas.gerenciar') || user.roleCode === 'COORDENADOR') { %>
+        <form id="form-add-docente" method="POST" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <select name="teacherUserId" class="form-input" style="flex: 1; min-width: 200px;" required>
+            <option value="">Vincular Professor...</option>
+            <% teachers.forEach(t => { %>
+              <option value="<%= t.id %>"><%= t.name %> (<%= t.email %>)</option>
+            <% }) %>
+          </select>
+          <select name="roleInClass" class="form-input" style="width: 120px;">
+            <option value="TITULAR">Titular</option>
+            <option value="ADJUNTO">Adjunto</option>
+          </select>
+          <button type="submit" class="btn btn-primary" style="padding: 0.5rem 0.75rem; font-size: 0.875rem;">Adicionar</button>
+        </form>
+      <% } %>
+    </div>
+
+    <!-- SEÇÃO ALUNOS -->
+    <div style="margin-bottom: 1.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1rem; background: var(--bg-surface);">
+      <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;">🎓 Alunos Matriculados</h3>
+      <div id="lista-alunos-turma" style="margin-bottom: 1rem; max-height: 200px; overflow-y: auto;">
+        <p style="color: var(--text-muted); font-size: 0.875rem;">Carregando...</p>
+      </div>
+
+      <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('turmas.gerenciar') || user.roleCode === 'COORDENADOR') { %>
+        <form id="form-add-aluno" method="POST" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <select name="studentUserId" class="form-input" style="flex: 1; min-width: 200px;" required>
+            <option value="">Matricular Aluno...</option>
+            <% students.forEach(st => { %>
+              <option value="<%= st.id %>"><%= st.name %> <%= st.registration_number ? `(${st.registration_number})` : '' %></option>
+            <% }) %>
+          </select>
+          <button type="submit" class="btn btn-primary" style="padding: 0.5rem 0.75rem; font-size: 0.875rem;">Matricular</button>
+        </form>
+      <% } %>
+    </div>
+
+    <div style="text-align: right;">
+      <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-gerenciar-enturmacao').style.display='none';">
+        Fechar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentModalClassId = null;
+
+  async function openManageClassModal(classId, code, subjectName) {
+    currentModalClassId = classId;
+    document.getElementById('subtitulo-enturmacao').innerText = `Turma ${code} — ${subjectName}`;
+    document.getElementById('form-add-docente').action = `/academico/turmas/${classId}/professores`;
+    document.getElementById('form-add-aluno').action = `/academico/turmas/${classId}/alunos`;
+    document.getElementById('modal-gerenciar-enturmacao').style.display = 'block';
+
+    const listTeachersEl = document.getElementById('lista-professores-turma');
+    const listStudentsEl = document.getElementById('lista-alunos-turma');
+    listTeachersEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.875rem;">Carregando...</p>';
+    listStudentsEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.875rem;">Carregando...</p>';
+
+    try {
+      const res = await fetch(`/academico/turmas/${classId}/detalhes`);
+      if (!res.ok) throw new Error('Erro ao carregar dados');
+      const data = await res.json();
+
+      // Render teachers
+      if (!data.teachers || data.teachers.length === 0) {
+        listTeachersEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.875rem;">Nenhum docente vinculado a esta turma.</p>';
+      } else {
+        let tHtml = '<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">';
+        data.teachers.forEach(t => {
+          tHtml += `
+            <li style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-primary); border-radius: var(--border-radius); font-size: 0.875rem;">
+              <span><strong>${t.teacher_name}</strong> <span class="role-tag">${t.role_in_class}</span> (${t.teacher_email})</span>
+              <form action="/academico/turmas/${classId}/professores/${t.teacher_user_id}/remover" method="POST" style="display: inline;" onsubmit="return confirm('Deseja remover este professor da turma?');">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-danger-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Remover</button>
+              </form>
+            </li>
+          `;
+        });
+        tHtml += '</ul>';
+        listTeachersEl.innerHTML = tHtml;
+      }
+
+      // Render students
+      if (!data.students || data.students.length === 0) {
+        listStudentsEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.875rem;">Nenhum aluno matriculado nesta turma.</p>';
+      } else {
+        let sHtml = '<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">';
+        data.students.forEach(s => {
+          sHtml += `
+            <li style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-primary); border-radius: var(--border-radius); font-size: 0.875rem;">
+              <span><strong>${s.student_name}</strong> ${s.registration_number ? `(${s.registration_number})` : ''} — ${s.student_email}</span>
+              <form action="/academico/turmas/${classId}/alunos/${s.student_user_id}/remover" method="POST" style="display: inline;" onsubmit="return confirm('Deseja desvincular este estudante da turma?');">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-danger-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Desvincular</button>
+              </form>
+            </li>
+          `;
+        });
+        sHtml += '</ul>';
+        listStudentsEl.innerHTML = sHtml;
+      }
+
+    } catch (err) {
+      listTeachersEl.innerHTML = '<p style="color: var(--color-error); font-size: 0.875rem;">Erro ao carregar docentes.</p>';
+      listStudentsEl.innerHTML = '<p style="color: var(--color-error); font-size: 0.875rem;">Erro ao carregar alunos.</p>';
+    }
+  }
+</script>

@@ -10,9 +10,31 @@
   </div>
 </div>
 
+<!-- FILTRO INTERATIVO DE AUDITORIA -->
+<div class="stat-card" style="margin-bottom: 1.5rem; padding: 1rem 1.25rem;">
+  <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 250px;">
+      <label for="input-search-audit" class="form-label" style="font-size: 0.8125rem;">Buscar registros:</label>
+      <input type="search" id="input-search-audit" class="form-input" placeholder="Filtrar por usuário, ação (ex: CRIAR_TURMA), recurso ou IP..." oninput="filterAuditLogs()">
+    </div>
+    <div style="min-width: 200px;">
+      <label for="select-action-audit" class="form-label" style="font-size: 0.8125rem;">Filtrar por Ação:</label>
+      <select id="select-action-audit" class="form-input" onchange="filterAuditLogs()">
+        <option value="">Todas as Ações</option>
+        <% 
+          const uniqueActions = [...new Set(logs.map(l => l.action))].sort();
+          uniqueActions.forEach(act => { 
+        %>
+          <option value="<%= act %>"><%= act %></option>
+        <% }) %>
+      </select>
+    </div>
+  </div>
+</div>
+
 <!-- TABELA DE LOGS DE AUDITORIA -->
 <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
-  <table style="width: 100%; border-collapse: collapse; text-align: left;" aria-label="Histórico de Auditoria">
+  <table id="table-audit-logs" style="width: 100%; border-collapse: collapse; text-align: left;" aria-label="Histórico de Auditoria">
     <thead>
       <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
         <th scope="col" style="padding: 1rem;">Data/Hora</th>
@@ -33,7 +55,7 @@
         </tr>
       <% } else { %>
         <% logs.forEach(log => { %>
-          <tr style="border-bottom: 1px solid var(--border-color);">
+          <tr class="audit-row" style="border-bottom: 1px solid var(--border-color);" data-action="<%= log.action %>">
             <td style="padding: 1rem; font-size: 0.875rem; color: var(--text-muted);">
               <%= new Date(log.created_at).toLocaleString('pt-BR') %>
             </td>
@@ -64,3 +86,25 @@
     </tbody>
   </table>
 </div>
+
+<script>
+  function filterAuditLogs() {
+    const query = (document.getElementById('input-search-audit').value || '').toLowerCase().trim();
+    const actionFilter = (document.getElementById('select-action-audit').value || '').trim();
+    const rows = document.querySelectorAll('.audit-row');
+
+    rows.forEach(row => {
+      const rowAction = row.getAttribute('data-action') || '';
+      const text = row.innerText.toLowerCase();
+
+      const matchesQuery = !query || text.includes(query);
+      const matchesAction = !actionFilter || rowAction === actionFilter;
+
+      if (matchesQuery && matchesAction) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+</script>

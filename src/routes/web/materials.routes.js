@@ -7,6 +7,7 @@ import { botAcessService } from '../../integrations/bot-acess/service.js';
 import { botAcessClient } from '../../integrations/bot-acess/client.js';
 import { certificateService } from '../../services/certificate.service.js';
 import { parseAcessiliaMetadata, enhanceAccessibleHtml } from '../../utils/meta-parser.js';
+import { auditRepository } from '../../repositories/audit.repository.js';
 
 export async function materialsWebRoutes(fastify, opts) {
   // Listagem de materiais respeitando escopo de permissão
@@ -261,6 +262,9 @@ export async function materialsWebRoutes(fastify, opts) {
       }
     } catch (_) {}
 
+    const subjects = academicRepository.listSubjects();
+    const classes = academicRepository.listClasses();
+
     return reply.view('layouts/base.ejs', {
       title: `${material.title} — Detalhes`,
       headerTitle: `Material: ${material.title}`,
@@ -280,6 +284,8 @@ export async function materialsWebRoutes(fastify, opts) {
         qrCodeDataUrl,
         coreMetadata,
         accessibleHtmlPreview,
+        subjects,
+        classes,
         user: request.user,
         csrfToken
       })
@@ -522,10 +528,117 @@ DATA DE EMISSÃO: ${new Date().toISOString()}
     const { issueType, description } = request.body || {};
     try {
       await materialService.submitFeedback({ materialId, issueType, description }, request.user);
-      return reply.redirect(`/materiais/${materialId}?feedback=success`);
+      return reply.redirect(`/materiais/${materialId}?feedback=success#sec-feedbacks`);
     } catch (err) {
       return reply.status(400).send({ error: err.message });
     }
+  });
+
+  // Atualizar Status do Feedback Discente (Em Análise / Resolvido)
+  fastify.post('/materiais/:id/feedbacks/:feedbackId/status', {
+    preHandler: [fastify.requireAuth, fastify.csrfProtection]
+  }, async (request, reply) => {
+    const materialId = parseInt(request.params.id, 10);
+    const feedbackId = parseInt(request.params.feedbackId, 10);
+    const { status } = request.body || {};
+
+    const material = materialRepository.findMaterialById(materialId);
+    if (!material) return reply.status(404).send({ error: 'Material não encontrado' });
+
+    // Permissão: Administrador, Gestor, Revisor ou Professor do material
+    const isOwnerTeacher = material.teacher_user_id === request.user.id;
+    const canManage = request.user.roleCode === 'ADMINISTRADOR' ||
+                      request.user.roleCode === 'GESTOR_ACESSIBILIDADE' ||
+                      request.user.roleCode === 'REVISOR' ||
+                      isOwnerTeacher;
+
+    if (!canManage) {
+      return reply.status(403).send({ error: 'Acesso negado para alterar status deste feedback.' });
+    }
+
+    const validStatuses = ['ABERTO', 'EM_ANALISE', 'RESOLVIDO'];
+    if (!validStatuses.includes(status)) {
+      return reply.status(400).send({ error: 'Status de feedback inválido.' });
+    }
+
+    materialRepository.updateFeedbackStatus(feedbackId, status);
+    auditRepository.createLog({
+      userId: request.user.id,
+      action: 'ATUALIZAR_STATUS_FEEDBACK',
+      resource: 'material_feedbacks',
+      resourceId: feedbackId,
+      details: { materialId, status }
+    });
+
+    return reply.redirect(`/materiais/${materialId}#sec-feedbacks`);
+  });
+
+  // Edição de Metadados do Material (Título, Descrição, Categoria, Disciplina, Turma)
+  fastify.post('/materiais/:id/editar', {
+    preHandler: [fastify.requirePermission('materiais.editar'), fastify.csrfProtection]
+  }, async (request, reply) => {
+    const materialId = parseInt(request.params.id, 10);
+    const material = materialRepository.findMaterialById(materialId);
+    if (!material) return reply.status(404).send({ error: 'Material não encontrado' });
+
+    // Permissão: Administrador, Gestor ou o Professor dono do material
+    const isOwner = material.teacher_user_id === request.user.id;
+    const isAdmin = request.user.roleCode === 'ADMINISTRADOR' || request.user.roleCode === 'GESTOR_ACESSIBILIDADE';
+    if (!isOwner && !isAdmin) {
+      return reply.status(403).send({ error: 'Acesso negado: apenas o docente responsável ou administradores podem editar este material.' });
+    }
+
+    const { title, description, category, subjectId, classId } = request.body || {};
+    if (!title || !title.trim()) {
+      return reply.status(400).send({ error: 'O título do material é obrigatório.' });
+    }
+    if (!subjectId) {
+      return reply.status(400).send({ error: 'A disciplina é obrigatória.' });
+    }
+
+    materialRepository.updateMaterial(materialId, {
+      title,
+      description,
+      category: category || material.category,
+      subjectId: parseInt(subjectId, 10),
+      classId: classId ? parseInt(classId, 10) : null
+    });
+
+    auditRepository.createLog({
+      userId: request.user.id,
+      action: 'EDITAR_MATERIAL',
+      resource: 'materials',
+      resourceId: materialId,
+      details: { title, category, subjectId, classId }
+    });
+
+    return reply.redirect(`/materiais/${materialId}`);
+  });
+
+  // Exclusão de Material (com confirmação e auditoria)
+  fastify.post('/materiais/:id/excluir', {
+    preHandler: [fastify.requirePermission('materiais.excluir'), fastify.csrfProtection]
+  }, async (request, reply) => {
+    const materialId = parseInt(request.params.id, 10);
+    const material = materialRepository.findMaterialById(materialId);
+    if (!material) return reply.status(404).send({ error: 'Material não encontrado' });
+
+    const isOwner = material.teacher_user_id === request.user.id;
+    const isAdmin = request.user.roleCode === 'ADMINISTRADOR' || request.user.roleCode === 'GESTOR_ACESSIBILIDADE';
+    if (!isOwner && !isAdmin) {
+      return reply.status(403).send({ error: 'Apenas administradores ou o docente responsável podem excluir este material.' });
+    }
+
+    auditRepository.createLog({
+      userId: request.user.id,
+      action: 'EXCLUIR_MATERIAL',
+      resource: 'materials',
+      resourceId: materialId,
+      details: { title: material.title, code: material.subject_code }
+    });
+
+    materialRepository.deleteMaterial(materialId);
+    return reply.redirect('/materiais');
   });
 
   // Editor/Validador de Alt-Texts (Human-in-the-Loop)

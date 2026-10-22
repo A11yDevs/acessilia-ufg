@@ -1,4 +1,4 @@
-﻿import { db } from '../../database/connection.js';
+import { db } from '../../database/connection.js';
 
 export const academicRepository = {
   // Departamentos
@@ -111,7 +111,13 @@ export const academicRepository = {
              c.name as course_name, c.code as course_code,
              s.name as subject_name, s.code as subject_code,
              ap.code as period_code,
-             (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = cl.id) as total_students
+             (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = cl.id) as total_students,
+             (
+               SELECT GROUP_CONCAT(u.name, ', ')
+               FROM class_teachers ct
+               JOIN users u ON u.id = ct.teacher_user_id
+               WHERE ct.class_id = cl.id
+             ) as teachers_names
       FROM classes cl
       JOIN courses c ON c.id = cl.course_id
       JOIN subjects s ON s.id = cl.subject_id
@@ -150,7 +156,17 @@ export const academicRepository = {
     return this.findClassById(info.lastInsertRowid);
   },
 
-  // Vinculação de Professores à Turma
+  // Professores da Turma
+  listClassTeachers(classId) {
+    return db.prepare(`
+      SELECT ct.*, u.name as teacher_name, u.email as teacher_email, u.registration_number
+      FROM class_teachers ct
+      JOIN users u ON u.id = ct.teacher_user_id
+      WHERE ct.class_id = ?
+      ORDER BY ct.role_in_class DESC, u.name ASC
+    `).all(classId);
+  },
+
   assignTeacherToClass(classId, teacherUserId, roleInClass = 'TITULAR') {
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO class_teachers (class_id, teacher_user_id, role_in_class)
@@ -159,13 +175,35 @@ export const academicRepository = {
     return stmt.run(classId, teacherUserId, roleInClass);
   },
 
-  // Vinculação de Alunos à Turma
+  removeClassTeacher(classId, teacherUserId) {
+    return db.prepare(`
+      DELETE FROM class_teachers WHERE class_id = ? AND teacher_user_id = ?
+    `).run(classId, teacherUserId);
+  },
+
+  // Alunos da Turma
+  listClassStudents(classId) {
+    return db.prepare(`
+      SELECT cs.*, u.name as student_name, u.email as student_email, u.registration_number
+      FROM class_students cs
+      JOIN users u ON u.id = cs.student_user_id
+      WHERE cs.class_id = ?
+      ORDER BY u.name ASC
+    `).all(classId);
+  },
+
   enrollStudentInClass(classId, studentUserId) {
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO class_students (class_id, student_user_id, status)
       VALUES (?, ?, 'MATRICULADO')
     `);
     return stmt.run(classId, studentUserId);
+  },
+
+  removeClassStudent(classId, studentUserId) {
+    return db.prepare(`
+      DELETE FROM class_students WHERE class_id = ? AND student_user_id = ?
+    `).run(classId, studentUserId);
   },
 
   // Checagem de Vínculo (Escopo de Objeto)
@@ -181,5 +219,28 @@ export const academicRepository = {
       SELECT 1 FROM class_students WHERE class_id = ? AND student_user_id = ? AND status = 'MATRICULADO'
     `).get(classId, studentUserId);
     return Boolean(row);
+  },
+
+  // Listagens de Usuários por Papel para Atribuição
+  listTeachers() {
+    return db.prepare(`
+      SELECT DISTINCT u.id, u.name, u.email, u.registration_number, r.name as role_name
+      FROM users u
+      JOIN user_roles ur ON ur.user_id = u.id
+      JOIN roles r ON r.id = ur.role_id
+      WHERE r.code IN ('PROFESSOR', 'ADMINISTRADOR', 'COORDENADOR') AND u.status = 'ACTIVE'
+      ORDER BY u.name ASC
+    `).all();
+  },
+
+  listStudents() {
+    return db.prepare(`
+      SELECT DISTINCT u.id, u.name, u.email, u.registration_number
+      FROM users u
+      JOIN user_roles ur ON ur.user_id = u.id
+      JOIN roles r ON r.id = ur.role_id
+      WHERE r.code = 'ALUNO' AND u.status = 'ACTIVE'
+      ORDER BY u.name ASC
+    `).all();
   }
 };

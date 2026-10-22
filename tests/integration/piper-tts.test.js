@@ -47,7 +47,7 @@ test('Integração Piper-TTS Local: Chunks, Padrão CSS Speech, Léxicos de Pron
   });
 
   await t.test('3. Rota /api/v1/materials/:id/tts/chunks responde 200 OK com lista de chunks e vozes Piper', async () => {
-    const material = materialRepository.findMaterialById(1) || materialRepository.findMaterialById(2);
+    const material = materialRepository.findMaterialById(9) || db.prepare('SELECT * FROM materials LIMIT 1').get();
     assert.ok(material, 'Deve existir ao menos um material no banco');
 
     const res = await app.inject({

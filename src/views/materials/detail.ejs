@@ -86,6 +86,16 @@
     </p>
   </div>
   <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+    <% if (user && (user.roleCode === 'ADMINISTRADOR' || user.roleCode === 'GESTOR_ACESSIBILIDADE' || material.teacher_user_id === user.id) && user.permissions.includes('materiais.editar')) { %>
+      <button type="button" class="btn" style="border: 1px solid var(--border-color); font-size: 0.875rem;" onclick="document.getElementById('modal-editar-material').style.display='block'; document.getElementById('edit-titulo-mat').focus();">
+        ✏ Editar Material
+      </button>
+    <% } %>
+    <% if (user && (user.roleCode === 'ADMINISTRADOR' || material.teacher_user_id === user.id) && user.permissions.includes('materiais.excluir')) { %>
+      <button type="button" class="btn btn-danger-outline" style="font-size: 0.875rem;" onclick="document.getElementById('modal-excluir-material').style.display='block';">
+        🗑 Excluir
+      </button>
+    <% } %>
     <a href="/materiais/<%= material.id %>/diff" class="btn" style="border: 1px solid var(--border-color); font-size: 0.875rem;">
       🔍 Comparar Versões (Diff)
     </a>
@@ -573,6 +583,93 @@
 </section>
 <% } %>
 
+<!-- SEÇÃO DE FEEDBACKS DISCENTES REPORTADOS -->
+<section id="sec-feedbacks" aria-labelledby="tit-sec-feedbacks" class="stat-card" style="margin-bottom: 2rem; border-top: 4px solid #f59e0b;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+    <div>
+      <h2 id="tit-sec-feedbacks" style="font-size: 1.25rem; font-weight: 700;">
+        📢 Feedbacks de Acessibilidade Reportados por Estudantes
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.875rem;">
+        Apontamentos de barreiras de acessibilidade (fórmulas, imagens, tabelas ou síntese de voz) enviados pelos alunos.
+      </p>
+    </div>
+    <span class="role-tag" style="background: var(--bg-surface); border: 1px solid var(--border-color);">
+      <%= feedbacks ? feedbacks.length : 0 %> reporte(s)
+    </span>
+  </div>
+
+  <% if (!feedbacks || feedbacks.length === 0) { %>
+    <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); background: var(--bg-surface); border-radius: var(--border-radius); border: 1px dashed var(--border-color);">
+      Nenhuma barreira de acessibilidade foi reportada para este material até o momento.
+    </div>
+  <% } else { %>
+    <div style="display: flex; flex-direction: column; gap: 1rem;">
+      <% feedbacks.forEach(fb => { %>
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <span class="role-tag" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-weight: 600;">
+                <%= fb.issue_type %>
+              </span>
+              <strong style="margin-left: 0.5rem;"><%= fb.student_name || 'Estudante' %></strong>
+              <span style="color: var(--text-muted); font-size: 0.8125rem; margin-left: 0.5rem;">
+                <%= new Date(fb.created_at).toLocaleString('pt-BR') %>
+              </span>
+            </div>
+            <div>
+              <% if (fb.status === 'RESOLVIDO') { %>
+                <span class="role-tag" style="background: var(--color-success); color: white;">✔ Resolvido</span>
+              <% } else if (fb.status === 'EM_ANALISE') { %>
+                <span class="role-tag" style="background: #0284c7; color: white;">🔍 Em Análise</span>
+              <% } else { %>
+                <span class="role-tag" style="background: #f59e0b; color: white;">⏳ Aberto</span>
+              <% } %>
+            </div>
+          </div>
+
+          <p style="font-size: 0.9375rem; line-height: 1.5; margin-bottom: 0.75rem; color: var(--text-primary); background: var(--bg-primary); padding: 0.75rem; border-radius: var(--border-radius);">
+            <%= fb.description %>
+          </p>
+
+          <% if (user && (user.roleCode === 'ADMINISTRADOR' || user.roleCode === 'GESTOR_ACESSIBILIDADE' || user.roleCode === 'REVISOR' || material.teacher_user_id === user.id)) { %>
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+              <span style="font-size: 0.8125rem; color: var(--text-muted);">Mudar status:</span>
+              <% if (fb.status !== 'EM_ANALISE') { %>
+                <form action="/materiais/<%= material.id %>/feedbacks/<%= fb.id %>/status" method="POST" style="display: inline;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="status" value="EM_ANALISE">
+                  <button type="submit" class="btn btn-sm" style="border: 1px solid var(--border-color); font-size: 0.75rem;">
+                    🔍 Marcar Em Análise
+                  </button>
+                </form>
+              <% } %>
+              <% if (fb.status !== 'RESOLVIDO') { %>
+                <form action="/materiais/<%= material.id %>/feedbacks/<%= fb.id %>/status" method="POST" style="display: inline;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="status" value="RESOLVIDO">
+                  <button type="submit" class="btn btn-sm btn-primary" style="font-size: 0.75rem;">
+                    ✔ Marcar como Resolvido
+                  </button>
+                </form>
+              <% } %>
+              <% if (fb.status === 'RESOLVIDO') { %>
+                <form action="/materiais/<%= material.id %>/feedbacks/<%= fb.id %>/status" method="POST" style="display: inline;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="status" value="ABERTO">
+                  <button type="submit" class="btn btn-sm" style="border: 1px solid var(--border-color); font-size: 0.75rem;">
+                    Reabrir
+                  </button>
+                </form>
+              <% } %>
+            </div>
+          <% } %>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
 <!-- MODAL FEEDBACK DE ACESSIBILIDADE DISCENTE -->
 <div id="modal-feedback-a11y" role="dialog" aria-modal="true" aria-labelledby="modal-feed-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
   <div class="auth-card" style="margin: 3rem auto; max-width: 500px;">
@@ -605,6 +702,93 @@
         </button>
         <button type="submit" class="btn btn-primary">
           Enviar Apontamento
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL EDITAR MATERIAL -->
+<div id="modal-editar-material" role="dialog" aria-modal="true" aria-labelledby="modal-edit-mat-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000; overflow-y: auto;">
+  <div class="auth-card" style="margin: 2rem auto; max-width: 550px;">
+    <h2 id="modal-edit-mat-titulo" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">Editar Informações do Material</h2>
+    <form action="/materiais/<%= material.id %>/editar" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <div class="form-group">
+        <label for="edit-titulo-mat" class="form-label">Título do Material <span class="required-indicator">*</span></label>
+        <input type="text" id="edit-titulo-mat" name="title" class="form-input" required value="<%= material.title %>">
+      </div>
+
+      <div class="form-group">
+        <label for="edit-desc-mat" class="form-label">Descrição Pedagógica</label>
+        <textarea id="edit-desc-mat" name="description" class="form-input" rows="3"><%= material.description || '' %></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="edit-cat-mat" class="form-label">Categoria <span class="required-indicator">*</span></label>
+        <select id="edit-cat-mat" name="category" class="form-input" required>
+          <option value="LIVRO" <%= material.category === 'LIVRO' ? 'selected' : '' %>>Livro / Capítulo</option>
+          <option value="SLIDE" <%= material.category === 'SLIDE' ? 'selected' : '' %>>Apresentação / Slides</option>
+          <option value="APOSTILA" <%= material.category === 'APOSTILA' ? 'selected' : '' %>>Apostila / Texto Didático</option>
+          <option value="EXERCICIO" <%= material.category === 'EXERCICIO' ? 'selected' : '' %>>Lista de Exercícios</option>
+          <option value="AVALIACAO" <%= material.category === 'AVALIACAO' ? 'selected' : '' %>>Avaliação / Prova</option>
+          <option value="ARTIGO" <%= material.category === 'ARTIGO' ? 'selected' : '' %>>Artigo Científico</option>
+          <option value="OUTRO" <%= material.category === 'OUTRO' ? 'selected' : '' %>>Outro</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="edit-sub-mat" class="form-label">Disciplina Vinculada <span class="required-indicator">*</span></label>
+        <select id="edit-sub-mat" name="subjectId" class="form-input" required>
+          <% (locals.subjects || []).forEach(s => { %>
+            <option value="<%= s.id %>" <%= material.subject_id === s.id ? 'selected' : '' %>><%= s.name %> (<%= s.code %>)</option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="edit-turma-mat" class="form-label">Turma Associada (Opcional)</label>
+        <select id="edit-turma-mat" name="classId" class="form-input">
+          <option value="">Geral / Sem turma específica</option>
+          <% (locals.classes || []).forEach(cl => { %>
+            <option value="<%= cl.id %>" <%= material.class_id === cl.id ? 'selected' : '' %>><%= cl.code %> — <%= cl.subject_name %> (<%= cl.course_name %>)</option>
+          <% }) %>
+        </select>
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
+        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-editar-material').style.display='none';">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+          Salvar Alterações
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR EXCLUSÃO DO MATERIAL -->
+<div id="modal-excluir-material" role="dialog" aria-modal="true" aria-labelledby="modal-del-mat-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
+  <div class="auth-card" style="margin: 3rem auto; max-width: 480px; border-top: 4px solid var(--color-error);">
+    <h2 id="modal-del-mat-titulo" style="font-size: 1.25rem; font-weight: 700; color: var(--color-error); margin-bottom: 1rem;">
+      🗑 Excluir Material Acadêmico
+    </h2>
+    <p style="margin-bottom: 1rem; line-height: 1.5;">
+      Tem certeza de que deseja excluir permanentemente o material <strong>"<%= material.title %>"</strong>?
+    </p>
+    <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+      Esta ação removerá todas as versões processadas, arquivos gerados, revisões e registros associados. Esta operação é irreversível.
+    </p>
+    <form action="/materiais/<%= material.id %>/excluir" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+        <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-excluir-material').style.display='none';">
+          Cancelar
+        </button>
+        <button type="submit" class="btn" style="background: var(--color-error); color: white;">
+          Confirmar Exclusão
         </button>
       </div>
     </form>

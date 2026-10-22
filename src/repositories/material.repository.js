@@ -33,6 +33,25 @@ export const materialRepository = {
     return stmt.run(status, materialId);
   },
 
+  updateMaterial(id, { title, description, category, subjectId, classId }) {
+    const stmt = db.prepare(`
+      UPDATE materials
+      SET title = ?,
+          description = ?,
+          category = ?,
+          subject_id = ?,
+          class_id = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    stmt.run(title.trim(), description ? description.trim() : null, category, subjectId, classId || null, id);
+    return this.findMaterialById(id);
+  },
+
+  deleteMaterial(id) {
+    return db.prepare('DELETE FROM materials WHERE id = ?').run(id);
+  },
+
   // Versões de Materiais
   createVersion({ materialId, versionNumber, storageProvider = 'LOCAL_DISK', storageKey, storagePath, originalFilename, mimeType, fileSizeBytes, sha256Hash, versionType, uploadedByUserId }) {
     const stmt = db.prepare(`
@@ -301,5 +320,22 @@ export const materialRepository = {
       WHERE mf.material_id = ?
       ORDER BY mf.created_at DESC
     `).all(materialId);
+  },
+
+  findFeedbackById(feedbackId) {
+    return db.prepare(`
+      SELECT mf.*, u.name as student_name
+      FROM material_feedbacks mf
+      JOIN users u ON u.id = mf.student_user_id
+      WHERE mf.id = ?
+    `).get(feedbackId);
+  },
+
+  updateFeedbackStatus(feedbackId, status) {
+    return db.prepare(`
+      UPDATE material_feedbacks
+      SET status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(status, feedbackId);
   }
 };

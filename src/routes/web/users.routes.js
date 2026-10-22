@@ -8,7 +8,7 @@ export async function usersWebRoutes(fastify, opts) {
     preHandler: [fastify.requirePermission('usuarios.visualizar')]
   }, async (request, reply) => {
     const users = db.prepare(`
-      SELECT u.*, r.name as role_name, r.code as role_code
+      SELECT u.*, r.name as role_name, r.code as role_code, r.id as role_id
       FROM users u
       LEFT JOIN user_roles ur ON ur.user_id = u.id AND ur.is_primary = 1
       LEFT JOIN roles r ON r.id = ur.role_id
@@ -135,5 +135,76 @@ export async function usersWebRoutes(fastify, opts) {
     });
 
     return reply.redirect('/usuarios');
+  });
+
+  // Edição de Usuário e Redefinição de Senha
+  fastify.post('/usuarios/:id', {
+    preHandler: [fastify.requirePermission('usuarios.editar'), fastify.csrfProtection]
+  }, async (request, reply) => {
+    const targetUserId = parseInt(request.params.id, 10);
+    const { name, email, registrationNumber, roleId, password } = request.body || {};
+
+    try {
+      const targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(targetUserId);
+      if (!targetUser) return reply.status(404).send('Usuário não encontrado');
+
+      if (!name || !name.trim()) {
+        throw new Error('O nome do usuário é obrigatório.');
+      }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        throw new Error('Formato de e-mail inválido.');
+      }
+
+      // Verifica unicidade de e-mail em outro usuário
+      const duplicateEmail = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email.trim().toLowerCase(), targetUserId);
+      if (duplicateEmail) {
+        throw new Error('Já existe outro usuário cadastrado com este e-mail.');
+      }
+
+      const role = roleId ? db.prepare('SELECT id FROM roles WHERE id = ?').get(parseInt(roleId, 10)) : null;
+
+      let pwdHash = null;
+      if (password && password.trim()) {
+        pwdHash = await hashPassword(password.trim());
+      }
+
+      db.transaction(() => {
+        if (pwdHash) {
+          // Atualiza dados e redefinição de senha
+          db.prepare(`
+            UPDATE users
+            SET name = ?, email = ?, registration_number = ?, password_hash = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).run(name.trim(), email.trim().toLowerCase(), registrationNumber ? registrationNumber.trim() : null, pwdHash, targetUserId);
+        } else {
+          // Apenas atualiza dados
+          db.prepare(`
+            UPDATE users
+            SET name = ?, email = ?, registration_number = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).run(name.trim(), email.trim().toLowerCase(), registrationNumber ? registrationNumber.trim() : null, targetUserId);
+        }
+
+        if (role) {
+          db.prepare(`
+            UPDATE user_roles
+            SET role_id = ?
+            WHERE user_id = ? AND is_primary = 1
+          `).run(role.id, targetUserId);
+        }
+      })();
+
+      auditRepository.createLog({
+        userId: request.user.id,
+        action: 'EDITAR_USUARIO',
+        resource: 'users',
+        resourceId: targetUserId,
+        details: { name: name.trim(), email: email.trim().toLowerCase(), roleId, passwordReset: Boolean(password && password.trim()) }
+      });
+
+      return reply.redirect('/usuarios');
+    } catch (err) {
+      return reply.status(400).send({ error: err.message });
+    }
   });
 }

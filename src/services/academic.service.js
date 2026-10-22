@@ -1,4 +1,4 @@
-﻿import { academicRepository } from '../repositories/academic.repository.js';
+import { academicRepository } from '../repositories/academic.repository.js';
 import { auditRepository } from '../repositories/audit.repository.js';
 
 export const academicService = {
@@ -93,6 +93,38 @@ export const academicService = {
       action: 'ATRIBUIR_PROFESSOR_TURMA',
       resource: 'class_teachers',
       details: { classId, teacherUserId, roleInClass }
+    });
+  },
+
+  async getClassDetail(classId) {
+    const turma = academicRepository.findClassById(classId);
+    if (!turma) return null;
+    const teachers = academicRepository.listClassTeachers(classId);
+    const students = academicRepository.listClassStudents(classId);
+    return {
+      ...turma,
+      teachers,
+      students
+    };
+  },
+
+  async removeTeacher(classId, teacherUserId, actorUser) {
+    academicRepository.removeClassTeacher(classId, teacherUserId);
+    auditRepository.createLog({
+      userId: actorUser.id,
+      action: 'REMOVER_PROFESSOR_TURMA',
+      resource: 'class_teachers',
+      details: { classId, teacherUserId }
+    });
+  },
+
+  async removeStudent(classId, studentUserId, actorUser) {
+    academicRepository.removeClassStudent(classId, studentUserId);
+    auditRepository.createLog({
+      userId: actorUser.id,
+      action: 'DESVINCULAR_ALUNO_TURMA',
+      resource: 'class_students',
+      details: { classId, studentUserId }
     });
   }
 };
