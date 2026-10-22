@@ -1,4 +1,4 @@
-﻿<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
   <div>
     <h1 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem;">Monitoramento do Motor Acessilia</h1>
     <p style="color: var(--text-muted);">Status em tempo real dos microsserviços de IA, fila de conversões assíncronas e integridade do banco de dados.</p>
@@ -95,6 +95,7 @@
               <th scope="col" style="padding: 0.75rem 1rem; text-align: left; border-bottom: 2px solid var(--border-color);">Arquivo</th>
               <th scope="col" style="padding: 0.75rem 1rem; text-align: left; border-bottom: 2px solid var(--border-color);">Tamanho</th>
               <th scope="col" style="padding: 0.75rem 1rem; text-align: left; border-bottom: 2px solid var(--border-color);">Data de Criação</th>
+              <th scope="col" style="padding: 0.75rem 1rem; text-align: left; border-bottom: 2px solid var(--border-color);">Ação</th>
             </tr>
           </thead>
           <tbody>
@@ -108,6 +109,11 @@
                 </td>
                 <td style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
                   <%= new Date(b.created).toLocaleString('pt-BR') %>
+                </td>
+                <td style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+                  <a href="/monitoramento/backups/<%= b.name %>" class="btn btn-sm" style="border: 1px solid var(--border-color); font-size: 0.75rem;" download>
+                    📥 Baixar Cópia
+                  </a>
                 </td>
               </tr>
             <% }) %>

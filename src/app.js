@@ -140,5 +140,18 @@ export async function buildApp(opts = {}) {
   await fastify.register(certificateWebRoutes);
   await fastify.register(ttsApiRoutes);
 
+  // 10. Tratamento Amigavel e Acessivel para 404 (Pagina Nao Encontrada)
+  fastify.setNotFoundHandler(async (request, reply) => {
+    if (request.url.startsWith('/api/') || request.headers.accept?.includes('application/json')) {
+      return reply.status(404).send({ error: 'Recurso nao encontrado', statusCode: 404 });
+    }
+    const user = request.session?.get('user') || null;
+    return reply.status(404).view('auth/not-found.ejs', {
+      title: 'Pagina Nao Encontrada',
+      user,
+      url: request.raw?.url || request.url
+    });
+  });
+
   return fastify;
 }

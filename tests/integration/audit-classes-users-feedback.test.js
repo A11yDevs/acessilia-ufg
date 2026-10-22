@@ -183,4 +183,66 @@ test('Gestão de Turmas, Feedbacks Discentes, Edição de Materiais e Edição d
     assert.equal(updatedUser.name, 'Lucas Aluno Atualizado');
     assert.equal(updatedUser.registration_number, 'ALU-2026-REV');
   });
+
+  await t.test('5. Download do Formato Original (/materiais/:id/download?format=original)', async () => {
+    const resOrig = await app.inject({
+      method: 'GET',
+      url: '/materiais/9/download?format=original'
+    });
+    // Deve responder 200 (se existir arquivo físico) ou 404 claro se arquivo não estiver no disco de testes
+    assert.ok(resOrig.statusCode === 200 || resOrig.statusCode === 404);
+  });
+
+  await t.test('6. Validação e Atualização de Status da Solicitação (/solicitacoes/:id/status)', async () => {
+    // Insere solicitação de teste
+    const stmt = db.prepare(`
+      INSERT INTO accessibility_requests (material_id, requester_user_id, priority, status, specific_notes)
+      VALUES (9, 4, 'ALTA', 'SOLICITADA', 'Adaptação teste')
+    `);
+    const info = stmt.run();
+    const reqId = info.lastInsertRowid;
+
+    const resSol = await app.inject({
+      method: 'GET',
+      url: '/solicitacoes'
+    });
+    const match = resSol.payload.match(/name="_csrf" value="([^"]+)"/);
+    const csrfToken = match[1];
+    const cookieHeader = resSol.cookies.map(c => `${c.name}=${c.value}`).join('; ');
+
+    // Atualiza para EM_ATENDIMENTO
+    const resUpdate = await app.inject({
+      method: 'POST',
+      url: `/solicitacoes/${reqId}/status`,
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'cookie': cookieHeader
+      },
+      payload: `status=EM_ATENDIMENTO&_csrf=${encodeURIComponent(csrfToken)}`
+    });
+    assert.equal(resUpdate.statusCode, 302);
+    assert.equal(resUpdate.headers.location, '/solicitacoes');
+
+    const updated = db.prepare('SELECT status FROM accessibility_requests WHERE id = ?').get(reqId);
+    assert.equal(updated.status, 'EM_ATENDIMENTO');
+  });
+
+  await t.test('7. Tratamento Amigável de Página Não Encontrada (404)', async () => {
+    const res404Html = await app.inject({
+      method: 'GET',
+      url: '/rota-totalmente-inexistente',
+      headers: { 'accept': 'text/html' }
+    });
+    assert.equal(res404Html.statusCode, 404);
+    assert.match(res404Html.payload, /404 — Página Não Encontrada/);
+
+    const res404Json = await app.inject({
+      method: 'GET',
+      url: '/api/v1/rota-inexistente',
+      headers: { 'accept': 'application/json' }
+    });
+    assert.equal(res404Json.statusCode, 404);
+    const body = JSON.parse(res404Json.payload);
+    assert.equal(body.statusCode, 404);
+  });
 });

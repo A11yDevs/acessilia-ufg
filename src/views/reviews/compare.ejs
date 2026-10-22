@@ -41,7 +41,7 @@
       <hr style="margin: 1rem 0; border: 0; border-top: 1px solid var(--border-color);">
       <div style="padding: 1rem; background: rgba(0,0,0,0.02); border-radius: var(--border-radius); text-align: center;">
         <p style="font-size: 0.875rem;">[Documento Original: <%= originalVersion.original_filename %>]</p>
-        <a href="<%= originalVersion.storage_path %>" class="btn" style="border: 1px solid var(--border-color); margin-top: 0.5rem; font-size: 0.875rem;" download>
+        <a href="/materiais/<%= material.id %>/download?format=original" class="btn" style="border: 1px solid var(--border-color); margin-top: 0.5rem; font-size: 0.875rem;" download>
           Baixar Arquivo Original
         </a>
       </div>
@@ -61,6 +61,17 @@
       <p style="font-size: 0.875rem;"><strong>Formato Gerado:</strong> HTML Semântico + Audio MP3</p>
       <p style="font-size: 0.875rem;"><strong>Estrutura:</strong> Títulos H1-H3 + Descrições de Imagens</p>
       <p style="font-size: 0.875rem;"><strong>Conformidade:</strong> WCAG 2.2 Nível AAA</p>
+      <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;">
+        <a href="/materiais/<%= material.id %>/ereader" class="btn btn-primary" style="font-size: 0.8125rem; padding: 0.35rem 0.65rem;" target="_blank">
+          📖 Abrir no E-Reader
+        </a>
+        <a href="/materiais/<%= material.id %>/download?format=html" class="btn" style="border: 1px solid var(--border-color); font-size: 0.8125rem; padding: 0.35rem 0.65rem;" download>
+          🌐 Baixar HTML
+        </a>
+        <a href="/materiais/<%= material.id %>/download?format=mp3" class="btn" style="border: 1px solid var(--border-color); font-size: 0.8125rem; padding: 0.35rem 0.65rem;" download>
+          🎧 Baixar MP3
+        </a>
+      </div>
     </div>
 
     <div id="scroll-col-accessible" style="background: var(--bg-primary); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); line-height: 1.8; max-height: 380px; overflow-y: auto;">

@@ -239,6 +239,9 @@
   </div>
 
   <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+    <a href="/materiais/<%= material.id %>/download?format=original" class="btn" style="border: 2px solid var(--border-color); color: var(--text-primary);" title="Baixar Documento Original Submetido">
+      📄 Arquivo Original
+    </a>
     <a href="/materiais/<%= material.id %>/download?format=html" class="btn btn-primary" title="Baixar HTML com semântica estrita, audiodescrição e MathJax">
       🌐 HTML Acessível
     </a>
@@ -277,6 +280,7 @@
           <th scope="col" style="padding: 1rem;">Hash SHA-256 de Integridade</th>
           <th scope="col" style="padding: 1rem;">Enviado por</th>
           <th scope="col" style="padding: 1rem;">Data/Hora</th>
+          <th scope="col" style="padding: 1rem;">Ação</th>
         </tr>
       </thead>
       <tbody>
@@ -292,6 +296,11 @@
             <td style="padding: 1rem;"><code style="font-size: 0.75rem;"><%= v.sha256_hash.substring(0, 16) %>...</code></td>
             <td style="padding: 1rem;"><%= v.uploader_name %></td>
             <td style="padding: 1rem; font-size: 0.875rem; color: var(--text-muted);"><%= new Date(v.created_at).toLocaleString('pt-BR') %></td>
+            <td style="padding: 1rem;">
+              <a href="/materiais/<%= material.id %>/download?format=<%= v.version_type === 'ORIGINAL' ? 'original' : 'html' %>" class="btn btn-sm" style="border: 1px solid var(--border-color); font-size: 0.75rem;" download>
+                📥 Baixar
+              </a>
+            </td>
           </tr>
         <% }) %>
       </tbody>

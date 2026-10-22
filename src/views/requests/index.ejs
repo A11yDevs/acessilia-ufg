@@ -48,7 +48,7 @@
               </span>
             </td>
             <td style="padding: 1rem;">
-              <span class="role-tag" style="background: <%= r.status === 'CONCLUIDA' ? 'var(--color-success)' : 'var(--text-muted)' %>;">
+              <span class="role-tag" style="background: <%= r.status === 'CONCLUIDA' ? 'var(--color-success)' : (r.status === 'CANCELADA' ? 'var(--color-error)' : 'var(--color-primary)') %>;">
                 <%= r.status %>
               </span>
             </td>
@@ -65,6 +65,7 @@
                     <option value="PROCESSANDO" <%= r.status === 'PROCESSANDO' ? 'selected' : '' %>>PROCESSANDO</option>
                     <option value="EM_REVISAO" <%= r.status === 'EM_REVISAO' ? 'selected' : '' %>>EM REVISÃO</option>
                     <option value="CONCLUIDA" <%= r.status === 'CONCLUIDA' ? 'selected' : '' %>>CONCLUÍDA</option>
+                    <option value="CANCELADA" <%= r.status === 'CANCELADA' ? 'selected' : '' %>>CANCELADA</option>
                   </select>
                 </form>
               <% } else { %>

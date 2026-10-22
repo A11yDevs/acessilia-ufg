@@ -10,6 +10,14 @@
   <% } %>
 </div>
 
+<!-- BARRA DE BUSCA RÁPIDA -->
+<div class="stat-card" style="margin-bottom: 1.5rem; padding: 1rem 1.25rem;">
+  <div style="max-width: 450px;">
+    <label for="input-busca-disciplina" class="form-label" style="font-size: 0.8125rem;">Buscar disciplina:</label>
+    <input type="search" id="input-busca-disciplina" class="form-input" placeholder="Digite código ou nome da disciplina..." oninput="filtrarDisciplinas(this.value)">
+  </div>
+</div>
+
 <!-- TABELA DE DISCIPLINAS -->
 <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
   <table style="width: 100%; border-collapse: collapse; text-align: left;" aria-label="Lista de Disciplinas da Instituição">
@@ -20,18 +28,19 @@
         <th scope="col" style="padding: 1rem;">Departamento</th>
         <th scope="col" style="padding: 1rem;">Carga Horária</th>
         <th scope="col" style="padding: 1rem;">Status</th>
+        <th scope="col" style="padding: 1rem;">Ações</th>
       </tr>
     </thead>
-    <tbody>
+    <tbody id="tbody-disciplinas">
       <% if (subjects.length === 0) { %>
         <tr>
-          <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">
+          <td colspan="6" style="padding: 2rem; text-align: center; color: var(--text-muted);">
             Nenhuma disciplina cadastrada no momento.
           </td>
         </tr>
       <% } else { %>
         <% subjects.forEach(s => { %>
-          <tr style="border-bottom: 1px solid var(--border-color);">
+          <tr class="disc-row" style="border-bottom: 1px solid var(--border-color);">
             <td style="padding: 1rem; font-weight: 600;"><code><%= s.code %></code></td>
             <td style="padding: 1rem; font-weight: 500;"><%= s.name %></td>
             <td style="padding: 1rem; color: var(--text-secondary);"><%= s.department_name %></td>
@@ -40,6 +49,13 @@
               <span class="role-tag" style="background: #10b981; color: white;">
                 <%= s.status %>
               </span>
+            </td>
+            <td style="padding: 1rem;">
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <a href="/academico/turmas?subjectId=<%= s.id %>" class="btn btn-sm" style="border: 1px solid var(--border-color); font-size: 0.75rem;" title="Ver turmas desta disciplina">
+                  🏛️ Turmas
+                </a>
+              </div>
             </td>
           </tr>
         <% }) %>
@@ -95,3 +111,14 @@
     </form>
   </div>
 </div>
+
+<script>
+  function filtrarDisciplinas(query) {
+    const q = (query || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('.disc-row');
+    rows.forEach(r => {
+      const text = r.innerText.toLowerCase();
+      r.style.display = !q || text.includes(q) ? '' : 'none';
+    });
+  }
+</script>

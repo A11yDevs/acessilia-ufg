@@ -90,7 +90,7 @@ export async function requestsWebRoutes(fastify, opts) {
     // Previne solicitações idênticas em andamento (B3)
     const existingReq = db.prepare(`
       SELECT id FROM accessibility_requests
-      WHERE material_id = ? AND requester_user_id = ? AND status IN ('SOLICITADA', 'EM_ANALISE', 'EM_ANDAMENTO')
+      WHERE material_id = ? AND requester_user_id = ? AND status IN ('SOLICITADA', 'EM_ATENDIMENTO', 'PROCESSANDO', 'EM_REVISAO')
     `).get(matId, request.user.id);
     if (existingReq) {
       return reply.redirect('/solicitacoes');
@@ -136,7 +136,7 @@ export async function requestsWebRoutes(fastify, opts) {
     }
 
     const { status } = request.body || {};
-    const validStatuses = ['SOLICITADA', 'EM_ANALISE', 'EM_ANDAMENTO', 'CONCLUIDA', 'RECUSADA'];
+    const validStatuses = ['SOLICITADA', 'EM_ATENDIMENTO', 'PROCESSANDO', 'EM_REVISAO', 'CONCLUIDA', 'CANCELADA'];
     if (!status || !validStatuses.includes(status.toUpperCase())) {
       return reply.status(400).send({ error: `Status inválido ou vazio. Permitidos: ${validStatuses.join(', ')}.` });
     }

@@ -298,9 +298,9 @@ export async function materialsWebRoutes(fastify, opts) {
   }, async (request, reply) => {
     const materialId = parseInt(request.params.id, 10);
     const format = (request.query.format || 'html').toLowerCase();
-    const supportedFormats = ['html', 'txt', 'pdf', 'pdf_ua', 'docx', 'mp3', 'zip'];
+    const supportedFormats = ['original', 'html', 'txt', 'pdf', 'pdf_ua', 'docx', 'mp3', 'zip'];
     if (!supportedFormats.includes(format)) {
-      return reply.status(400).send({ error: `Formato de download não suportado (${format}). Formatos disponíveis: HTML, TXT, PDF, PDF/UA, DOCX, MP3 e ZIP.` });
+      return reply.status(400).send({ error: `Formato de download não suportado (${format}). Formatos disponíveis: ORIGINAL, HTML, TXT, PDF, PDF/UA, DOCX, MP3 e ZIP.` });
     }
 
     const canDownload = await materialService.canUserDownloadMaterial(request.user, materialId);
@@ -313,6 +313,25 @@ export async function materialsWebRoutes(fastify, opts) {
 
     const versions = materialRepository.getMaterialVersions(materialId);
     const baseFilename = material.title.toLowerCase().replace(/[^a-z0-9]/gi, '_').substring(0, 40);
+
+    // Download do arquivo original submetido
+    if (format === 'original') {
+      const originalVersion = versions.find(v => v.version_type === 'ORIGINAL') || versions[versions.length - 1];
+      if (!originalVersion || !originalVersion.storage_path) {
+        return reply.status(404).send({ error: 'Arquivo original não encontrado.' });
+      }
+      const rawPath = originalVersion.storage_path.replace(/^\//, '');
+      const diskPath = path.isAbsolute(originalVersion.storage_path)
+        ? originalVersion.storage_path
+        : path.resolve(process.cwd(), rawPath);
+      if (!fs.existsSync(diskPath)) {
+        return reply.status(404).send({ error: 'Arquivo original não encontrado no disco do servidor.' });
+      }
+      const ext = path.extname(originalVersion.original_filename || '') || '.pdf';
+      reply.header('Content-Type', originalVersion.mime_type || 'application/octet-stream');
+      reply.header('Content-Disposition', `attachment; filename="${baseFilename}_original${ext}"`);
+      return reply.send(fs.createReadStream(diskPath));
+    }
 
     const host = request.headers.host || 'localhost:3000';
     const protocol = request.headers['x-forwarded-proto'] ||

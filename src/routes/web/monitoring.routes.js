@@ -80,4 +80,20 @@ export async function monitoringWebRoutes(fastify) {
     }
     return reply.redirect('/monitoramento');
   });
+
+  fastify.get('/monitoramento/backups/:filename', {
+    preHandler: [fastify.requirePermission('auditoria.visualizar')]
+  }, async (req, reply) => {
+    const filename = path.basename(req.params.filename);
+    if (!filename.endsWith('.sqlite')) {
+      return reply.status(400).send('Arquivo inválido');
+    }
+    const backupPath = path.resolve(process.cwd(), './database/backups', filename);
+    if (!fs.existsSync(backupPath)) {
+      return reply.status(404).send('Arquivo de backup não encontrado');
+    }
+    reply.header('Content-Type', 'application/x-sqlite3');
+    reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+    return reply.send(fs.createReadStream(backupPath));
+  });
 }
