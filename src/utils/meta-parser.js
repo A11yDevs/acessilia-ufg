@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Utilitário para analisar e extrair metadados técnicos do Acessilia Core.
  * O Core anexa ao final do HTML acessibilizado um bloco:
  * <aside class="meta"><h2>Metadados técnicos</h2><p>{'pipeline_engine': 'pddl', ...}</p></aside>
@@ -149,12 +149,24 @@ function summarizeMetadata(data, rawText) {
 
 /**
  * Transforma o HTML gerado pelo Acessilia Core para substituir <figure><img src="" alt="...">
- * por componentes visuais e acessíveis de Audiodescrição.
+ * por componentes visuais e acessíveis de Audiodescrição, e sanitiza estilos internos para
+ * evitar vazamento (CSS bleed) de regras como 'body { max-width: 980px }' na aplicação principal.
  */
 export function enhanceAccessibleHtml(htmlContent) {
   if (!htmlContent || typeof htmlContent !== 'string') return htmlContent;
 
-  return htmlContent.replace(
+  let content = htmlContent;
+
+  // 1. Escopa estilos internos para que regras de body {} não afetem a tela inteira da plataforma
+  content = content.replace(/<!doctype html>/gi, '');
+  content = content.replace(/<title>[^<]*<\/title>/gi, '');
+  content = content.replace(/(<style[^>]*>[\s\S]*?)body\s*\{([\s\S]*?<\/style>)/gi, (match, prefix, suffix) => {
+    return `${prefix}.accessible-book-content { max-width: 100%; width: 100%; box-sizing: border-box; ${suffix}`;
+  });
+  content = content.replace(/<\/?(html|head|body)[^>]*>/gi, '');
+
+  // 2. Substitui figuras por cards visuais e acessíveis de audiodescrição
+  return content.replace(
     /<figure([^>]*)>\s*<img\s+([^>]*?)alt=["']([^"']*)["']([^>]*?)>\s*<\/figure>/gi,
     (match, figureAttrs, preAlt, altText, postAlt) => {
       if (!altText || altText.trim() === '') {

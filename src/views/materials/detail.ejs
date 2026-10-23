@@ -361,6 +361,9 @@
         <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="stopTtsPlayback()" aria-label="Parar leitura em voz alta">
           ⏹ Parar
         </button>
+        <button type="button" id="btn-play-audiodesc" class="btn btn-a11y-audiodesc-nav" onclick="playOrNavigateAudiodesc()" title="Ouvir audiodescrição das imagens do material" aria-label="Ouvir audiodescrição das imagens">
+          🖼 Ouvir Audiodescrição
+        </button>
         <button type="button" id="btn-toggle-vlibras" class="btn" style="border: 1px solid var(--border-color); background: var(--bg-surface); font-weight: 600;" onclick="toggleVLibras()" title="Ativar ou desativar tradução em LIBRAS (Alt + L)" aria-label="Traduzir em LIBRAS (VLibras)" aria-pressed="false">
           🤟 LIBRAS (VLibras)
         </button>
@@ -892,18 +895,26 @@
 
   function setReaderTheme(theme) {
     if (!contentEl) return;
+    const cards = contentEl.querySelectorAll('.a11y-audiodesc-card');
+    const bquotes = contentEl.querySelectorAll('.a11y-audiodesc-content');
     if (theme === 'yellow-black') {
       contentEl.style.background = '#000000';
       contentEl.style.color = '#ffff00';
       contentEl.style.borderColor = '#ffff00';
+      cards.forEach(c => { c.style.background = '#000000'; c.style.borderColor = '#ffff00'; c.style.color = '#ffff00'; });
+      bquotes.forEach(b => { b.style.background = '#111111'; b.style.borderColor = '#ffff00'; b.style.color = '#ffff00'; });
     } else if (theme === 'cyan-blue') {
       contentEl.style.background = '#001f3f';
       contentEl.style.color = '#7fdbff';
       contentEl.style.borderColor = '#7fdbff';
+      cards.forEach(c => { c.style.background = '#001f3f'; c.style.borderColor = '#7fdbff'; c.style.color = '#7fdbff'; });
+      bquotes.forEach(b => { b.style.background = '#002b55'; b.style.borderColor = '#7fdbff'; b.style.color = '#7fdbff'; });
     } else {
       contentEl.style.background = 'var(--bg-primary)';
       contentEl.style.color = 'inherit';
       contentEl.style.borderColor = 'var(--border-color)';
+      cards.forEach(c => { c.style.background = ''; c.style.borderColor = ''; c.style.color = ''; });
+      bquotes.forEach(b => { b.style.background = ''; b.style.borderColor = ''; b.style.color = ''; });
     }
     announceA11y(`Tema visual do leitor atualizado`);
   }
@@ -1218,6 +1229,34 @@
         btn.textContent = originalText;
       }, 2000);
     });
+  };
+
+  // NAVEGAÇÃO E REPRODUÇÃO RÁPIDA DE AUDIODESCRIÇÃO NO LEITOR
+  window.playOrNavigateAudiodesc = function() {
+    const cards = Array.from(document.querySelectorAll('.a11y-audiodesc-card'));
+    if (cards.length === 0) {
+      announceA11y('Nenhuma audiodescrição de imagem encontrada neste material.');
+      alert('Nenhuma audiodescrição de imagem foi detectada neste material.');
+      return;
+    }
+
+    if (typeof window._currentAudiodescIdx === 'undefined' || window._currentAudiodescIdx >= cards.length - 1) {
+      window._currentAudiodescIdx = 0;
+    } else {
+      window._currentAudiodescIdx++;
+    }
+
+    const currentCard = cards[window._currentAudiodescIdx];
+    currentCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    currentCard.classList.add('a11y-reading-highlight');
+    setTimeout(() => currentCard.classList.remove('a11y-reading-highlight'), 2500);
+
+    const speakBtn = currentCard.querySelector('.btn-a11y-speak');
+    if (speakBtn) {
+      speakBtn.focus();
+      window.speakAudiodesc(speakBtn);
+    }
+    announceA11y(`Reproduzindo audiodescrição ${window._currentAudiodescIdx + 1} de ${cards.length}`);
   };
 
   // ESCUTA DE EVENTOS SSE PARA PROGRESSO EM TEMPO REAL DO CORE

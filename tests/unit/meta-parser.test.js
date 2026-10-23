@@ -1,4 +1,4 @@
-﻿import { test, describe } from 'node:test';
+import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import { parseAcessiliaMetadata, enhanceAccessibleHtml } from '../../src/utils/meta-parser.js';
 
@@ -46,5 +46,25 @@ describe('Parser de Metadados e Audiodescrição do Acessilia Core', () => {
     const plainHtml = '<html><body><h1>Sem metadados</h1></body></html>';
     const meta = parseAcessiliaMetadata(plainHtml);
     assert.strictEqual(meta, null);
+  });
+
+  test('4. Deve sanitizar estilos internos e evitar vazamento de body { max-width: 980px } para a tela inteira', () => {
+    const bookHtml = `
+      <!doctype html>
+      <html lang="pt-BR">
+      <head>
+        <title>Livro Teste</title>
+        <style>body{font-family:sans-serif;max-width:980px;margin:0 auto;padding:2rem;background:#fafafa}</style>
+      </head>
+      <body>
+        <main><p>Conteúdo</p></main>
+      </body>
+      </html>
+    `;
+    const enhanced = enhanceAccessibleHtml(bookHtml);
+    assert.ok(!enhanced.includes('<!doctype html>'), 'Não deve conter <!doctype html>');
+    assert.ok(!enhanced.includes('<body'), 'Não deve conter tag <body>');
+    assert.ok(!enhanced.includes('body{'), 'Não deve aplicar regra direta em body{');
+    assert.ok(enhanced.includes('.accessible-book-content { max-width: 100%'), 'Deve escopar o estilo para .accessible-book-content');
   });
 });
