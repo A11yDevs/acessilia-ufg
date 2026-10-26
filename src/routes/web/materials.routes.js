@@ -327,7 +327,13 @@ export async function materialsWebRoutes(fastify, opts) {
       const extension = format === 'pdf_ua' ? 'pdf' : format;
       reply.header('Content-Type', file.contentType);
       reply.header('Content-Disposition', `attachment; filename="${baseFilename}_acessivel${format === 'pdf_ua' ? '_pdf_ua' : ''}.${extension}"`);
-      if (file.ok) return reply.send(file.buffer);
+      if (file.ok) {
+        if (format === 'html' && file.buffer) {
+          const enhanced = enhanceAccessibleHtml(file.buffer.toString('utf8'));
+          return reply.send(Buffer.from(enhanced, 'utf8'));
+        }
+        return reply.send(file.buffer);
+      }
       reply.removeHeader('Content-Type');
       reply.removeHeader('Content-Disposition');
     }
