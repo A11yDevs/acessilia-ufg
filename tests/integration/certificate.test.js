@@ -119,17 +119,15 @@ test('Selo e Certificado Digital de Acessibilidade com QR Code', async (t) => {
     assert.match(resTxt.payload, /ESTE DOCUMENTO NÃO FOI REVISADO PELO NÚCLEO DE ACESSIBILIDADE/);
     assert.match(resTxt.payload, new RegExp(`/certificados/material/${material.id}`));
 
-    // Download DOCX / PDF_UA / ZIP (todos com o cabeçalho)
+    // DOCX / PDF_UA / ZIP vêm do Acessilia Core. Sem o arquivo do Core não se entrega
+    // um texto simples com extensão de DOCX/PDF: a resposta é 404 com orientação.
     for (const fmt of ['docx', 'pdf_ua', 'zip']) {
       const resOther = await app.inject({
         method: 'GET',
         url: `/materiais/${material.id}/download?format=${fmt}`
       });
-      assert.equal(resOther.statusCode, 200);
-      const textPayload = resOther.payload.toString();
-      assert.match(textPayload, /SELO ACESSILIA/);
-      assert.doesNotMatch(textPayload, /UFG/i);
-      assert.match(textPayload, /DOCUMENTO ACESSIBILIZADO PELO ACESSILIA/);
+      assert.equal(resOther.statusCode, 404);
+      assert.match(resOther.json().error, /não está disponível/);
     }
   });
 

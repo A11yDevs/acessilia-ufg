@@ -159,15 +159,20 @@ test('Novas Funcionalidades: Agendamento, Bulk Actions, Feedback Discente e Alt 
       req.session = { get: () => teacherWithPerms };
     });
 
-    // Tentativa com arquivo não permitido (.exe)
+    // Tentativa com arquivo não permitido (.exe), enviado como upload de verdade
+    const boundary = `qa${Date.now()}`;
+    const multipart = [
+      `--${boundary}`, 'Content-Disposition: form-data; name="title"', '', 'Script Perigoso',
+      `--${boundary}`, 'Content-Disposition: form-data; name="subjectId"', '', String(subject.id),
+      `--${boundary}`, 'Content-Disposition: form-data; name="file"; filename="malware.exe"',
+      'Content-Type: application/octet-stream', '', 'MZ-conteudo-de-teste',
+      `--${boundary}--`, ''
+    ].join('\r\n');
     const resForbidden = await app.inject({
       method: 'POST',
       url: '/materiais',
-      payload: {
-        title: 'Script Perigoso',
-        subjectId: subject.id,
-        filename: 'malware.exe'
-      }
+      headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
+      payload: multipart
     });
 
     assert.equal(resForbidden.statusCode, 400);

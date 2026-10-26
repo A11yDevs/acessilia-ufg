@@ -7,6 +7,7 @@ import { botAcessService } from '../../integrations/bot-acess/service.js';
 import { botAcessClient } from '../../integrations/bot-acess/client.js';
 import { certificateService } from '../../services/certificate.service.js';
 import { parseAcessiliaMetadata, enhanceAccessibleHtml } from '../../utils/meta-parser.js';
+import { loadProcessedHtml, resolveStoragePath } from '../../services/processed-document.service.js';
 import { auditRepository } from '../../repositories/audit.repository.js';
 
 export async function materialsWebRoutes(fastify, opts) {
@@ -218,40 +219,8 @@ export async function materialsWebRoutes(fastify, opts) {
     let coreMetadata = null;
     let accessibleHtmlPreview = null;
     try {
-      if (botProcessedVersion && botProcessedVersion.storage_path) {
-        const diskPath = path.isAbsolute(botProcessedVersion.storage_path)
-          ? botProcessedVersion.storage_path
-          : path.resolve(process.cwd(), '.' + botProcessedVersion.storage_path);
-        const candidatePaths = [
-          diskPath,
-          path.resolve(process.cwd(), 'public/uploads', `accessible_${botProcessedVersion.id}.html`),
-          path.resolve(process.cwd(), 'uploads', `accessible_${botProcessedVersion.id}.html`)
-        ];
-        for (const cp of candidatePaths) {
-          if (cp && fs.existsSync(cp)) {
-            try {
-              accessibleHtmlPreview = fs.readFileSync(cp, 'utf8');
-              if (accessibleHtmlPreview) break;
-            } catch (_) {}
-          }
-        }
-        if (!accessibleHtmlPreview) {
-          // Se não existir em disco, tenta buscar do Core via token
-          const coreToken = botAcessClient.extractDownloadToken(botProcessedVersion.storage_path);
-          if (coreToken) {
-            const fileRes = await botAcessClient.fetchProcessedFile(coreToken, 'html');
-            if (fileRes.ok && fileRes.buffer) {
-              accessibleHtmlPreview = fileRes.buffer.toString('utf8');
-              const filename = `accessible_${botProcessedVersion.id}.html`;
-              const uploadsDir = path.resolve(process.cwd(), 'public/uploads');
-              if (!fs.existsSync(uploadsDir)) {
-                try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch (_) {}
-              }
-              const fullDiskPath = path.join(uploadsDir, filename);
-              try { fs.writeFileSync(fullDiskPath, fileRes.buffer); } catch (_) {}
-            }
-          }
-        }
+      if (botProcessedVersion) {
+        accessibleHtmlPreview = await loadProcessedHtml(botProcessedVersion);
         if (accessibleHtmlPreview) {
           coreMetadata = parseAcessiliaMetadata(accessibleHtmlPreview);
           accessibleHtmlPreview = enhanceAccessibleHtml(accessibleHtmlPreview);
@@ -320,11 +289,8 @@ export async function materialsWebRoutes(fastify, opts) {
       if (!originalVersion || !originalVersion.storage_path) {
         return reply.status(404).send({ error: 'Arquivo original não encontrado.' });
       }
-      const rawPath = originalVersion.storage_path.replace(/^\//, '');
-      const diskPath = path.isAbsolute(originalVersion.storage_path)
-        ? originalVersion.storage_path
-        : path.resolve(process.cwd(), rawPath);
-      if (!fs.existsSync(diskPath)) {
+      const diskPath = resolveStoragePath(originalVersion.storage_path);
+      if (!diskPath) {
         return reply.status(404).send({ error: 'Arquivo original não encontrado no disco do servidor.' });
       }
       const ext = path.extname(originalVersion.original_filename || '') || '.pdf';
@@ -349,7 +315,8 @@ export async function materialsWebRoutes(fastify, opts) {
     const coreToken = processedVersion ? botAcessClient.extractDownloadToken(processedVersion.storage_path) : null;
     if (coreToken) {
       const file = await botAcessClient.fetchProcessedFile(coreToken, format);
-      if (!file.ok) {
+      // HTML tem cópia local: se o Core não responder, ela é entregue logo abaixo.
+      if (!file.ok && format !== 'html') {
         const notFound = file.status === 404;
         return reply.status(notFound ? 404 : 502).send({
           error: notFound
@@ -360,7 +327,29 @@ export async function materialsWebRoutes(fastify, opts) {
       const extension = format === 'pdf_ua' ? 'pdf' : format;
       reply.header('Content-Type', file.contentType);
       reply.header('Content-Disposition', `attachment; filename="${baseFilename}_acessivel${format === 'pdf_ua' ? '_pdf_ua' : ''}.${extension}"`);
-      return reply.send(file.buffer);
+      if (file.ok) {
+        if (format === 'html' && file.buffer) {
+          const enhanced = enhanceAccessibleHtml(file.buffer.toString('utf8'));
+          return reply.send(Buffer.from(enhanced, 'utf8'));
+        }
+        return reply.send(file.buffer);
+      }
+      reply.removeHeader('Content-Type');
+      reply.removeHeader('Content-Disposition');
+    }
+
+    // Sem o Core, só HTML e TXT podem ser montados aqui, a partir da cópia local do
+    // documento processado. Os demais formatos não são inventados.
+    const processedHtml = processedVersion ? await loadProcessedHtml(processedVersion) : null;
+    if (!['html', 'txt'].includes(format)) {
+      return reply.status(404).send({
+        error: `O formato ${format.toUpperCase()} não está disponível para este material. Baixe a versão HTML ou use o Leitor Acessível.`
+      });
+    }
+    if (format === 'html' && processedHtml) {
+      reply.header('Content-Type', 'text/html; charset=utf-8');
+      reply.header('Content-Disposition', `attachment; filename="${baseFilename}_acessivel.html"`);
+      return reply.send(enhanceAccessibleHtml(processedHtml));
     }
 
     const qrCodeDataUrl = cert ? await certificateService.generateQrCodeDataUrl(cert.certificateUrl) : '';
@@ -495,9 +484,10 @@ Documento acessível gerado pelo Acessilia.
 `;
 
     if (format === 'txt') {
+      const documentText = processedHtml ? htmlToPlainText(processedHtml) : '';
       reply.header('Content-Type', 'text/plain; charset=utf-8');
       reply.header('Content-Disposition', `attachment; filename="${baseFilename}_acessivel.txt"`);
-      return reply.send(txtContent);
+      return reply.send(documentText ? `${txtContent}\n\n${documentText}\n` : txtContent);
     }
 
     if (format === 'mp3') {
@@ -748,4 +738,18 @@ DATA DE EMISSÃO: ${new Date().toISOString()}
       `
     });
   });
+}
+
+// Texto corrido do HTML processado (sem estilos, scripts, sumário e metadados técnicos).
+function htmlToPlainText(html) {
+  return html
+    .replace(/<(style|script|nav|aside)[\s\S]*?<\/\1>/gi, '')
+    .replace(/<\/(p|h[1-6]|li|tr|div|figcaption|table)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, '&')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n+/g, '\n\n')
+    .trim();
 }

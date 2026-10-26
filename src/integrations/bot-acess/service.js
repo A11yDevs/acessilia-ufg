@@ -113,7 +113,9 @@ export const botAcessService = {
       const nextVersionNumber = originalVersion.version_number + 1;
 
       // 1. Tenta baixar o arquivo processado pelo Core para salvar no disco local
-      let storagePath = result.processedDocumentUrl;
+      // storage_path guarda o download_url do Core: é dele que saem os outros formatos
+      // (PDF, DOCX, MP3...). A cópia local do HTML fica em uploads/accessible_<job>.html.
+      let storagePath = result.downloadUrl || result.processedDocumentUrl;
       let htmlContent = null;
       let fileSizeBytes = 1024;
 
@@ -126,8 +128,8 @@ export const botAcessService = {
             fileSizeBytes = fileRes.buffer.length;
             const filename = `accessible_${job.external_job_id || Date.now()}.html`;
             const fullDiskPath = path.resolve(process.cwd(), 'uploads', filename);
+            fs.mkdirSync(path.dirname(fullDiskPath), { recursive: true });
             fs.writeFileSync(fullDiskPath, fileRes.buffer);
-            storagePath = `/uploads/${filename}`;
           }
         } catch (_) {}
       } else if (result.processedDocumentUrl && result.processedDocumentUrl.startsWith('/uploads/')) {

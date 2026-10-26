@@ -197,6 +197,8 @@ td, th {
   border-radius: var(--border-radius);
   font-size: 1.25rem;
   cursor: pointer;
+}
+
 /* BARRA RÁPIDA DE ACESSIBILIDADE */
 .a11y-toolbar {
   display: flex;
