@@ -270,34 +270,34 @@
     Histórico Imutável de Versões (Trilha de Acessibilidade)
   </h2>
 
-  <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
-    <table style="width: 100%; border-collapse: collapse; text-align: left;" aria-describedby="sec-versoes">
+  <div class="table-responsive" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
+    <table class="data-table" style="min-width: 840px; width: 100%; border-collapse: collapse; text-align: left;" aria-describedby="sec-versoes">
       <thead>
         <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
-          <th scope="col" style="padding: 1rem;">Versão</th>
-          <th scope="col" style="padding: 1rem;">Tipo da Versão</th>
-          <th scope="col" style="padding: 1rem;">Arquivo</th>
-          <th scope="col" style="padding: 1rem;">Hash SHA-256 de Integridade</th>
-          <th scope="col" style="padding: 1rem;">Enviado por</th>
-          <th scope="col" style="padding: 1rem;">Data/Hora</th>
-          <th scope="col" style="padding: 1rem;">Ação</th>
+          <th scope="col" style="padding: 1rem; width: 75px; white-space: nowrap;">Versão</th>
+          <th scope="col" style="padding: 1rem; width: 170px; white-space: nowrap;">Tipo da Versão</th>
+          <th scope="col" style="padding: 1rem; min-width: 220px;">Arquivo</th>
+          <th scope="col" style="padding: 1rem; width: 180px; white-space: nowrap;">Hash SHA-256 de Integridade</th>
+          <th scope="col" style="padding: 1rem; min-width: 150px; white-space: nowrap;">Enviado por</th>
+          <th scope="col" style="padding: 1rem; width: 170px; white-space: nowrap;">Data/Hora</th>
+          <th scope="col" style="padding: 1rem; width: 110px; white-space: nowrap; text-align: center;">Ação</th>
         </tr>
       </thead>
       <tbody>
         <% versions.forEach(v => { %>
           <tr style="border-bottom: 1px solid var(--border-color);">
-            <td style="padding: 1rem; font-weight: 700; color: var(--color-primary);">v<%= v.version_number %></td>
-            <td style="padding: 1rem;">
+            <td style="padding: 1rem; font-weight: 700; color: var(--color-primary); white-space: nowrap;">v<%= v.version_number %></td>
+            <td style="padding: 1rem; white-space: nowrap;">
               <span class="role-tag" style="background: <%= v.version_type === 'ORIGINAL' ? 'var(--text-muted)' : (v.version_type === 'PROCESSADO_BOT' ? 'var(--color-primary)' : 'var(--color-success)') %>;">
                 <%= v.version_type %>
               </span>
             </td>
-            <td style="padding: 1rem;"><%= v.original_filename %></td>
-            <td style="padding: 1rem;"><code style="font-size: 0.75rem;"><%= v.sha256_hash.substring(0, 16) %>...</code></td>
-            <td style="padding: 1rem;"><%= v.uploader_name %></td>
-            <td style="padding: 1rem; font-size: 0.875rem; color: var(--text-muted);"><%= new Date(v.created_at).toLocaleString('pt-BR') %></td>
-            <td style="padding: 1rem;">
-              <a href="/materiais/<%= material.id %>/download?format=<%= v.version_type === 'ORIGINAL' ? 'original' : 'html' %>" class="btn btn-sm" style="border: 1px solid var(--border-color); font-size: 0.75rem;" download>
+            <td style="padding: 1rem; word-break: break-word;"><%= v.original_filename %></td>
+            <td style="padding: 1rem; white-space: nowrap;"><code style="font-size: 0.75rem; background: rgba(0,0,0,0.04); padding: 0.15rem 0.35rem; border-radius: 4px;"><%= v.sha256_hash.substring(0, 16) %>...</code></td>
+            <td style="padding: 1rem; white-space: nowrap;"><%= v.uploader_name %></td>
+            <td style="padding: 1rem; font-size: 0.875rem; color: var(--text-muted); white-space: nowrap;"><%= new Date(v.created_at).toLocaleString('pt-BR') %></td>
+            <td style="padding: 1rem; text-align: center; white-space: nowrap;">
+              <a href="/materiais/<%= material.id %>/download?format=<%= v.version_type === 'ORIGINAL' ? 'original' : 'html' %>" class="btn btn-sm" style="border: 1px solid var(--border-color); font-size: 0.75rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.25rem;" download>
                 📥 Baixar
               </a>
             </td>

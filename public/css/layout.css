@@ -120,6 +120,8 @@
   font-weight: 700;
   border-radius: 9999px;
   text-transform: uppercase;
+  display: inline-block;
+  white-space: nowrap;
 }
 
 .app-content {
@@ -144,7 +146,7 @@ table {
 
 td, th {
   overflow-wrap: break-word;
-  word-break: break-word;
+  word-break: normal;
 }
 
 /* NOTIFICAÇÕES PERSISTENTES (DROPDOWN NO HEADER) */

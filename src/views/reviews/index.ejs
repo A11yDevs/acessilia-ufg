@@ -9,16 +9,16 @@
     Fila de Materiais para Análise (<%= pendingMaterials.length %>)
   </h2>
 
-  <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
-    <table style="width: 100%; border-collapse: collapse; text-align: left;" aria-describedby="sec-fila">
+  <div class="table-responsive" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
+    <table class="data-table" style="min-width: 800px; width: 100%; border-collapse: collapse; text-align: left;" aria-describedby="sec-fila">
       <thead>
         <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
-          <th scope="col" style="padding: 1rem;">Título do Material</th>
-          <th scope="col" style="padding: 1rem;">Disciplina</th>
-          <th scope="col" style="padding: 1rem;">Docente</th>
-          <th scope="col" style="padding: 1rem;">Status Atual</th>
-          <th scope="col" style="padding: 1rem;">Versão</th>
-          <th scope="col" style="padding: 1rem;">Ações de Revisão</th>
+          <th scope="col" style="padding: 1rem; min-width: 200px;">Título do Material</th>
+          <th scope="col" style="padding: 1rem; min-width: 150px;">Disciplina</th>
+          <th scope="col" style="padding: 1rem; min-width: 140px;">Docente</th>
+          <th scope="col" style="padding: 1rem; width: 150px; white-space: nowrap;">Status Atual</th>
+          <th scope="col" style="padding: 1rem; width: 80px; white-space: nowrap;">Versão</th>
+          <th scope="col" style="padding: 1rem; min-width: 160px; white-space: nowrap;">Ações de Revisão</th>
         </tr>
       </thead>
       <tbody>
@@ -87,15 +87,15 @@
     Histórico de Análises Concluídas
   </h2>
 
-  <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
-    <table style="width: 100%; border-collapse: collapse; text-align: left;" aria-describedby="sec-historico">
+  <div class="table-responsive" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
+    <table class="data-table" style="min-width: 700px; width: 100%; border-collapse: collapse; text-align: left;" aria-describedby="sec-historico">
       <thead>
         <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
-          <th scope="col" style="padding: 1rem;">Material</th>
-          <th scope="col" style="padding: 1rem;">Versão</th>
-          <th scope="col" style="padding: 1rem;">Revisor</th>
-          <th scope="col" style="padding: 1rem;">Decisão</th>
-          <th scope="col" style="padding: 1rem;">Data/Hora</th>
+          <th scope="col" style="padding: 1rem; min-width: 220px;">Material</th>
+          <th scope="col" style="padding: 1rem; width: 80px; white-space: nowrap;">Versão</th>
+          <th scope="col" style="padding: 1rem; min-width: 150px; white-space: nowrap;">Revisor</th>
+          <th scope="col" style="padding: 1rem; width: 140px; white-space: nowrap;">Decisão</th>
+          <th scope="col" style="padding: 1rem; width: 170px; white-space: nowrap;">Data/Hora</th>
         </tr>
       </thead>
       <tbody>

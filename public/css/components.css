@@ -232,12 +232,14 @@ html.high-contrast .a11y-btn[aria-pressed="true"] {
 .data-table td {
   padding: 0.875rem 1rem;
   vertical-align: middle;
+  word-break: normal;
 }
 
 .data-table th {
   border-bottom: 2px solid var(--border-color);
   background: rgba(0, 0, 0, 0.02);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .data-table tr {

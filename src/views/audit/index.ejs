@@ -33,17 +33,17 @@
 </div>
 
 <!-- TABELA DE LOGS DE AUDITORIA -->
-<div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
-  <table id="table-audit-logs" style="width: 100%; border-collapse: collapse; text-align: left;" aria-label="Histórico de Auditoria">
+<div class="table-responsive" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow-x: auto;">
+  <table id="table-audit-logs" class="data-table" style="min-width: 860px; width: 100%; border-collapse: collapse; text-align: left;" aria-label="Histórico de Auditoria">
     <thead>
       <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
-        <th scope="col" style="padding: 1rem;">Data/Hora</th>
-        <th scope="col" style="padding: 1rem;">Usuário</th>
-        <th scope="col" style="padding: 1rem;">Ação</th>
-        <th scope="col" style="padding: 1rem;">Recurso</th>
-        <th scope="col" style="padding: 1rem;">ID Recurso</th>
-        <th scope="col" style="padding: 1rem;">Endereço IP</th>
-        <th scope="col" style="padding: 1rem;">Detalhes</th>
+        <th scope="col" style="padding: 1rem; width: 170px; white-space: nowrap;">Data/Hora</th>
+        <th scope="col" style="padding: 1rem; min-width: 150px; white-space: nowrap;">Usuário</th>
+        <th scope="col" style="padding: 1rem; width: 140px; white-space: nowrap;">Ação</th>
+        <th scope="col" style="padding: 1rem; width: 130px; white-space: nowrap;">Recurso</th>
+        <th scope="col" style="padding: 1rem; width: 100px; white-space: nowrap;">ID Recurso</th>
+        <th scope="col" style="padding: 1rem; width: 140px; white-space: nowrap;">Endereço IP</th>
+        <th scope="col" style="padding: 1rem; min-width: 180px;">Detalhes</th>
       </tr>
     </thead>
     <tbody>
