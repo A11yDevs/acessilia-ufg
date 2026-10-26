@@ -1,53 +1,9 @@
-import path from 'node:path';
-import fs from 'node:fs';
 import { piperTtsService } from '../../services/piper-tts.service.js';
 import { materialRepository } from '../../repositories/material.repository.js';
-import { botAcessClient } from '../../integrations/bot-acess/client.js';
+import { loadProcessedHtml } from '../../services/processed-document.service.js';
 
 async function getMaterialHtml(material, processedVersion) {
-  let htmlContent = '';
-
-  const candidatePaths = [];
-  if (processedVersion && processedVersion.storage_path) {
-    candidatePaths.push(
-      path.isAbsolute(processedVersion.storage_path)
-        ? processedVersion.storage_path
-        : path.resolve(process.cwd(), '.' + processedVersion.storage_path)
-    );
-  }
-  if (processedVersion) {
-    candidatePaths.push(
-      path.resolve(process.cwd(), `public/uploads/accessible_${processedVersion.id}.html`),
-      path.resolve(process.cwd(), `uploads/accessible_${processedVersion.id}.html`)
-    );
-  }
-
-  for (const p of candidatePaths) {
-    if (p && fs.existsSync(p)) {
-      try {
-        htmlContent = fs.readFileSync(p, 'utf8');
-        if (htmlContent) break;
-      } catch (_) {}
-    }
-  }
-
-  if (!htmlContent && processedVersion) {
-    const coreToken = botAcessClient.extractDownloadToken(processedVersion.storage_path);
-    if (coreToken) {
-      try {
-        const res = await botAcessClient.fetchProcessedFile(coreToken, 'html');
-        if (res.ok && res.buffer) {
-          htmlContent = res.buffer.toString('utf8');
-          const uploadsDir = path.resolve(process.cwd(), 'public/uploads');
-          if (!fs.existsSync(uploadsDir)) {
-            try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch (_) {}
-          }
-          const savePath = path.join(uploadsDir, `accessible_${processedVersion.id}.html`);
-          try { fs.writeFileSync(savePath, htmlContent); } catch (_) {}
-        }
-      } catch (_) {}
-    }
-  }
+  let htmlContent = processedVersion ? (await loadProcessedHtml(processedVersion)) || '' : '';
 
   if (!htmlContent) {
     htmlContent = `<h1>${material.title}</h1><p>${material.description || 'Material acadêmico disponibilizado na plataforma.'}</p>`;
