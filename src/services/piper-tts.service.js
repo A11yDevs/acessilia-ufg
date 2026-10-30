@@ -188,6 +188,7 @@ export class PiperTtsService {
 
     const chunks = [];
     let chunkIndex = 0;
+    let blockIndex = 0;
 
     // Remove elementos decorativos ou marcados com aria-hidden="true"
     let cleanHtml = htmlContent
@@ -200,8 +201,22 @@ export class PiperTtsService {
     // Converte <abbr title="..."> em texto falado expandido
     cleanHtml = cleanHtml.replace(/<abbr[^>]+title=["']([^"']+)["'][^>]*>([^<]+)<\/abbr>/gi, '$1 ($2)');
 
-    // Extrai audiodescrições de figuras
-    cleanHtml = cleanHtml.replace(/<figure[^>]*>[\s\S]*?<img[^>]+alt=["']([^"']+)["'][^>]*>[\s\S]*?<\/figure>/gi, '<p class="a11y-audiodesc-item">Audiodescrição de elemento visual: $1</p>');
+    // Extrai audiodescrições de cards acessíveis ou figuras brutas delimitando início e fim para acessibilidade
+    cleanHtml = cleanHtml.replace(
+      /<div[^>]*class=["'][^"']*\ba11y-audiodesc-card\b[^"']*["'][\s\S]*?<blockquote[^>]*class=["'][^"']*\ba11y-audiodesc-content\b[^"']*["']>([\s\S]*?)<\/blockquote>[\s\S]*?<\/div>/gi,
+      (match, text) => {
+        const clean = text.trim().replace(/[.!?]+$/, '');
+        return `<p class="a11y-audiodesc-item">Audiodescrição de elemento visual: ${clean}. Fim da audiodescrição de elemento visual.</p>`;
+      }
+    );
+
+    cleanHtml = cleanHtml.replace(
+      /<figure[^>]*>[\s\S]*?<img[^>]+alt=["']([^"']+)["'][^>]*>[\s\S]*?<\/figure>/gi,
+      (match, alt) => {
+        const clean = alt.trim().replace(/[.!?]+$/, '');
+        return `<p class="a11y-audiodesc-item">Audiodescrição de elemento visual: ${clean}. Fim da audiodescrição de elemento visual.</p>`;
+      }
+    );
 
     // Captura blocos semânticos: títulos, parágrafos, citações e listas
     const blockRegex = /<(h[1-6]|p|blockquote|li)[^>]*>([\s\S]*?)<\/\1>/gi;
@@ -231,13 +246,14 @@ export class PiperTtsService {
 
       const fullText = prefix + innerText;
 
-      if (fullText.length > 400) {
+      if (fullText.length > 350) {
         const sentences = fullText.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [fullText];
         let currentPart = '';
         for (const sentence of sentences) {
-          if ((currentPart + sentence).length > 350 && currentPart.trim()) {
+          if ((currentPart + sentence).length > 300 && currentPart.trim()) {
             chunks.push({
               id: `chunk-${chunkIndex++}`,
+              blockIndex,
               tag,
               text: currentPart.trim(),
               wordCount: currentPart.split(/\s+/).length
@@ -250,6 +266,7 @@ export class PiperTtsService {
         if (currentPart.trim()) {
           chunks.push({
             id: `chunk-${chunkIndex++}`,
+            blockIndex,
             tag,
             text: currentPart.trim(),
             wordCount: currentPart.split(/\s+/).length
@@ -258,11 +275,13 @@ export class PiperTtsService {
       } else {
         chunks.push({
           id: `chunk-${chunkIndex++}`,
+          blockIndex,
           tag,
           text: fullText,
           wordCount: fullText.split(/\s+/).length
         });
       }
+      blockIndex++;
     }
 
     // Se nenhum bloco HTML foi extraído, processa como texto puro

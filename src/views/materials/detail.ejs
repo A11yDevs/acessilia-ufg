@@ -932,7 +932,8 @@
     isPlaying: false,
     materialId: <%= material.id %>,
     highlightEl: null,
-    domElements: []
+    domElements: [],
+    currentBlobUrl: null
   };
 
   const _SLASH = String.fromCharCode(47);
@@ -940,6 +941,27 @@
     const isGestor = window.location.pathname.indexOf('gestor') !== -1;
     const prefix = isGestor ? ['gestor'] : [];
     return _SLASH + prefix.concat(parts).join(_SLASH);
+  }
+
+  function base64ToBlobUrl(base64DataUri) {
+    if (!base64DataUri || typeof base64DataUri !== 'string') return '';
+    if (!base64DataUri.startsWith('data:')) return base64DataUri;
+    try {
+      const parts = base64DataUri.split(',');
+      const mimeMatch = parts[0].match(/:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : 'audio/wav';
+      const bstr = atob(parts[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      const blob = new Blob([u8arr], { type: mime });
+      return URL.createObjectURL(blob);
+    } catch (err) {
+      console.warn('[TTS] Falha ao converter Base64 para Blob, usando URL direta:', err);
+      return base64DataUri;
+    }
   }
 
   async function loadTtsChunks() {
@@ -962,8 +984,10 @@
   function indexDomElementsForHighlight() {
     const container = document.getElementById('accessible-book-content') || document.getElementById('material-accessible-content');
     if (!container) return;
-    // Seleciona blocos de parágrafos, cabeçalhos, citações e itens
-    const blocks = Array.from(container.querySelectorAll('h1, h2, h3, h4, h5, h6, p, blockquote, .a11y-audiodesc-card'));
+    // Seleciona blocos de parágrafos, cabeçalhos, citações, listas e cards de audiodescrição (evitando nós internos ao card)
+    const blocks = Array.from(container.querySelectorAll(
+      'h1, h2, h3, h4, h5, h6, li, .a11y-audiodesc-card, p:not(.a11y-audiodesc-card *), blockquote:not(.a11y-audiodesc-card *)'
+    ));
     ttsPlayer.domElements = blocks;
   }
 
@@ -1028,9 +1052,20 @@
 
       ttsPlayer.audio.pause();
       ttsPlayer.audio.currentTime = 0;
-      ttsPlayer.audio.src = data.audio;
+      if (ttsPlayer.currentBlobUrl) {
+        URL.revokeObjectURL(ttsPlayer.currentBlobUrl);
+        ttsPlayer.currentBlobUrl = null;
+      }
+
+      const blobUrl = base64ToBlobUrl(data.audio);
+      ttsPlayer.currentBlobUrl = blobUrl.startsWith('blob:') ? blobUrl : null;
+      ttsPlayer.audio.src = blobUrl;
 
       ttsPlayer.audio.onended = () => {
+        if (ttsPlayer.currentBlobUrl) {
+          URL.revokeObjectURL(ttsPlayer.currentBlobUrl);
+          ttsPlayer.currentBlobUrl = null;
+        }
         ttsPlayer.currentIndex++;
         if (ttsPlayer.currentIndex < ttsPlayer.chunks.length) {
           playCurrentTtsChunk();
@@ -1078,7 +1113,9 @@
       indexDomElementsForHighlight();
     }
 
-    const target = ttsPlayer.domElements[index];
+    const chunk = ttsPlayer.chunks[index];
+    const targetIdx = (chunk && typeof chunk.blockIndex === 'number') ? chunk.blockIndex : index;
+    const target = ttsPlayer.domElements[targetIdx] || ttsPlayer.domElements[index];
     if (target) {
       target.classList.add('a11y-reading-highlight');
       ttsPlayer.highlightEl = target;
@@ -1114,6 +1151,10 @@
   function stopTtsPlayback() {
     ttsPlayer.audio.pause();
     ttsPlayer.audio.currentTime = 0;
+    if (ttsPlayer.currentBlobUrl) {
+      URL.revokeObjectURL(ttsPlayer.currentBlobUrl);
+      ttsPlayer.currentBlobUrl = null;
+    }
     ttsPlayer.isPlaying = false;
     ttsPlayer.currentIndex = 0;
 
@@ -1149,12 +1190,40 @@
 
   // AUXILIARES DE AUDIODESCRIÇÃO (Piper-TTS Neural com Fallback)
   window.speakAudiodesc = async function(btn) {
-    const text = btn.getAttribute('data-text');
-    if (!text) return;
+    const rawText = btn.getAttribute('data-text');
+    if (!rawText) return;
+
+    let textToSpeak = rawText.trim();
+    if (!textToSpeak.toLowerCase().startsWith('audiodescrição')) {
+      const clean = textToSpeak.replace(/[.!?]+$/, '');
+      textToSpeak = `Audiodescrição de elemento visual: ${clean}. Fim da audiodescrição de elemento visual.`;
+    }
 
     const originalText = btn.textContent;
     btn.textContent = '⏳ Gerando Áudio Neural...';
     btn.disabled = true;
+
+    function fallbackSpeech() {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        utterance.lang = 'pt-BR';
+        btn.textContent = '🔊 Reproduzindo...';
+        utterance.onend = () => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        };
+        utterance.onerror = () => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        };
+        window.speechSynthesis.speak(utterance);
+        announceA11y('Reproduzindo audiodescrição da imagem');
+      } else {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
 
     try {
       const voice = document.getElementById('tts-voice-select')?.value || 'pt_BR-cadu-medium';
@@ -1165,19 +1234,22 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ text, voice, rate })
+        body: JSON.stringify({ text: textToSpeak, voice, rate })
       });
 
       if (res.ok) {
         const data = await res.json();
-        const audio = new Audio(data.audio);
+        const blobUrl = base64ToBlobUrl(data.audio);
+        const audio = new Audio(blobUrl);
         btn.textContent = '🔊 Reproduzindo Audiodescrição...';
         audio.onended = () => {
+          if (blobUrl.startsWith('blob:')) URL.revokeObjectURL(blobUrl);
           btn.textContent = originalText;
           btn.disabled = false;
         };
         audio.onerror = () => {
-          fallbackSpeech(text, btn, originalText);
+          if (blobUrl.startsWith('blob:')) URL.revokeObjectURL(blobUrl);
+          fallbackSpeech();
         };
         await audio.play();
         announceA11y('Reproduzindo audiodescrição em alta fidelidade com Piper-TTS');
@@ -1188,21 +1260,7 @@
     }
 
     // Fallback nativo
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'pt-BR';
-      btn.textContent = '🔊 Reproduzindo...';
-      utterance.onend = () => {
-        btn.textContent = originalText;
-        btn.disabled = false;
-      };
-      window.speechSynthesis.speak(utterance);
-      announceA11y('Reproduzindo audiodescrição da imagem');
-    } else {
-      btn.textContent = originalText;
-      btn.disabled = false;
-    }
+    fallbackSpeech();
   };
 
   window.speakMath = function(btn) {
