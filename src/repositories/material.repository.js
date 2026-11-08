@@ -184,6 +184,23 @@ export const materialRepository = {
     `).all();
   },
 
+  countProcessingJobsForVersion(materialVersionId) {
+    return db.prepare('SELECT COUNT(*) AS total FROM processing_jobs WHERE material_version_id = ?')
+      .get(materialVersionId).total;
+  },
+
+  // Último job do material (qualquer status): usado para mostrar o motivo da falha
+  findLatestJobForMaterial(materialId) {
+    return db.prepare(`
+      SELECT pj.*
+      FROM processing_jobs pj
+      JOIN material_versions mv ON mv.id = pj.material_version_id
+      WHERE mv.material_id = ?
+      ORDER BY pj.id DESC
+      LIMIT 1
+    `).get(materialId);
+  },
+
   findActiveJobForMaterial(materialId) {
     return db.prepare(`
       SELECT pj.* 

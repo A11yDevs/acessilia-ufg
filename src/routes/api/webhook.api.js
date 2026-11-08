@@ -31,7 +31,9 @@ export async function webhookApiRoutes(fastify, opts) {
     }
 
     if (status === 'COMPLETED') {
-      const nextVersionNumber = version.version_number + 1;
+      // Próximo número livre (reprocessamento já pode ter criado a v2)
+      const latestVersion = materialRepository.getLatestVersion(version.material_id);
+      const nextVersionNumber = Math.max(version.version_number, latestVersion ? latestVersion.version_number : 0) + 1;
       const newVersion = materialRepository.createVersion({
         materialId: version.material_id,
         versionNumber: nextVersionNumber,

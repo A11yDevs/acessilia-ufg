@@ -5,6 +5,7 @@ import { materialRepository } from '../repositories/material.repository.js';
 import { academicRepository } from '../repositories/academic.repository.js';
 import { auditRepository } from '../repositories/audit.repository.js';
 import { notificationEvents } from '../routes/api/notifications.api.js';
+import { botAcessService } from '../integrations/bot-acess/service.js';
 
 export const materialService = {
   // Envio de Material (Cria v1 ORIGINAL) com suporte opcional a agendamento
@@ -19,7 +20,8 @@ export const materialService = {
       throw new Error('A disciplina selecionada não foi encontrada ou não existe.');
     }
 
-    const VALID_CATEGORIES = ['LIVRO', 'APOSTILA', 'SLIDE', 'ARTIGO', 'EXERCICIO', 'OUTRO'];
+    // Mesma lista do CHECK de materials.category (migrations 001 e 003)
+    const VALID_CATEGORIES = ['LIVRO', 'APOSTILA', 'SLIDE', 'ARTIGO', 'EXERCICIO', 'AVALIACAO', 'OUTRO'];
     if (category && !VALID_CATEGORIES.includes(category.toUpperCase())) {
       throw new Error(`Categoria de material inválida (${category}).`);
     }
@@ -153,12 +155,17 @@ export const materialService = {
   },
 
   // Iniciar Job de Processamento no bot-acess (com idempotência)
-  async requestProcessing(materialVersionId, actorUser) {
+  async requestProcessing(materialVersionId, actorUser, { newAttempt = false } = {}) {
     const version = materialRepository.findVersionById(materialVersionId);
     if (!version) throw new Error('Versão de material não encontrada.');
 
-    // Chave única de idempotência
-    const idempotencyKey = `job_${version.id}_${version.sha256_hash}`;
+    // Chave única de idempotência. No reprocessamento a chave ganha o número da
+    // tentativa; sem isso o ON CONFLICT devolveria o job antigo (já FAILED).
+    let idempotencyKey = `job_${version.id}_${version.sha256_hash}`;
+    if (newAttempt) {
+      const attempt = materialRepository.countProcessingJobsForVersion(version.id) + 1;
+      idempotencyKey += `_tentativa_${attempt}`;
+    }
 
     const job = materialRepository.createProcessingJob({
       idempotencyKey,
@@ -253,6 +260,9 @@ export const materialService = {
       throw new Error('Nenhum material selecionado.');
     }
 
+    // Aceita a ação em qualquer caixa (o aviso de falha enviava "reprocess")
+    action = String(action || '').toUpperCase();
+
     if (action === 'APPROVE') {
       const affected = materialRepository.bulkUpdateStatus(materialIds, 'APROVADO');
       for (const id of materialIds) {
@@ -275,24 +285,46 @@ export const materialService = {
     }
 
     if (action === 'REPROCESS') {
-      const affected = materialRepository.bulkUpdateStatus(materialIds, 'AGUARDANDO_PROCESSAMENTO');
+      // Reprocessar = novo job a partir da versão ORIGINAL mais recente, despachado
+      // na hora para o Core. Antes só o status mudava e nenhum job era criado.
+      const results = [];
       for (const id of materialIds) {
+        const original = materialRepository.getMaterialVersions(id).find(v => v.version_type === 'ORIGINAL');
+        if (!original) {
+          results.push({ materialId: id, success: false, error: 'Material sem versão original.' });
+          continue;
+        }
+
+        // Já está no Core: não envia de novo (evita job duplicado e gasto da cota)
+        const activeJob = materialRepository.findActiveJobForMaterial(id);
+        if (activeJob && activeJob.external_job_id) {
+          results.push({ materialId: id, success: true, jobId: activeJob.id, alreadyActive: true });
+          continue;
+        }
+
+        const job = activeJob || await this.requestProcessing(original.id, actorUser, { newAttempt: true });
+        const dispatch = await botAcessService.dispatchJob(job.id);
+        results.push({ materialId: id, jobId: job.id, ...dispatch });
+
+        const newStatus = dispatch.success ? 'PROCESSANDO' : 'FALHA_PROCESSAMENTO';
         notificationEvents.emit('notify', {
           type: 'MATERIAL_UPDATED',
           materialId: id,
-          status: 'AGUARDANDO_PROCESSAMENTO',
-          title: 'Material em Fila',
-          message: 'Material reenviado para fila de acessibilização em lote.'
+          status: newStatus,
+          title: dispatch.success ? 'Material Reenviado' : 'Falha no Reenvio',
+          message: dispatch.success ? 'Material reenviado ao Acessilia Core.' : dispatch.error
         });
       }
+
+      const affected = results.filter(r => r.success).length;
       auditRepository.createLog({
         userId: actorUser.id,
         action: 'BULK_REPROCESS_MATERIALS',
         resource: 'materials',
         resourceId: 0,
-        details: { materialIds, affected }
+        details: { materialIds, affected, jobs: results.map(r => ({ materialId: r.materialId, jobId: r.jobId, success: r.success })) }
       });
-      return { action, affected };
+      return { action, affected, results };
     }
 
     throw new Error('Ação em lote não suportada.');

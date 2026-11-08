@@ -93,6 +93,11 @@ test('Documento processado: leitor, voz e downloads usam o HTML do Core', async 
     const html = await app.inject({ method: 'GET', url: `/materiais/${material.id}/download?format=html` });
     assert.equal(html.statusCode, 200);
     assert.match(html.payload, new RegExp(`Consumo de água ${suffix}`));
+    // Arquivo baixado é um documento completo: idioma e título para o leitor de tela
+    assert.match(html.payload, /^<!DOCTYPE html>\s*<html lang="pt-BR">\s*<head>/);
+    assert.match(html.payload, /<title>Material core<\/title>/);
+    assert.equal((html.payload.match(/<html\b/gi) || []).length, 1, 'sem <html> duplicado');
+    assert.match(html.payload, /<\/body>\s*<\/html>\s*$/);
 
     const docx = await app.inject({ method: 'GET', url: `/materiais/${material.id}/download?format=docx` });
     assert.equal(docx.statusCode, 200);
@@ -107,6 +112,8 @@ test('Documento processado: leitor, voz e downloads usam o HTML do Core', async 
 
     const html = await app.inject({ method: 'GET', url: `/materiais/${legacy.id}/download?format=html` });
     assert.match(html.payload, new RegExp(`Consumo de água ${suffix}`));
+    assert.match(html.payload, /^<!DOCTYPE html>\s*<html lang="pt-BR">/);
+    assert.match(html.payload, /<title>Material legado<\/title>/);
     const txt = await app.inject({ method: 'GET', url: `/materiais/${legacy.id}/download?format=txt` });
     assert.match(txt.payload, /Fevereiro/);
     const pdf = await app.inject({ method: 'GET', url: `/materiais/${legacy.id}/download?format=pdf_ua` });

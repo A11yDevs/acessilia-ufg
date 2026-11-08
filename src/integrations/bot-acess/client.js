@@ -11,10 +11,38 @@ import { env } from '../../config/env.js';
  * - GET /download/{token}/{format} : Download nos formatos txt, docx, pdf, pdf_ua, html, mp3
  * - GET /health : Status de saúde do motor e modelos
  */
+// O Core limita requisições por IP (backend/api/routes: 5/min em POST /jobs,
+// 20/min em GET /download) e responde 429 sem Retry-After. Como todo o Gestor sai
+// do mesmo IP, a cota é dividida entre todos os usuários.
+export const CORE_RATE_LIMIT_MESSAGE = 'O Acessilia Core recebeu muitos envios ao mesmo tempo; tente reprocessar em 1 minuto.';
+export const CORE_DOWNLOAD_RATE_LIMIT_MESSAGE = 'O Acessilia Core recebeu muitos pedidos de download ao mesmo tempo; tente novamente em 1 minuto.';
+
 export class BotAcessClient {
   constructor(baseUrl = env.BOT_ACESS_API_URL, apiKey = env.BOT_ACESS_API_KEY) {
     this.baseUrl = (baseUrl || 'http://localhost:8000').replace(/\/$/, '');
     this.apiKey = apiKey;
+    // Esperas entre novas tentativas após 429 (curtas: a requisição do usuário fica aguardando)
+    this.rateLimitRetryDelaysMs = [2000, 5000];
+    this.maxRetryAfterMs = 10000;
+  }
+
+  /**
+   * Faz a requisição e, se o Core responder 429, tenta de novo após uma espera curta
+   * (Retry-After, se vier, limitado a maxRetryAfterMs). Devolve a última resposta (ou null).
+   * makeRequest é uma função porque o corpo (FormData) e o AbortSignal não podem ser reaproveitados.
+   */
+  async _fetchWithRateLimitRetry(makeRequest) {
+    let response = await makeRequest();
+    for (const delayMs of this.rateLimitRetryDelaysMs) {
+      if (!response || response.status !== 429) break;
+      const retryAfterSec = Number(response.headers.get('retry-after'));
+      const waitMs = Number.isFinite(retryAfterSec) && retryAfterSec > 0
+        ? Math.min(retryAfterSec * 1000, this.maxRetryAfterMs)
+        : delayMs;
+      await new Promise(resolve => setTimeout(resolve, waitMs));
+      response = await makeRequest();
+    }
+    return response;
   }
 
   /**
@@ -40,24 +68,36 @@ export class BotAcessClient {
     }
 
     try {
-      const formData = new FormData();
-      const blob = new Blob([fileBuffer], { type: mimeType });
-      // O FastAPI do Core espera 'document_file' (backend/api/routes/jobs.py)
-      formData.append('document_file', blob, filename);
-      // Mantém fallback 'file' para máxima compatibilidade retroativa
-      formData.append('file', blob, filename);
-      formData.append('source', 'gestor');
-      formData.append('mode', mode);
-      if (customPrompt) {
-        formData.append('custom_prompt', customPrompt);
-      }
+      const buildFormData = () => {
+        const formData = new FormData();
+        const blob = new Blob([fileBuffer], { type: mimeType });
+        // O FastAPI do Core espera 'document_file' (backend/api/routes/jobs.py)
+        formData.append('document_file', blob, filename);
+        // Mantém fallback 'file' para máxima compatibilidade retroativa
+        formData.append('file', blob, filename);
+        formData.append('source', 'gestor');
+        formData.append('mode', mode);
+        if (customPrompt) {
+          formData.append('custom_prompt', customPrompt);
+        }
+        return formData;
+      };
 
-      const response = await fetch(`${this.baseUrl}/api/v1/jobs`, {
+      const response = await this._fetchWithRateLimitRetry(() => fetch(`${this.baseUrl}/api/v1/jobs`, {
         method: 'POST',
         headers: this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {},
-        body: formData,
+        body: buildFormData(),
         signal: AbortSignal.timeout(10000)
-      }).catch(() => null);
+      }).catch(() => null));
+
+      // Limite de envios por minuto do Core: não é indisponibilidade
+      if (response && response.status === 429) {
+        return {
+          success: false,
+          rateLimited: true,
+          error: CORE_RATE_LIMIT_MESSAGE
+        };
+      }
 
       if (response && response.ok) {
         const data = await response.json();
@@ -268,13 +308,16 @@ export class BotAcessClient {
    */
   async fetchProcessedFile(token, format = 'html') {
     try {
-      const response = await fetch(this.getDownloadUrl(token, format), {
+      const response = await this._fetchWithRateLimitRetry(() => fetch(this.getDownloadUrl(token, format), {
         method: 'GET',
         headers: this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {},
         signal: AbortSignal.timeout(30000)
-      }).catch(() => null);
+      }).catch(() => null));
 
       if (!response) return { ok: false, status: 0 };
+      if (response.status === 429) {
+        return { ok: false, status: 429, rateLimited: true, error: CORE_DOWNLOAD_RATE_LIMIT_MESSAGE };
+      }
       if (!response.ok) return { ok: false, status: response.status };
 
       return {

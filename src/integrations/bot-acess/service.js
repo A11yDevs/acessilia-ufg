@@ -51,7 +51,7 @@ export const botAcessService = {
         errorMessage: response.error
       });
       materialRepository.updateMaterialStatus(version.material_id, 'FALHA_PROCESSAMENTO');
-      return { success: false, error: response.error };
+      return { success: false, error: response.error, rateLimited: Boolean(response.rateLimited) };
     }
   },
 
@@ -110,7 +110,10 @@ export const botAcessService = {
 
     if (result.status === 'COMPLETED') {
       const originalVersion = materialRepository.findVersionById(job.material_version_id);
-      const nextVersionNumber = originalVersion.version_number + 1;
+      // Próximo número livre: num reprocessamento já existe a v2 da primeira conversão,
+      // e "original + 1" colidiria com UNIQUE(material_id, version_number).
+      const latestVersion = materialRepository.getLatestVersion(originalVersion.material_id);
+      const nextVersionNumber = Math.max(originalVersion.version_number, latestVersion ? latestVersion.version_number : 0) + 1;
 
       // 1. Tenta baixar o arquivo processado pelo Core para salvar no disco local
       // storage_path guarda o download_url do Core: é dele que saem os outros formatos
