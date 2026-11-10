@@ -37,7 +37,8 @@ describe('tests/setup-env.js: cópia isolada do banco base', () => {
       db.exec("CREATE TABLE t (v TEXT); INSERT INTO t VALUES ('so-no-wal')");
       process.kill(process.pid, 'SIGKILL');
     `)]);
-    assert.equal(writer.status, null, writer.stderr);
+    // No Windows, SIGKILL encerra via TerminateProcess com status 1; em POSIX, status é null e signal é SIGKILL.
+    assert.ok(writer.status === null || writer.status === 1, writer.stderr);
     assert.ok(fs.existsSync(`${sourceDb}-wal`), 'o -wal pendente deve existir antes do setup');
   });
 
