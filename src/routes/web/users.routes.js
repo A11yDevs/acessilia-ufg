@@ -89,7 +89,21 @@ export async function usersWebRoutes(fastify, opts) {
 
       return reply.redirect('/usuarios');
     } catch (err) {
-      return reply.status(400).send({ error: err.message });
+      const users = db.prepare(`
+        SELECT u.*, r.name as role_name, r.code as role_code, r.id as role_id
+        FROM users u
+        LEFT JOIN user_roles ur ON ur.user_id = u.id AND ur.is_primary = 1
+        LEFT JOIN roles r ON r.id = ur.role_id
+        ORDER BY u.name ASC
+      `).all();
+      const roles = db.prepare('SELECT * FROM roles ORDER BY name ASC').all();
+      return reply.formError('users/index.ejs', {
+        users,
+        roles,
+        title: 'Gestão de Usuários',
+        headerTitle: 'Usuários do Sistema',
+        currentPath: '/usuarios'
+      }, err.message, { formValues: request.body });
     }
   });
 

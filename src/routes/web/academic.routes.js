@@ -40,7 +40,15 @@ export async function academicWebRoutes(fastify, opts) {
       }, request.user);
       return reply.redirect('/academico/cursos');
     } catch (err) {
-      return reply.status(400).send({ error: err.message });
+      const courses = await academicService.listCourses();
+      const departments = academicRepository.listDepartments();
+      return reply.formError('academic/courses.ejs', {
+        courses,
+        departments,
+        title: 'Cursos Institucionais',
+        headerTitle: 'Cursos da Instituição',
+        currentPath: '/academico/cursos'
+      }, err.message, { formValues: request.body });
     }
   });
 
@@ -128,7 +136,15 @@ export async function academicWebRoutes(fastify, opts) {
       const cleanRedirectUrl = (redirectUrl || '/academico/disciplinas').replace(/^\/gestor/, '');
       return reply.redirect(cleanRedirectUrl);
     } catch (err) {
-      return reply.status(400).send({ error: err.message });
+      const subjects = academicRepository.listSubjects();
+      const departments = academicRepository.listDepartments();
+      return reply.formError('academic/subjects.ejs', {
+        subjects,
+        departments,
+        title: 'Catálogo de Disciplinas',
+        headerTitle: 'Disciplinas da Instituição',
+        currentPath: '/academico/disciplinas'
+      }, err.message, { formValues: request.body });
     }
   });
 
@@ -197,7 +213,26 @@ export async function academicWebRoutes(fastify, opts) {
 
       return reply.redirect('/academico/turmas');
     } catch (err) {
-      return reply.status(400).send({ error: err.message });
+      const classes = await academicService.listClasses({});
+      const courses = await academicService.listCourses();
+      const subjects = await academicService.listSubjects();
+      const periods = academicRepository.listPeriods();
+      const activePeriod = academicRepository.getActivePeriod();
+      const teachers = academicRepository.listTeachers();
+      const students = academicRepository.listStudents();
+      return reply.formError('academic/classes.ejs', {
+        classes,
+        courses,
+        subjects,
+        periods,
+        activePeriod,
+        teachers,
+        students,
+        filters: {},
+        title: 'Gestão de Turmas',
+        headerTitle: 'Turmas e Enturmações',
+        currentPath: '/academico/turmas'
+      }, err.message, { formValues: request.body });
     }
   });
 
