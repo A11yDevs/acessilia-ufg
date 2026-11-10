@@ -1,9 +1,10 @@
+<% const canManageClasses = user.roleCode === 'ADMINISTRADOR' || (user.permissions && user.permissions.includes('turmas.gerenciar')) || user.roleCode === 'COORDENADOR'; %>
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
   <div>
     <h1 style="font-size: 1.75rem; font-weight: 700;">Gestão de Turmas</h1>
     <p style="color: var(--text-muted);">Administração de turmas, docentes responsáveis e estudantes enturmados</p>
   </div>
-  <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('turmas.gerenciar') || user.roleCode === 'COORDENADOR') { %>
+  <% if (canManageClasses) { %>
     <button type="button" class="btn btn-primary" onclick="document.getElementById('modal-nova-turma').style.display='block'; document.getElementById('codigo-turma').focus();">
       + Nova Turma
     </button>
@@ -104,7 +105,7 @@
             </td>
             <td style="padding: 1rem;">
               <button type="button" class="btn" style="border: 1px solid var(--border-color); padding: 0.375rem 0.75rem; font-size: 0.875rem;" onclick="openManageClassModal(<%= cl.id %>, '<%= cl.code %>', '<%= cl.subject_name %>')">
-                👥 Gerenciar Enturmação
+                <%= canManageClasses ? '👥 Gerenciar Enturmação' : '👁️ Ver Enturmação' %>
               </button>
             </td>
           </tr>
@@ -114,6 +115,7 @@
   </table>
 </div>
 
+<% if (canManageClasses) { %>
 <!-- MODAL CADASTRAR NOVA TURMA -->
 <div id="modal-nova-turma" role="dialog" aria-modal="true" aria-labelledby="modal-turma-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000; overflow-y: auto;">
   <div class="auth-card" style="margin: 2rem auto; max-width: 550px;">
@@ -184,13 +186,14 @@
     </form>
   </div>
 </div>
+<% } %>
 
 <!-- MODAL GERENCIAR ENTURMAÇÃO (DOCENTES E ALUNOS) -->
 <div id="modal-gerenciar-enturmacao" role="dialog" aria-modal="true" aria-labelledby="modal-enturmacao-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000; overflow-y: auto;">
   <div class="auth-card" style="margin: 2rem auto; max-width: 650px;">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
       <div>
-        <h2 id="modal-enturmacao-titulo" style="font-size: 1.25rem; font-weight: 700;">Enturmação da Turma</h2>
+        <h2 id="modal-enturmacao-titulo" style="font-size: 1.25rem; font-weight: 700;"><%= canManageClasses ? 'Enturmação da Turma' : 'Integrantes da Turma' %></h2>
         <p id="subtitulo-enturmacao" style="color: var(--text-muted); font-size: 0.875rem;"></p>
       </div>
       <button type="button" class="btn" onclick="document.getElementById('modal-gerenciar-enturmacao').style.display='none';" aria-label="Fechar">✕</button>
@@ -203,7 +206,7 @@
         <p style="color: var(--text-muted); font-size: 0.875rem;">Carregando...</p>
       </div>
 
-      <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('turmas.gerenciar') || user.roleCode === 'COORDENADOR') { %>
+      <% if (canManageClasses) { %>
         <form id="form-add-docente" method="POST" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <select name="teacherUserId" class="form-input" style="flex: 1; min-width: 200px;" required>
@@ -228,7 +231,7 @@
         <p style="color: var(--text-muted); font-size: 0.875rem;">Carregando...</p>
       </div>
 
-      <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('turmas.gerenciar') || user.roleCode === 'COORDENADOR') { %>
+      <% if (canManageClasses) { %>
         <form id="form-add-aluno" method="POST" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <select name="studentUserId" class="form-input" style="flex: 1; min-width: 200px;" required>
@@ -252,12 +255,19 @@
 
 <script>
   let currentModalClassId = null;
+  const canManageClasses = <%= canManageClasses ? 'true' : 'false' %>;
 
   async function openManageClassModal(classId, code, subjectName) {
     currentModalClassId = classId;
     document.getElementById('subtitulo-enturmacao').innerText = `Turma ${code} — ${subjectName}`;
-    document.getElementById('form-add-docente').action = `/academico/turmas/${classId}/professores`;
-    document.getElementById('form-add-aluno').action = `/academico/turmas/${classId}/alunos`;
+    const formDocente = document.getElementById('form-add-docente');
+    if (formDocente) {
+      formDocente.action = `/academico/turmas/${classId}/professores`;
+    }
+    const formAluno = document.getElementById('form-add-aluno');
+    if (formAluno) {
+      formAluno.action = `/academico/turmas/${classId}/alunos`;
+    }
     document.getElementById('modal-gerenciar-enturmacao').style.display = 'block';
 
     const listTeachersEl = document.getElementById('lista-professores-turma');
@@ -276,13 +286,16 @@
       } else {
         let tHtml = '<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">';
         data.teachers.forEach(t => {
+          const removeBtn = canManageClasses ? `
+            <form action="/academico/turmas/${classId}/professores/${t.teacher_user_id}/remover" method="POST" style="display: inline;" onsubmit="return confirm('Deseja remover este professor da turma?');">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" class="btn btn-danger-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Remover</button>
+            </form>
+          ` : '';
           tHtml += `
             <li style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-primary); border-radius: var(--border-radius); font-size: 0.875rem;">
               <span><strong>${t.teacher_name}</strong> <span class="role-tag">${t.role_in_class}</span> (${t.teacher_email})</span>
-              <form action="/academico/turmas/${classId}/professores/${t.teacher_user_id}/remover" method="POST" style="display: inline;" onsubmit="return confirm('Deseja remover este professor da turma?');">
-                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button type="submit" class="btn btn-danger-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Remover</button>
-              </form>
+              ${removeBtn}
             </li>
           `;
         });
@@ -296,13 +309,16 @@
       } else {
         let sHtml = '<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">';
         data.students.forEach(s => {
+          const removeBtn = canManageClasses ? `
+            <form action="/academico/turmas/${classId}/alunos/${s.student_user_id}/remover" method="POST" style="display: inline;" onsubmit="return confirm('Deseja desvincular este estudante da turma?');">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" class="btn btn-danger-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Desvincular</button>
+            </form>
+          ` : '';
           sHtml += `
             <li style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-primary); border-radius: var(--border-radius); font-size: 0.875rem;">
               <span><strong>${s.student_name}</strong> ${s.registration_number ? `(${s.registration_number})` : ''} — ${s.student_email}</span>
-              <form action="/academico/turmas/${classId}/alunos/${s.student_user_id}/remover" method="POST" style="display: inline;" onsubmit="return confirm('Deseja desvincular este estudante da turma?');">
-                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button type="submit" class="btn btn-danger-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Desvincular</button>
-              </form>
+              ${removeBtn}
             </li>
           `;
         });

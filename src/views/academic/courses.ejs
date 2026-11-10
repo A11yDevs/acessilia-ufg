@@ -1,9 +1,10 @@
-﻿<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+<% const canManageCourses = user.roleCode === 'ADMINISTRADOR' || (user.permissions && user.permissions.includes('cursos.gerenciar')); %>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
   <div>
     <h1 style="font-size: 1.75rem; font-weight: 700;">Cursos Institucionais</h1>
     <p style="color: var(--text-muted);">Gestão acadêmica de cursos e matrizes curriculares</p>
   </div>
-  <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('cursos.gerenciar')) { %>
+  <% if (canManageCourses) { %>
     <a href="#modal-novo-curso" class="btn btn-primary" onclick="document.getElementById('modal-novo-curso').style.display='block'; document.getElementById('nome-curso').focus(); return false;">
       + Novo Curso
     </a>
@@ -50,6 +51,7 @@
   </table>
 </div>
 
+<% if (canManageCourses) { %>
 <!-- MODAL ACESSÍVEL DE CADASTRO -->
 <div id="modal-novo-curso" role="dialog" aria-modal="true" aria-labelledby="modal-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
   <div class="auth-card" style="margin: 3rem auto; max-width: 500px;">
@@ -101,3 +103,4 @@
     </form>
   </div>
 </div>
+<% } %>
