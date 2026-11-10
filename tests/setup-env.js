@@ -7,33 +7,38 @@ process.env.NODE_ENV = 'test';
 
 // Isola o banco de dados de testes para nunca gravar no banco de produção.
 // O node:test roda cada arquivo de teste em um processo próprio e em paralelo, e todos
-// executam este setup: por isso cada processo recebe a sua cópia (sufixo = pid), em vez
-// de todos sobrescreverem o mesmo arquivo enquanto outros já o usam.
+// executam este setup: por isso cada processo recebe a sua cópia, em vez de todos
+// sobrescreverem o mesmo arquivo enquanto outros já o usam.
 const prodDb = path.resolve(process.cwd(), 'database/database.sqlite');
-const testDb = path.join(os.tmpdir(), `acessilia-gestor-test-${process.pid}.sqlite`);
-const testFiles = ['', '-wal', '-shm'].map((suffix) => testDb + suffix);
 
-const removeTestFiles = () => {
-  for (const file of testFiles) {
-    try { fs.rmSync(file, { force: true }); } catch (_) {}
-  }
+// Diretório exclusivo do processo, criado com permissão 0700: a cópia tem os dados e os
+// hashes de senha do banco local e não pode ficar legível para outros usuários em um /tmp
+// compartilhado. O SQLite cria a cópia e os -wal/-shm dentro dele.
+const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'acessilia-gestor-test-'));
+const testDb = path.join(testDir, 'test.sqlite');
+
+const removeTestDir = () => {
+  try { fs.rmSync(testDir, { recursive: true, force: true }); } catch (_) {}
 };
-// Descarta sobra de um processo antigo com o mesmo pid (VACUUM INTO exige destino vazio)
-removeTestFiles();
+// Apaga a cópia (com -wal/-shm) ao fim do processo
+process.on('exit', removeTestDir);
 
 if (fs.existsSync(prodDb)) {
+  let source;
   try {
     // VACUUM INTO gera um snapshot consistente, já incluindo o que está no -wal
-    // (ex.: a última migração), sem checkpoint nem escrita no banco de origem.
-    const source = new Database(prodDb, { fileMustExist: true });
+    // (ex.: a última migração). A conexão é somente leitura: sem ela, fechar a última
+    // conexão faria o checkpoint automático do WAL e alteraria o banco de origem.
+    source = new Database(prodDb, { fileMustExist: true, readonly: true });
     source.prepare('VACUUM INTO ?').run(testDb);
-    source.close();
   } catch (err) {
-    console.warn(`[TEST] Falha ao copiar o banco base para ${testDb}: ${err.message}`);
+    removeTestDir();
+    // Sem a cópia, os testes rodariam num banco vazio com erros difíceis de entender:
+    // melhor interromper aqui com a causa.
+    throw new Error(`[TEST] Falha ao copiar o banco base ${prodDb} para ${testDb}: ${err.message}`, { cause: err });
+  } finally {
+    source?.close();
   }
 }
-
-// Apaga a cópia (com -wal/-shm) ao fim do processo
-process.on('exit', removeTestFiles);
 
 process.env.DATABASE_PATH = testDb;
