@@ -200,12 +200,16 @@
         <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0;">
           Não foi possível concluir a conversão deste documento no motor Acessilia Core. O arquivo original foi preservado.
         </p>
+        <% if (locals.processingError) { %>
+          <p style="color: var(--text-secondary); font-size: 0.875rem; margin: 0.5rem 0 0 0;"><strong>Motivo:</strong> <%= processingError %></p>
+        <% } %>
       </div>
     </div>
     <form action="/materiais/bulk" method="POST" style="margin: 0;">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <input type="hidden" name="materialIds" value="<%= material.id %>">
-      <input type="hidden" name="action" value="reprocess">
+      <input type="hidden" name="action" value="REPROCESS">
+      <input type="hidden" name="returnTo" value="detalhe">
       <button type="submit" class="btn btn-primary btn-sm">🔄 Reprocessar Material</button>
     </form>
   </div>
@@ -229,7 +233,7 @@
 <section id="sec-downloads" aria-labelledby="tit-downloads" class="stat-card" style="border-left: 5px solid #2563eb; background: var(--bg-surface); margin-bottom: 2rem;">
   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
     <div>
-      <h2 id="tit-downloads" style="font-size: 1.25rem; font-weight: 700; color: #1d4ed8; margin-bottom: 0.25rem;">
+      <h2 id="tit-downloads" style="font-size: 1.25rem; font-weight: 700; color: var(--color-primary); margin-bottom: 0.25rem;">
         📥 Baixar Documento Acessibilizado
       </h2>
       <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">
@@ -257,7 +261,7 @@
     <a href="/materiais/<%= material.id %>/download?format=mp3" class="btn" style="border: 2px solid var(--border-color); color: var(--text-primary);" title="Baixar Audiolivro Sintetizado em MP3">
       🎧 Áudio MP3
     </a>
-    <a href="/materiais/<%= material.id %>/download?format=zip" class="btn" style="border: 2px solid #2563eb; color: #2563eb; font-weight: 700;" title="Baixar todos os formatos acessíveis em um único arquivo compactado">
+    <a href="/materiais/<%= material.id %>/download?format=zip" class="btn" style="border: 2px solid var(--color-primary); color: var(--color-primary); font-weight: 700;" title="Baixar todos os formatos acessíveis em um único arquivo compactado">
       📦 Pacote Completo (.zip)
     </a>
   </div>
@@ -462,7 +466,7 @@
       <h2 id="tit-core-metadata" style="font-size: 1.25rem; font-weight: 700; color: #0284c7;">
         📊 Metadados Técnicos do Motor Acessilia Core
       </h2>
-      <span class="role-tag" style="background: rgba(2, 132, 199, 0.15); color: #0369a1; font-weight: 700;">
+      <span class="role-tag" style="background: rgba(2, 132, 199, 0.15); color: var(--color-primary); font-weight: 700;">
         Docling + PDDL + VLM
       </span>
     </div>
@@ -538,7 +542,7 @@
       Seu navegador não suporta o elemento de áudio.
     </audio>
     <div style="background: rgba(0,0,0,0.03); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 0.5rem 1rem; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-secondary);">
-      ⌨ <strong>Atalhos de Teclado Globais do Player:</strong> <code>Espaço</code> (Play/Pause) | <code>J</code> (Voltar 5s) | <code>L</code> (Avançar 5s) | <code>[</code> (Reduz velocidade) | <code>]</code> (Aumenta velocidade)
+      ⌨ <strong>Atalhos de teclado (com o foco no player):</strong> <code>Espaço</code> (Play/Pause) | <code>J</code> (Voltar 5s) | <code>L</code> (Avançar 5s) | <code>[</code> (Reduz velocidade) | <code>]</code> (Aumenta velocidade)
     </div>
   </div>
 </section>
@@ -608,7 +612,7 @@
         Apontamentos de barreiras de acessibilidade (fórmulas, imagens, tabelas ou síntese de voz) enviados pelos alunos.
       </p>
     </div>
-    <span class="role-tag" style="background: var(--bg-surface); border: 1px solid var(--border-color);">
+    <span class="role-tag" style="background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-color);">
       <%= feedbacks ? feedbacks.length : 0 %> reporte(s)
     </span>
   </div>
@@ -854,11 +858,18 @@
     announceA11y(`${seconds > 0 ? 'Avançado' : 'Retrocedido'} ${Math.abs(seconds)} segundos`);
   }
 
-  // Atalhos de Teclado Globais para Acessibilidade
-  document.addEventListener('keydown', (e) => {
+  // Atalhos de uma tecla do player (WCAG 2.1.4): só valem com o foco dentro do
+  // player de áudio e sem Alt/Ctrl/Meta (Alt+L é do VLibras). Fora dele o Espaço
+  // volta a acionar botões e rolar a página.
+  const audioPlayerSection = document.querySelector('section[aria-labelledby="sec-audioplayer"]');
+  if (player && audioPlayerSection) audioPlayerSection.addEventListener('keydown', (e) => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
     // Não interceptar digitação em campos de texto
     const tag = e.target.tagName.toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+    // Espaço em botão, link ou no próprio <audio> mantém a ação nativa do elemento
+    if (e.code === 'Space' && e.target.closest('button, a, audio, summary, [role="button"]')) return;
 
     if (e.code === 'Space') {
       e.preventDefault();
@@ -984,11 +995,41 @@
   function indexDomElementsForHighlight() {
     const container = document.getElementById('accessible-book-content') || document.getElementById('material-accessible-content');
     if (!container) return;
-    // Seleciona blocos de parágrafos, cabeçalhos, citações, listas e cards de audiodescrição (evitando nós internos ao card)
-    const blocks = Array.from(container.querySelectorAll(
-      'h1, h2, h3, h4, h5, h6, li, .a11y-audiodesc-card, p:not(.a11y-audiodesc-card *), blockquote:not(.a11y-audiodesc-card *)'
-    ));
+    // Seleciona blocos de parágrafos, cabeçalhos, citações, listas, tabelas e cards de audiodescrição
+    // (evitando nós internos ao card). Segue as regras de createChunksFromHtml (piper-tts.service.js)
+    // para o blockIndex de cada trecho apontar para o elemento certo: sem sumário e metadados,
+    // sem trechos de menos de 2 caracteres, bloco dentro de outro bloco conta uma vez só e
+    // cada tabela = a própria <table> (abertura) + uma entrada por linha de dados.
+    const candidates = container.querySelectorAll(
+      'h1, h2, h3, h4, h5, h6, li, table, .a11y-audiodesc-card, p:not(.a11y-audiodesc-card *), blockquote:not(.a11y-audiodesc-card *)'
+    );
+    const blocks = [];
+    candidates.forEach(el => {
+      if (el.closest('nav.toc, aside.meta, [aria-hidden="true"], .a11y-ignore-speech')) return;
+      if (el.tagName === 'TABLE') {
+        if (!el.textContent.trim() || (el.parentElement && el.parentElement.closest('table'))) return;
+        blocks.push(el);
+        tableDataRows(el).forEach(tr => blocks.push(tr));
+        return;
+      }
+      if (el.closest('table')) return;
+      if (el.parentElement && el.parentElement.closest('li, blockquote, p, h1, h2, h3, h4, h5, h6')) return;
+      if (el.textContent.replace(/\s+/g, ' ').trim().length < 2) return;
+      blocks.push(el);
+    });
     ttsPlayer.domElements = blocks;
+  }
+
+  // Linhas de dados da tabela (sem o cabeçalho), como em parseHtmlTable no servidor
+  function tableDataRows(table) {
+    const rows = Array.from(table.rows);
+    let data = rows;
+    if (table.tHead) {
+      data = rows.filter(r => r.parentElement !== table.tHead);
+    } else if (rows.length > 1 && rows[0].querySelector('th') && !rows[0].querySelector('td')) {
+      data = rows.slice(1);
+    }
+    return data.filter(r => r.textContent.trim());
   }
 
   function updateChunkIndicator() {

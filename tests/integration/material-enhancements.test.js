@@ -89,8 +89,10 @@ test('Novas Funcionalidades: Agendamento, Bulk Actions, Feedback Discente e Alt 
     const resReprocess = await materialService.executeBulkAction([m1.id, m2.id], 'REPROCESS', admin);
     assert.equal(resReprocess.affected, 2);
 
+    // Reprocessar cria e despacha um job de verdade (no modo de teste o Core simulado aceita)
     const reprocessedM1 = materialRepository.findMaterialById(m1.id);
-    assert.equal(reprocessedM1.current_status, 'AGUARDANDO_PROCESSAMENTO');
+    assert.equal(reprocessedM1.current_status, 'PROCESSANDO');
+    assert.ok(materialRepository.findActiveJobForMaterial(m1.id).external_job_id);
   });
 
   await t.test('3. Canal de Feedback de Acessibilidade Discente', async () => {

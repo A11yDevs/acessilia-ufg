@@ -201,6 +201,9 @@ export async function materialsWebRoutes(fastify, opts) {
     const altTexts = latestVersion ? materialRepository.listAltTextsByVersion(latestVersion.id) : [];
     const feedbacks = materialRepository.listFeedbacksByMaterial(materialId);
     const feedbackSuccess = request.query.feedback === 'success';
+    // Motivo real da falha (ex.: limite de envios do Core) para o aviso ao professor
+    const lastJob = material.current_status === 'FALHA_PROCESSAMENTO' ? materialRepository.findLatestJobForMaterial(materialId) : null;
+    const processingError = lastJob && lastJob.status === 'FAILED' ? lastJob.error_message : null;
 
     // Certificado Digital e QR Code
     const host = request.headers.host || 'localhost:3000';
@@ -248,6 +251,7 @@ export async function materialsWebRoutes(fastify, opts) {
         altTexts,
         feedbacks,
         feedbackSuccess,
+        processingError,
         canDownload,
         certData,
         qrCodeDataUrl,
@@ -315,8 +319,13 @@ export async function materialsWebRoutes(fastify, opts) {
     const coreToken = processedVersion ? botAcessClient.extractDownloadToken(processedVersion.storage_path) : null;
     if (coreToken) {
       const file = await botAcessClient.fetchProcessedFile(coreToken, format);
-      // HTML tem cópia local: se o Core não responder, ela é entregue logo abaixo.
-      if (!file.ok && format !== 'html') {
+      // HTML e TXT saem da cópia local: se o Core não responder, são montados logo abaixo.
+      if (!file.ok && !['html', 'txt'].includes(format)) {
+        // Limite de downloads por minuto do Core (429): avisa quando tentar de novo
+        if (file.rateLimited) {
+          reply.header('Retry-After', '60');
+          return reply.status(503).send({ error: file.error });
+        }
         const notFound = file.status === 404;
         return reply.status(notFound ? 404 : 502).send({
           error: notFound
@@ -330,7 +339,7 @@ export async function materialsWebRoutes(fastify, opts) {
       if (file.ok) {
         if (format === 'html' && file.buffer) {
           const enhanced = enhanceAccessibleHtml(file.buffer.toString('utf8'));
-          return reply.send(Buffer.from(enhanced, 'utf8'));
+          return reply.send(Buffer.from(wrapStandaloneHtml(enhanced, material.title), 'utf8'));
         }
         return reply.send(file.buffer);
       }
@@ -349,7 +358,7 @@ export async function materialsWebRoutes(fastify, opts) {
     if (format === 'html' && processedHtml) {
       reply.header('Content-Type', 'text/html; charset=utf-8');
       reply.header('Content-Disposition', `attachment; filename="${baseFilename}_acessivel.html"`);
-      return reply.send(enhanceAccessibleHtml(processedHtml));
+      return reply.send(wrapStandaloneHtml(enhanceAccessibleHtml(processedHtml), material.title));
     }
 
     const qrCodeDataUrl = cert ? await certificateService.generateQrCodeDataUrl(cert.certificateUrl) : '';
@@ -447,7 +456,7 @@ export async function materialsWebRoutes(fastify, opts) {
   </main>
 </body>
 </html>`;
-      const finalHtml = enhanceAccessibleHtml(htmlContent);
+      const finalHtml = wrapStandaloneHtml(enhanceAccessibleHtml(htmlContent), material.title);
       reply.header('Content-Type', 'text/html; charset=utf-8');
       reply.header('Content-Disposition', `attachment; filename="${baseFilename}_acessivel.html"`);
       return reply.send(finalHtml);
@@ -517,15 +526,20 @@ DATA DE EMISSÃO: ${new Date().toISOString()}
 
   // Ações em Lote (Bulk Actions: Aprovar ou Reprocessar Selecionados)
   fastify.post('/materiais/bulk', {
-    preHandler: [fastify.requirePermission('materiais.enviar')]
+    // Os dois formulários (lista e aviso de falha) já enviam _csrf
+    preHandler: [fastify.requirePermission('materiais.enviar'), fastify.csrfProtection]
   }, async (request, reply) => {
-    const { materialIds, action } = request.body || {};
+    const { materialIds, action, returnTo } = request.body || {};
     try {
       const ids = Array.isArray(materialIds) ? materialIds.map(Number) : [Number(materialIds)].filter(Boolean);
       await materialService.executeBulkAction(ids, action, request.user);
+      // O aviso de falha (página do material) volta para o próprio material
+      if (returnTo === 'detalhe' && ids.length === 1) {
+        return reply.redirect(`/materiais/${ids[0]}`);
+      }
       return reply.redirect('/materiais');
     } catch (err) {
-      return reply.status(400).send({ error: err.message });
+      return reply.status(err.statusCode === 403 ? 403 : 400).send({ error: err.message });
     }
   });
 
@@ -738,6 +752,30 @@ DATA DE EMISSÃO: ${new Date().toISOString()}
       `
     });
   });
+}
+
+function escapeHtml(text) {
+  return String(text ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Documento HTML completo para o arquivo baixado. enhanceAccessibleHtml tira doctype,
+// <html>, <head> e <title> (servem para embutir no leitor); fora do Gestor o leitor de
+// tela precisa do idioma e do título. O conteúdo vai para o <body> sem alteração.
+function wrapStandaloneHtml(content, title) {
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(title || 'Documento acessível')}</title>
+</head>
+<body>
+${content}
+</body>
+</html>
+`;
 }
 
 // Texto corrido do HTML processado (sem estilos, scripts, sumário e metadados técnicos).

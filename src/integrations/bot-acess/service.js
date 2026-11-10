@@ -14,6 +14,11 @@ export const botAcessService = {
     const version = materialRepository.findVersionById(job.material_version_id);
     if (!version) throw new Error('Versão não encontrada');
 
+    // 0. Reserva atômica: outro clique/requisição já está enviando ou já enviou este job
+    if (!materialRepository.claimJobForDispatch(job.id)) {
+      return { success: true, alreadyDispatched: true };
+    }
+
     // 1. Resolver o arquivo físico e carregar o buffer real
     // storage_path é gravado como '/uploads/<arquivo>', relativo à raiz do projeto
     // (material.service.js). Como começa com '/', path.isAbsolute() o trata como
@@ -51,7 +56,7 @@ export const botAcessService = {
         errorMessage: response.error
       });
       materialRepository.updateMaterialStatus(version.material_id, 'FALHA_PROCESSAMENTO');
-      return { success: false, error: response.error };
+      return { success: false, error: response.error, rateLimited: Boolean(response.rateLimited) };
     }
   },
 
@@ -105,12 +110,14 @@ export const botAcessService = {
   async handleJobCompleted(jobId, prefetchedResult = null) {
     const job = materialRepository.findJobById(jobId);
     if (!job || !job.external_job_id) throw new Error('Job inválido para sincronização');
+    // Conclusão repetida (poller, sincronização ativa e webhook podem ver o mesmo job):
+    // não cria outra versão nem reaplica AGUARDANDO_REVISAO.
+    if (job.status === 'COMPLETED') return null;
 
     const result = prefetchedResult || await botAcessClient.checkJobStatus(job.external_job_id, job.job_token);
 
     if (result.status === 'COMPLETED') {
       const originalVersion = materialRepository.findVersionById(job.material_version_id);
-      const nextVersionNumber = originalVersion.version_number + 1;
 
       // 1. Tenta baixar o arquivo processado pelo Core para salvar no disco local
       // storage_path guarda o download_url do Core: é dele que saem os outros formatos
@@ -142,7 +149,17 @@ export const botAcessService = {
         }
       }
 
-      // 2. Cria a nova versão gerada pela IA
+      // 2. Daqui até marcar o job como COMPLETED não há await: com o better-sqlite3
+      // síncrono, nenhuma outra conclusão do mesmo job entra no meio. Quem chegar
+      // depois do download de outra encontra o job já concluído e sai sem criar versão.
+      if (materialRepository.findJobById(job.id)?.status === 'COMPLETED') return null;
+
+      // Próximo número livre: num reprocessamento já existe a v2 da primeira conversão,
+      // e "original + 1" colidiria com UNIQUE(material_id, version_number).
+      const latestVersion = materialRepository.getLatestVersion(originalVersion.material_id);
+      const nextVersionNumber = Math.max(originalVersion.version_number, latestVersion ? latestVersion.version_number : 0) + 1;
+
+      // Cria a nova versão gerada pela IA
       const newVersion = materialRepository.createVersion({
         materialId: originalVersion.material_id,
         versionNumber: nextVersionNumber,

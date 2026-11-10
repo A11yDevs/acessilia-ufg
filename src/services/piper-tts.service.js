@@ -46,6 +46,127 @@ const VOICE_MAP = {
   'pt_BR-edresson-low': 'pt_BR-edresson-low'
 };
 
+// Texto de um trecho de HTML: sem tags, entidades comuns decodificadas e espaços normalizados
+function htmlFragmentToText(fragment) {
+  return String(fragment || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Texto já decodificado de volta para dentro de um <p> intermediário: sem isso,
+// "A &lt; B" virava "A < B" e a passagem seguinte por htmlFragmentToText apagava "< B".
+function escapeHtmlText(text) {
+  return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+const MAX_SPAN = 100;
+const spanOf = (attrs, name) => {
+  const match = attrs.match(new RegExp(`\\b${name}\\s*=\\s*["']?(\\d+)`, 'i'));
+  const value = match ? parseInt(match[1], 10) : 1;
+  return Number.isFinite(value) && value >= 1 ? Math.min(value, MAX_SPAN) : 1;
+};
+
+function cellsOf(rowHtml) {
+  const cells = [];
+  const re = /<(t[hd])\b([^>]*)>([\s\S]*?)<\/t[hd]>/gi;
+  let match;
+  while ((match = re.exec(rowHtml)) !== null) {
+    cells.push({
+      header: match[1].toLowerCase() === 'th',
+      text: htmlFragmentToText(match[3]),
+      rowspan: spanOf(match[2], 'rowspan'),
+      colspan: spanOf(match[2], 'colspan')
+    });
+  }
+  return cells;
+}
+
+/**
+ * Projeta linhas de <tr> na grade lógica da tabela, respeitando rowspan e colspan.
+ * Uma célula com rowspan se repete nas linhas que ocupa. Com colspan, o texto vai para
+ * todas as colunas cobertas quando `repeatColspan` (cabeçalhos: "Notas" vale para
+ * "Prova 1" e "Prova 2"); nas linhas de dados só a primeira coluna recebe o valor.
+ */
+function projectRows(rowsHtml, { repeatColspan }) {
+  const grid = [];
+  const carried = []; // carried[col] = { text, left }: rowspan vindo de linhas anteriores
+  for (const rowHtml of rowsHtml) {
+    const out = [];
+    let col = 0;
+    const skipCarried = () => {
+      while (carried[col] && carried[col].left > 0) {
+        out[col] = carried[col].text;
+        carried[col].left--;
+        col++;
+      }
+    };
+    for (const cell of cellsOf(rowHtml)) {
+      skipCarried();
+      for (let k = 0; k < cell.colspan; k++) {
+        const text = k === 0 || repeatColspan ? cell.text : '';
+        out[col + k] = text;
+        if (cell.rowspan > 1) carried[col + k] = { text, left: cell.rowspan - 1 };
+      }
+      col += cell.colspan;
+    }
+    skipCarried();
+    for (let i = 0; i < out.length; i++) if (out[i] === undefined) out[i] = '';
+    grid.push(out);
+  }
+  return grid;
+}
+
+/**
+ * Lê uma <table> (conteúdo interno): legenda, cabeçalhos e linhas de dados, já na grade
+ * lógica (rowspan/colspan). Cabeçalho = linhas do <thead> (o Core usa <td> dentro do
+ * <thead>) ou, sem thead, as primeiras linhas que só têm <th>. Com várias linhas de
+ * cabeçalho, o rótulo de cada coluna junta os níveis ("Notas Prova 1").
+ */
+export function parseHtmlTable(inner) {
+  const captionMatch = inner.match(/<caption[^>]*>([\s\S]*?)<\/caption>/i);
+  const caption = captionMatch ? htmlFragmentToText(captionMatch[1]) : '';
+  const rowsIn = html => html.match(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi) || [];
+
+  const theadMatch = inner.match(/<thead\b[^>]*>([\s\S]*?)<\/thead>/i);
+  let headerRows = [];
+  let bodyRows;
+  if (theadMatch) {
+    headerRows = rowsIn(theadMatch[1]);
+    bodyRows = rowsIn(inner.replace(theadMatch[0], ''));
+  } else {
+    const rows = rowsIn(inner);
+    let count = 0;
+    while (count < rows.length - 1 && /<th\b/i.test(rows[count]) && !/<td\b/i.test(rows[count])) count++;
+    headerRows = rows.slice(0, count);
+    bodyRows = rows.slice(count);
+  }
+
+  const headerGrid = projectRows(headerRows, { repeatColspan: true });
+  const width = Math.max(0, ...headerGrid.map(row => row.length));
+  const headers = [];
+  for (let col = 0; col < width; col++) {
+    const levels = [];
+    for (const row of headerGrid) {
+      const text = row[col] || '';
+      if (text && levels[levels.length - 1] !== text) levels.push(text);
+    }
+    headers.push(levels.join(' '));
+  }
+
+  return {
+    caption,
+    headers: headers.some(Boolean) ? headers : [],
+    bodyRows: projectRows(bodyRows, { repeatColspan: false }).filter(cells => cells.some(Boolean))
+  };
+}
+
 export class PiperTtsService {
   constructor() {
     this.piperDir = path.resolve(process.cwd(), 'bin/piper');
@@ -190,9 +311,11 @@ export class PiperTtsService {
     let chunkIndex = 0;
     let blockIndex = 0;
 
-    // Remove elementos decorativos ou marcados com aria-hidden="true"
+    // Remove elementos decorativos ou marcados com aria-hidden="true".
+    // O sumário (nav.toc) sai: repetia os títulos antes do conteúdo.
     let cleanHtml = htmlContent
       .replace(/<aside\s+class=["']meta["'][\s\S]*?<\/aside>/gi, '')
+      .replace(/<nav\b[^>]*class=["'][^"']*\btoc\b[^"']*["'][^>]*>[\s\S]*?<\/nav>/gi, '')
       .replace(/<script[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?<\/style>/gi, '')
       .replace(/<[^>]+aria-hidden=["']true["'][^>]*>[\s\S]*?<\/[^>]+>/gi, '')
@@ -218,34 +341,34 @@ export class PiperTtsService {
       }
     );
 
-    // Captura blocos semânticos: títulos, parágrafos, citações e listas
-    const blockRegex = /<(h[1-6]|p|blockquote|li)[^>]*>([\s\S]*?)<\/\1>/gi;
-    let match;
+    // Tabelas viram blocos falados: um de abertura (legenda e nº de linhas) e um por
+    // linha, com o cabeçalho de cada coluna ("Linha 1: Mês: Janeiro; Bloco A: 120").
+    // O fim da tabela vai junto da última linha para manter 1 bloco = 1 elemento
+    // destacável no leitor (table + linhas de dados, ver detail.ejs).
+    cleanHtml = cleanHtml.replace(/<table\b[^>]*>([\s\S]*?)<\/table>/gi, (match, inner) => {
+      const { caption, headers, bodyRows } = parseHtmlTable(inner);
+      if (bodyRows.length === 0 && headers.length === 0) return '';
+      const cleanCaption = caption.replace(/[.!?]+$/, '');
+      const label = !cleanCaption ? 'Tabela' : (/^tabela\b/i.test(cleanCaption) ? cleanCaption : `Tabela: ${cleanCaption}`);
+      const total = bodyRows.length === 1 ? '1 linha' : `${bodyRows.length} linhas`;
+      const colunas = headers.length ? `, colunas: ${headers.filter(Boolean).join(', ')}` : '';
+      let out = `<p class="a11y-table-item">${escapeHtmlText(label)}, ${total}${escapeHtmlText(colunas)}.</p>`;
+      bodyRows.forEach((cells, i) => {
+        // Linha mais larga que o cabeçalho: a estrutura não bate, então lê só os valores
+        // em vez de atribuir cabeçalhos errados.
+        const useHeaders = headers.length > 0 && cells.length <= headers.length;
+        const text = cells
+          .map((cell, j) => (useHeaders && headers[j] && cell ? `${headers[j]}: ${cell}` : cell))
+          .filter(Boolean)
+          .join('; ');
+        const end = i === bodyRows.length - 1 ? ' Fim da tabela.' : '';
+        out += `<p class="a11y-table-item">Linha ${i + 1}: ${escapeHtmlText(text) || 'vazia'}.${end}</p>`;
+      });
+      if (bodyRows.length === 0) out = out.replace(/\.<\/p>$/, '. Fim da tabela.</p>');
+      return out;
+    });
 
-    while ((match = blockRegex.exec(cleanHtml)) !== null) {
-      const tag = match[1].toLowerCase();
-      let innerText = match[2]
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&quot;/g, '"')
-        .replace(/&#x27;/g, "'")
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      if (!innerText || innerText.length < 2) continue;
-
-      let prefix = '';
-      if (tag.startsWith('h')) {
-        prefix = 'Título: ';
-      } else if (tag === 'blockquote') {
-        prefix = 'Citação: ';
-      }
-
-      const fullText = prefix + innerText;
-
+    const pushBlock = (tag, fullText) => {
       if (fullText.length > 350) {
         const sentences = fullText.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [fullText];
         let currentPart = '';
@@ -282,22 +405,38 @@ export class PiperTtsService {
         });
       }
       blockIndex++;
+    };
+
+    // Captura blocos semânticos: títulos, parágrafos, citações e listas
+    const blockRegex = /<(h[1-6]|p|blockquote|li)[^>]*>([\s\S]*?)<\/\1>/gi;
+    let match;
+
+    while ((match = blockRegex.exec(cleanHtml)) !== null) {
+      const tag = match[1].toLowerCase();
+      const innerText = htmlFragmentToText(match[2]);
+
+      if (!innerText || innerText.length < 2) continue;
+
+      let prefix = '';
+      if (tag.startsWith('h')) {
+        prefix = 'Título: ';
+      } else if (tag === 'blockquote') {
+        prefix = 'Citação: ';
+      }
+
+      pushBlock(tag, prefix + innerText);
     }
 
-    // Se nenhum bloco HTML foi extraído, processa como texto puro
+    // Se nenhum bloco HTML foi extraído (ex.: só <div>/<pre>), processa como texto puro.
+    // As quebras de bloco viram parágrafos antes de tirar as tags.
     if (chunks.length === 0) {
-      const plainText = htmlContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      if (plainText) {
-        const paragraphs = plainText.split(/\n\s*\n/).filter(p => p.trim());
-        paragraphs.forEach(p => {
-          chunks.push({
-            id: `chunk-${chunkIndex++}`,
-            tag,
-            text: p.trim(),
-            wordCount: p.split(/\s+/).length
-          });
-        });
-      }
+      const plainText = cleanHtml
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/(div|pre|section|article|td|th|tr|dd|dt)>/gi, '\n\n');
+      plainText.split(/\n\s*\n/)
+        .map(htmlFragmentToText)
+        .filter(p => p && p.length >= 2)
+        .forEach(p => pushBlock('p', p));
     }
 
     return chunks;
