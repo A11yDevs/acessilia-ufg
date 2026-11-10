@@ -16,6 +16,7 @@ import ejs from 'ejs';
 import { env } from './config/env.js';
 import { SQLiteSessionStore } from './plugins/session-store.js';
 import authPlugin from './plugins/auth.plugin.js';
+import formErrorPlugin from './plugins/form-error.plugin.js';
 import { authWebRoutes } from './routes/web/auth.routes.js';
 import { dashboardWebRoutes } from './routes/web/dashboard.routes.js';
 import { academicWebRoutes } from './routes/web/academic.routes.js';
@@ -121,6 +122,7 @@ export async function buildApp(opts = {}) {
 
   // 8. Plugins Customizados de RBAC e Autenticacao
   await fastify.register(authPlugin);
+  await fastify.register(formErrorPlugin);
 
   // 9. Registro de Rotas Web e API Webhook
   await fastify.register(authWebRoutes);

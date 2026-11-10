@@ -67,24 +67,69 @@ export async function requestsWebRoutes(fastify, opts) {
   }, async (request, reply) => {
     const { materialId, priority, specificNotes } = request.body || {};
 
+    const returnReqError = (errMsg, statusCode = 400) => {
+      const user = request.user;
+      let requestsList = [];
+      if (user.roleCode === 'ALUNO') {
+        requestsList = db.prepare(`
+          SELECT ar.*, m.title as material_title, s.name as subject_name
+          FROM accessibility_requests ar
+          JOIN materials m ON m.id = ar.material_id
+          JOIN subjects s ON s.id = m.subject_id
+          WHERE ar.requester_user_id = ?
+          ORDER BY ar.created_at DESC
+        `).all(user.id);
+      } else {
+        requestsList = db.prepare(`
+          SELECT ar.*, m.title as material_title, s.name as subject_name, u.name as requester_name
+          FROM accessibility_requests ar
+          JOIN materials m ON m.id = ar.material_id
+          JOIN subjects s ON s.id = m.subject_id
+          JOIN users u ON u.id = ar.requester_user_id
+          ORDER BY ar.created_at DESC
+        `).all();
+      }
+
+      let availableMaterials = [];
+      if (user.roleCode === 'ALUNO') {
+        availableMaterials = db.prepare(`
+          SELECT DISTINCT m.id, m.title
+          FROM materials m
+          JOIN class_students cs ON cs.class_id = m.class_id
+          WHERE cs.student_user_id = ? AND cs.status = 'MATRICULADO'
+          ORDER BY m.title ASC
+        `).all(user.id);
+      } else {
+        availableMaterials = db.prepare('SELECT id, title FROM materials ORDER BY title ASC').all();
+      }
+
+      return reply.formError('requests/index.ejs', {
+        requestsList,
+        availableMaterials,
+        title: 'Solicitações de Acessibilidade',
+        headerTitle: 'Demandas e Solicitações de Acessibilidade',
+        currentPath: '/solicitacoes'
+      }, errMsg, { status: statusCode, formValues: request.body });
+    };
+
     if (!materialId) {
-      return reply.status(400).send({ error: 'Material é obrigatório.' });
+      return returnReqError('Material é obrigatório.');
     }
 
     const matId = parseInt(materialId, 10);
     if (isNaN(matId)) {
-      return reply.status(400).send({ error: 'Identificador de material inválido.' });
+      return returnReqError('Identificador de material inválido.');
     }
 
     const mat = db.prepare('SELECT id FROM materials WHERE id = ?').get(matId);
     if (!mat) {
-      return reply.status(404).send({ error: 'Material selecionado não foi encontrado.' });
+      return returnReqError('Material selecionado não foi encontrado.', 404);
     }
 
     const validPriorities = ['BAIXA', 'NORMAL', 'ALTA', 'URGENTE'];
     const p = (priority || 'NORMAL').toUpperCase();
     if (!validPriorities.includes(p)) {
-      return reply.status(400).send({ error: `Prioridade inválida (${priority}). Permitidas: ${validPriorities.join(', ')}.` });
+      return returnReqError(`Prioridade inválida (${priority}). Permitidas: ${validPriorities.join(', ')}.`);
     }
 
     // Previne solicitações idênticas em andamento (B3)
