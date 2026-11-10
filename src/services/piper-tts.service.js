@@ -60,16 +60,79 @@ function htmlFragmentToText(fragment) {
     .trim();
 }
 
+// Texto já decodificado de volta para dentro de um <p> intermediário: sem isso,
+// "A &lt; B" virava "A < B" e a passagem seguinte por htmlFragmentToText apagava "< B".
+function escapeHtmlText(text) {
+  return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+const MAX_SPAN = 100;
+const spanOf = (attrs, name) => {
+  const match = attrs.match(new RegExp(`\\b${name}\\s*=\\s*["']?(\\d+)`, 'i'));
+  const value = match ? parseInt(match[1], 10) : 1;
+  return Number.isFinite(value) && value >= 1 ? Math.min(value, MAX_SPAN) : 1;
+};
+
+function cellsOf(rowHtml) {
+  const cells = [];
+  const re = /<(t[hd])\b([^>]*)>([\s\S]*?)<\/t[hd]>/gi;
+  let match;
+  while ((match = re.exec(rowHtml)) !== null) {
+    cells.push({
+      header: match[1].toLowerCase() === 'th',
+      text: htmlFragmentToText(match[3]),
+      rowspan: spanOf(match[2], 'rowspan'),
+      colspan: spanOf(match[2], 'colspan')
+    });
+  }
+  return cells;
+}
+
 /**
- * Lê uma <table> (conteúdo interno): legenda, cabeçalhos e linhas de dados.
- * Cabeçalho = linhas do <thead> (o Core usa <td> dentro do <thead>) ou, sem thead,
- * a 1ª linha quando ela só tem <th>.
+ * Projeta linhas de <tr> na grade lógica da tabela, respeitando rowspan e colspan.
+ * Uma célula com rowspan se repete nas linhas que ocupa. Com colspan, o texto vai para
+ * todas as colunas cobertas quando `repeatColspan` (cabeçalhos: "Notas" vale para
+ * "Prova 1" e "Prova 2"); nas linhas de dados só a primeira coluna recebe o valor.
+ */
+function projectRows(rowsHtml, { repeatColspan }) {
+  const grid = [];
+  const carried = []; // carried[col] = { text, left }: rowspan vindo de linhas anteriores
+  for (const rowHtml of rowsHtml) {
+    const out = [];
+    let col = 0;
+    const skipCarried = () => {
+      while (carried[col] && carried[col].left > 0) {
+        out[col] = carried[col].text;
+        carried[col].left--;
+        col++;
+      }
+    };
+    for (const cell of cellsOf(rowHtml)) {
+      skipCarried();
+      for (let k = 0; k < cell.colspan; k++) {
+        const text = k === 0 || repeatColspan ? cell.text : '';
+        out[col + k] = text;
+        if (cell.rowspan > 1) carried[col + k] = { text, left: cell.rowspan - 1 };
+      }
+      col += cell.colspan;
+    }
+    skipCarried();
+    for (let i = 0; i < out.length; i++) if (out[i] === undefined) out[i] = '';
+    grid.push(out);
+  }
+  return grid;
+}
+
+/**
+ * Lê uma <table> (conteúdo interno): legenda, cabeçalhos e linhas de dados, já na grade
+ * lógica (rowspan/colspan). Cabeçalho = linhas do <thead> (o Core usa <td> dentro do
+ * <thead>) ou, sem thead, as primeiras linhas que só têm <th>. Com várias linhas de
+ * cabeçalho, o rótulo de cada coluna junta os níveis ("Notas Prova 1").
  */
 export function parseHtmlTable(inner) {
   const captionMatch = inner.match(/<caption[^>]*>([\s\S]*?)<\/caption>/i);
   const caption = captionMatch ? htmlFragmentToText(captionMatch[1]) : '';
   const rowsIn = html => html.match(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi) || [];
-  const cellsOf = row => (row.match(/<t[hd]\b[^>]*>[\s\S]*?<\/t[hd]>/gi) || []).map(htmlFragmentToText);
 
   const theadMatch = inner.match(/<thead\b[^>]*>([\s\S]*?)<\/thead>/i);
   let headerRows = [];
@@ -79,16 +142,29 @@ export function parseHtmlTable(inner) {
     bodyRows = rowsIn(inner.replace(theadMatch[0], ''));
   } else {
     const rows = rowsIn(inner);
-    if (rows.length > 1 && /<th\b/i.test(rows[0]) && !/<td\b/i.test(rows[0])) {
-      headerRows = [rows[0]];
-      bodyRows = rows.slice(1);
-    } else {
-      bodyRows = rows;
-    }
+    let count = 0;
+    while (count < rows.length - 1 && /<th\b/i.test(rows[count]) && !/<td\b/i.test(rows[count])) count++;
+    headerRows = rows.slice(0, count);
+    bodyRows = rows.slice(count);
   }
 
-  const headers = headerRows.length ? cellsOf(headerRows[headerRows.length - 1]) : [];
-  return { caption, headers, bodyRows: bodyRows.map(cellsOf).filter(cells => cells.some(Boolean)) };
+  const headerGrid = projectRows(headerRows, { repeatColspan: true });
+  const width = Math.max(0, ...headerGrid.map(row => row.length));
+  const headers = [];
+  for (let col = 0; col < width; col++) {
+    const levels = [];
+    for (const row of headerGrid) {
+      const text = row[col] || '';
+      if (text && levels[levels.length - 1] !== text) levels.push(text);
+    }
+    headers.push(levels.join(' '));
+  }
+
+  return {
+    caption,
+    headers: headers.some(Boolean) ? headers : [],
+    bodyRows: projectRows(bodyRows, { repeatColspan: false }).filter(cells => cells.some(Boolean))
+  };
 }
 
 export class PiperTtsService {
@@ -275,15 +351,18 @@ export class PiperTtsService {
       const cleanCaption = caption.replace(/[.!?]+$/, '');
       const label = !cleanCaption ? 'Tabela' : (/^tabela\b/i.test(cleanCaption) ? cleanCaption : `Tabela: ${cleanCaption}`);
       const total = bodyRows.length === 1 ? '1 linha' : `${bodyRows.length} linhas`;
-      const colunas = headers.length ? `, colunas: ${headers.join(', ')}` : '';
-      let out = `<p class="a11y-table-item">${label}, ${total}${colunas}.</p>`;
+      const colunas = headers.length ? `, colunas: ${headers.filter(Boolean).join(', ')}` : '';
+      let out = `<p class="a11y-table-item">${escapeHtmlText(label)}, ${total}${escapeHtmlText(colunas)}.</p>`;
       bodyRows.forEach((cells, i) => {
+        // Linha mais larga que o cabeçalho: a estrutura não bate, então lê só os valores
+        // em vez de atribuir cabeçalhos errados.
+        const useHeaders = headers.length > 0 && cells.length <= headers.length;
         const text = cells
-          .map((cell, j) => (headers[j] && cell ? `${headers[j]}: ${cell}` : cell))
+          .map((cell, j) => (useHeaders && headers[j] && cell ? `${headers[j]}: ${cell}` : cell))
           .filter(Boolean)
           .join('; ');
         const end = i === bodyRows.length - 1 ? ' Fim da tabela.' : '';
-        out += `<p class="a11y-table-item">Linha ${i + 1}: ${text || 'vazia'}.${end}</p>`;
+        out += `<p class="a11y-table-item">Linha ${i + 1}: ${escapeHtmlText(text) || 'vazia'}.${end}</p>`;
       });
       if (bodyRows.length === 0) out = out.replace(/\.<\/p>$/, '. Fim da tabela.</p>');
       return out;

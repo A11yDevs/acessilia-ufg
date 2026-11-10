@@ -88,20 +88,32 @@ test('Reprocessamento, categoria Avaliação e limite de envios do Core (429)', 
   const app = await buildApp({ logger: false });
   t.after(() => app.close());
   const user = await authService.authenticate('admin@acessilia.ufg.br', 'Temp@123456');
-  app.addHook('preHandler', async (req) => {
+  // Sessão de verdade (como no login): a rota de ações em lote exige o token CSRF dela
+  app.addHook('onRequest', async (req) => {
     req.user = user;
-    req.session = { get: () => user };
+    req.session.set('user', user);
   });
 
   await t.test('4. Botão "Reprocessar Material" do aviso de falha funciona e volta para o material', async () => {
     const { material, version } = await failedMaterial('botao');
     const page = await app.inject({ method: 'GET', url: `/materiais/${material.id}` });
     assert.match(page.payload, /name="action" value="REPROCESS"/);
+    const csrf = page.payload.match(/action="\/materiais\/bulk"[\s\S]*?name="_csrf" value="([^"]+)"/)[1];
+    const cookie = page.cookies.map(c => `${c.name}=${c.value}`).join('; ');
+
+    // Sem o token CSRF do formulário, nada é feito
+    const forged = await app.inject({
+      method: 'POST', url: '/materiais/bulk', headers: { cookie },
+      payload: { materialIds: String(material.id), action: 'REPROCESS', returnTo: 'detalhe' }
+    });
+    assert.equal(forged.statusCode, 403);
+    assert.equal(jobsOf(version.id), 1);
 
     const res = await app.inject({
       method: 'POST',
       url: '/materiais/bulk',
-      payload: { materialIds: String(material.id), action: 'REPROCESS', returnTo: 'detalhe' }
+      headers: { cookie },
+      payload: { materialIds: String(material.id), action: 'REPROCESS', returnTo: 'detalhe', _csrf: csrf }
     });
     assert.equal(res.statusCode, 302);
     assert.equal(res.headers.location, `/materiais/${material.id}`);

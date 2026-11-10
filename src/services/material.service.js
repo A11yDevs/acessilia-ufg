@@ -85,6 +85,16 @@ export const materialService = {
   },
 
   // Verificação de Permissão para Visualizar Detalhes do Material (Prevenção de IDOR)
+  // Quem pode operar o material (ações em lote: aprovar, reprocessar): a equipe de
+  // acessibilidade e o professor dono. Aluno nunca, mesmo vendo o material publicado.
+  canUserOperateMaterial(user, materialId) {
+    const material = materialRepository.findMaterialById(materialId);
+    if (!material || !user) return false;
+    if (['ADMINISTRADOR', 'GESTOR_ACESSIBILIDADE', 'REVISOR'].includes(user.roleCode)) return true;
+    if (user.roleCode === 'PROFESSOR') return material.teacher_user_id === user.id;
+    return false;
+  },
+
   async canUserViewMaterial(user, materialId) {
     const material = materialRepository.findMaterialById(materialId);
     if (!material) return false;
@@ -262,6 +272,16 @@ export const materialService = {
 
     // Aceita a ação em qualquer caixa (o aviso de falha enviava "reprocess")
     action = String(action || '').toUpperCase();
+
+    // Escopo por material: a rota só exige "materiais.enviar", então um professor não pode
+    // aprovar nem reenviar ao Core (lendo o original e gastando a cota) material de outro.
+    // Nada é feito se algum dos materiais estiver fora do escopo.
+    const forbidden = materialIds.filter(id => !this.canUserOperateMaterial(actorUser, id));
+    if (forbidden.length > 0) {
+      const err = new Error('Você não tem permissão para operar um ou mais dos materiais selecionados.');
+      err.statusCode = 403;
+      throw err;
+    }
 
     if (action === 'APPROVE') {
       const affected = materialRepository.bulkUpdateStatus(materialIds, 'APROVADO');

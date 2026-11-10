@@ -174,6 +174,20 @@ export const materialRepository = {
     return db.prepare('SELECT * FROM processing_jobs WHERE id = ?').get(id);
   },
 
+  // Reserva o job para um único envio ao Core, antes do primeiro await: PENDING vira
+  // QUEUED numa única instrução, então duas chamadas simultâneas não enviam o mesmo job.
+  // Um QUEUED sem external_job_id parado há mais de 5 min (processo que caiu no meio do
+  // envio) pode ser reservado de novo. Retorna true só para quem conseguiu a reserva.
+  claimJobForDispatch(jobId) {
+    const info = db.prepare(`
+      UPDATE processing_jobs
+      SET status = 'QUEUED', attempts = attempts + 1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND external_job_id IS NULL
+        AND (status = 'PENDING' OR (status = 'QUEUED' AND updated_at < datetime('now', '-5 minutes')))
+    `).run(jobId);
+    return info.changes === 1;
+  },
+
   listActiveJobs() {
     return db.prepare(`
       SELECT pj.*, mv.material_id 

@@ -73,3 +73,51 @@ describe('Leitura em voz alta: trechos (chunks) do documento processado', () => 
     assert.ok(result.every(c => c.tag === 'p'));
   });
 });
+
+describe('Leitura em voz alta: tabelas com símbolos e células mescladas (revisão do PR)', () => {
+  const speak = html => piperTtsService.createChunksFromHtml(html).map(c => c.text);
+
+  test('7. Símbolos já decodificados não somem na legenda, no cabeçalho nem nas células', () => {
+    const t = speak(
+      '<table><caption>Comparação &lt;x&gt; &amp; y</caption><thead><tr><td>Condição</td><td>Saída &lt;html&gt;</td></tr></thead>'
+      + '<tbody><tr><td>A &lt; B &gt; C</td><td><code>&lt;p&gt;</code></td></tr></tbody></table>'
+    );
+    assert.deepEqual(t, [
+      'Tabela: Comparação <x> & y, 1 linha, colunas: Condição, Saída <html>.',
+      'Linha 1: Condição: A < B > C; Saída <html>: <p>. Fim da tabela.'
+    ]);
+  });
+
+  test('8. rowspan: o valor mesclado vale para as linhas que ele ocupa', () => {
+    const { headers, bodyRows } = parseHtmlTable(
+      '<thead><tr><th>Curso</th><th>Aluno</th></tr></thead>'
+      + '<tbody><tr><td rowspan="2">Computação</td><td>Ana</td></tr><tr><td>Bruno</td></tr></tbody>'
+    );
+    assert.deepEqual(headers, ['Curso', 'Aluno']);
+    assert.deepEqual(bodyRows, [['Computação', 'Ana'], ['Computação', 'Bruno']]);
+    assert.ok(speak(`<table><thead><tr><th>Curso</th><th>Aluno</th></tr></thead><tbody><tr><td rowspan="2">Computação</td><td>Ana</td></tr><tr><td>Bruno</td></tr></tbody></table>`)
+      .includes('Linha 2: Curso: Computação; Aluno: Bruno. Fim da tabela.'));
+  });
+
+  test('9. Cabeçalho em dois níveis com rowspan e colspan', () => {
+    const html = '<table><thead><tr><th rowspan="2">Aluno</th><th colspan="2">Notas</th></tr>'
+      + '<tr><th>Prova 1</th><th>Prova 2</th></tr></thead>'
+      + '<tbody><tr><td>Ana</td><td>9</td><td>8</td></tr></tbody></table>';
+    const { headers } = parseHtmlTable(html.replace(/^<table>|<\/table>$/g, ''));
+    assert.deepEqual(headers, ['Aluno', 'Notas Prova 1', 'Notas Prova 2']);
+    assert.ok(speak(html).includes('Linha 1: Aluno: Ana; Notas Prova 1: 9; Notas Prova 2: 8. Fim da tabela.'));
+  });
+
+  test('10. colspan nos dados: o valor fica na 1ª coluna coberta, sem repetir', () => {
+    const { bodyRows } = parseHtmlTable(
+      '<thead><tr><th>Dia</th><th>Manhã</th><th>Tarde</th></tr></thead>'
+      + '<tbody><tr><td>Sábado</td><td colspan="2">Fechado</td></tr></tbody>'
+    );
+    assert.deepEqual(bodyRows, [['Sábado', 'Fechado', '']]);
+  });
+
+  test('11. Linha mais larga que o cabeçalho: lê os valores sem atribuir cabeçalhos errados', () => {
+    const t = speak('<table><thead><tr><th>Nome</th></tr></thead><tbody><tr><td>Ana</td><td>9</td></tr></tbody></table>');
+    assert.ok(t.includes('Linha 1: Ana; 9. Fim da tabela.'));
+  });
+});

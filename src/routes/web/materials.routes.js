@@ -526,7 +526,8 @@ DATA DE EMISSÃO: ${new Date().toISOString()}
 
   // Ações em Lote (Bulk Actions: Aprovar ou Reprocessar Selecionados)
   fastify.post('/materiais/bulk', {
-    preHandler: [fastify.requirePermission('materiais.enviar')]
+    // Os dois formulários (lista e aviso de falha) já enviam _csrf
+    preHandler: [fastify.requirePermission('materiais.enviar'), fastify.csrfProtection]
   }, async (request, reply) => {
     const { materialIds, action, returnTo } = request.body || {};
     try {
@@ -538,7 +539,7 @@ DATA DE EMISSÃO: ${new Date().toISOString()}
       }
       return reply.redirect('/materiais');
     } catch (err) {
-      return reply.status(400).send({ error: err.message });
+      return reply.status(err.statusCode === 403 ? 403 : 400).send({ error: err.message });
     }
   });
 
