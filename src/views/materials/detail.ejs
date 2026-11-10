@@ -575,7 +575,7 @@
               <% } %>
             </div>
 
-            <% if (user && (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('revisoes.avaliar'))) { %>
+            <% if (user && (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('revisoes.avaliar') || material.teacher_user_id === user.id)) { %>
             <form action="/materiais/<%= material.id %>/alt-texts/<%= at.id %>" method="POST">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <div class="form-group" style="margin-bottom: 0.75rem;">

@@ -314,6 +314,16 @@ export const materialRepository = {
     `).all(materialVersionId);
   },
 
+  findAltTextById(id) {
+    return db.prepare(`
+      SELECT mat.*, mv.material_id, u.name as reviewer_name
+      FROM material_alt_texts mat
+      JOIN material_versions mv ON mv.id = mat.material_version_id
+      LEFT JOIN users u ON u.id = mat.reviewed_by_user_id
+      WHERE mat.id = ?
+    `).get(id);
+  },
+
   updateAltText(id, { humanReviewedAlt, status, reviewedByUserId }) {
     const stmt = db.prepare(`
       UPDATE material_alt_texts
