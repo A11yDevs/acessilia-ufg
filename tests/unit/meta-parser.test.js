@@ -67,4 +67,19 @@ describe('Parser de Metadados e Audiodescrição do Acessilia Core', () => {
     assert.ok(!enhanced.includes('body{'), 'Não deve aplicar regra direta em body{');
     assert.ok(enhanced.includes('.accessible-book-content { max-width: 100%'), 'Deve escopar o estilo para .accessible-book-content');
   });
+
+  test('5. Deve transformar <pre id="..."><code>...</code></pre> em Card de Código acessível com botão de copiar e ouvir', () => {
+    const rawHtml = `
+      <pre id="element-000012"><code>public class Funcionario {
+    private String nome;
+}</code></pre>
+    `;
+    const enhanced = enhanceAccessibleHtml(rawHtml);
+    assert.ok(enhanced.includes('class="a11y-code-card"'), 'Deve conter o card de código');
+    assert.ok(enhanced.includes('Bloco de Código'), 'Deve conter o cabeçalho do código');
+    assert.ok(enhanced.includes('window.speakCode'), 'Deve conter ação de sintetizar código');
+    assert.ok(enhanced.includes('window.copyCode'), 'Deve conter ação de copiar código');
+    assert.ok(enhanced.includes('id="element-000012"'), 'Deve preservar o ID original do pre');
+    assert.ok(enhanced.includes('tabindex="0"'), 'Deve incluir tabindex para acessibilidade');
+  });
 });

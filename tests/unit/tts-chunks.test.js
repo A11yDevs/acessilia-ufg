@@ -120,4 +120,17 @@ describe('Leitura em voz alta: tabelas com símbolos e células mescladas (revis
     const t = speak('<table><thead><tr><th>Nome</th></tr></thead><tbody><tr><td>Ana</td><td>9</td></tr></tbody></table>');
     assert.ok(t.includes('Linha 1: Ana; 9. Fim da tabela.'));
   });
+
+  test('12. Bloco <pre><code> é delimitado com "Início de código: ... Fim de código."', () => {
+    const html = '<p>Exemplo:</p><pre id="code-1"><code>public class Funcionario {\n    private String nome;\n}</code></pre><p>Fim do exemplo.</p>';
+    const chunks = piperTtsService.createChunksFromHtml(html);
+    const texts = chunks.map(c => c.text);
+
+    assert.equal(chunks.length, 3, 'deve produzir exatamente 3 blocos sem engolir parágrafos');
+    assert.equal(texts[0], 'Exemplo:');
+    assert.match(texts[1], /^Início de código: public class Funcionario abre chaves/);
+    assert.match(texts[1], /fecha chaves\. Fim de código\.$/);
+    assert.equal(texts[2], 'Fim do exemplo.');
+    assert.deepEqual(chunks.map(c => c.blockIndex), [0, 1, 2]);
+  });
 });

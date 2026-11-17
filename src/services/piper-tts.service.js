@@ -66,6 +66,34 @@ function escapeHtmlText(text) {
   return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/**
+ * Prepara trechos de código-fonte para síntese por voz, convertendo pontuações
+ * de programação e operadores em termos inteligíveis para tecnologia assistiva.
+ */
+export function formatCodeForSpeech(codeHtml) {
+  return String(codeHtml || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\/\/\s*(.*)/g, ' comentário: $1 ')
+    .replace(/\/\*[\s\S]*?\*\//g, ' comentário ')
+    .replace(/\{/g, ' abre chaves, ')
+    .replace(/\}/g, ' fecha chaves. ')
+    .replace(/==/g, ' igual a ')
+    .replace(/!=/g, ' diferente de ')
+    .replace(/<=/g, ' menor ou igual a ')
+    .replace(/>=/g, ' maior ou igual a ')
+    .replace(/&&/g, ' e ')
+    .replace(/\|\|/g, ' ou ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[.!?]+$/, '');
+}
+
 const MAX_SPAN = 100;
 const spanOf = (attrs, name) => {
   const match = attrs.match(new RegExp(`\\b${name}\\s*=\\s*["']?(\\d+)`, 'i'));
@@ -341,6 +369,23 @@ export class PiperTtsService {
       }
     );
 
+    // Extrai blocos de código-fonte (em cards acessíveis ou tags <pre><code>) delimitando início e fim
+    cleanHtml = cleanHtml.replace(
+      /<div[^>]*class=["'][^"']*\ba11y-code-card\b[^"']*["'][\s\S]*?<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>[\s\S]*?<\/div>/gi,
+      (match, code) => {
+        const clean = formatCodeForSpeech(code);
+        return `<p class="a11y-code-item">Início de código: ${clean}. Fim de código.</p>`;
+      }
+    );
+
+    cleanHtml = cleanHtml.replace(
+      /<pre\b[^>]*><code\b[^>]*>([\s\S]*?)<\/code><\/pre>/gi,
+      (match, code) => {
+        const clean = formatCodeForSpeech(code);
+        return `<p class="a11y-code-item">Início de código: ${clean}. Fim de código.</p>`;
+      }
+    );
+
     // Tabelas viram blocos falados: um de abertura (legenda e nº de linhas) e um por
     // linha, com o cabeçalho de cada coluna ("Linha 1: Mês: Janeiro; Bloco A: 120").
     // O fim da tabela vai junto da última linha para manter 1 bloco = 1 elemento
@@ -370,10 +415,11 @@ export class PiperTtsService {
 
     const pushBlock = (tag, fullText) => {
       if (fullText.length > 350) {
-        const sentences = fullText.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [fullText];
+        const sentences = fullText.split(/(?<=[.!?;\n])\s+/);
         let currentPart = '';
         for (const sentence of sentences) {
-          if ((currentPart + sentence).length > 300 && currentPart.trim()) {
+          if (!sentence.trim()) continue;
+          if ((currentPart + ' ' + sentence).length > 300 && currentPart.trim()) {
             chunks.push({
               id: `chunk-${chunkIndex++}`,
               blockIndex,
@@ -383,7 +429,7 @@ export class PiperTtsService {
             });
             currentPart = sentence;
           } else {
-            currentPart += ' ' + sentence;
+            currentPart = currentPart ? currentPart + ' ' + sentence : sentence;
           }
         }
         if (currentPart.trim()) {
@@ -408,7 +454,7 @@ export class PiperTtsService {
     };
 
     // Captura blocos semânticos: títulos, parágrafos, citações e listas
-    const blockRegex = /<(h[1-6]|p|blockquote|li)[^>]*>([\s\S]*?)<\/\1>/gi;
+    const blockRegex = /<(h[1-6]|p|blockquote|li)\b[^>]*>([\s\S]*?)<\/\1>/gi;
     let match;
 
     while ((match = blockRegex.exec(cleanHtml)) !== null) {

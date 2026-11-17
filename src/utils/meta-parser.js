@@ -166,7 +166,7 @@ export function enhanceAccessibleHtml(htmlContent) {
   content = content.replace(/<\/?(html|head|body)[^>]*>/gi, '');
 
   // 2. Substitui figuras por cards visuais e acessíveis de audiodescrição
-  return content.replace(
+  content = content.replace(
     /<figure([^>]*)>\s*<img\s+([^>]*?)alt=["']([^"']*)["']([^>]*?)>\s*<\/figure>/gi,
     (match, figureAttrs, preAlt, altText, postAlt) => {
       if (!altText || altText.trim() === '') {
@@ -210,4 +210,34 @@ export function enhanceAccessibleHtml(htmlContent) {
 </div>`;
     }
   );
+
+  // 3. Substitui blocos de código-fonte (<pre><code>) por cards visuais e acessíveis
+  content = content.replace(
+    /<pre([^>]*)>\s*<code([^>]*)>([\s\S]*?)<\/code>\s*<\/pre>/gi,
+    (match, preAttrs, codeAttrs, codeInner) => {
+      if (/class=["'][^"']*\ba11y-code-block\b/i.test(preAttrs)) {
+        return match;
+      }
+      return `
+<div class="a11y-code-card" role="region" aria-label="Bloco de código-fonte">
+  <div class="a11y-code-header">
+    <span class="a11y-code-tag">
+      <span aria-hidden="true">💻</span> Bloco de Código
+    </span>
+    <span class="a11y-code-badge">Código-fonte</span>
+    <div class="a11y-code-actions">
+      <button type="button" class="btn btn-sm btn-a11y-speak" onclick="window.speakCode(this)" aria-label="Ouvir código em voz alta">
+        🔊 Ouvir Código
+      </button>
+      <button type="button" class="btn btn-sm" onclick="window.copyCode(this)" aria-label="Copiar código-fonte">
+        📋 Copiar Código
+      </button>
+    </div>
+  </div>
+  <pre${preAttrs} class="a11y-code-block" tabindex="0"><code${codeAttrs}>${codeInner}</code></pre>
+</div>`;
+    }
+  );
+
+  return content;
 }

@@ -432,6 +432,79 @@ html.high-contrast .badge {
   margin-top: 0.75rem;
 }
 
+/* CARDS DE CÓDIGO-FONTE ACESSÍVEL (<pre><code>) */
+.a11y-code-card {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-color);
+  border-left: 6px solid #6366f1;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.a11y-code-card:focus-within,
+.a11y-code-card:hover {
+  border-color: #6366f1;
+  box-shadow: var(--shadow-md);
+}
+
+.a11y-code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.a11y-code-tag {
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.a11y-code-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.a11y-code-actions {
+  display: flex;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.a11y-code-block {
+  margin: 0;
+  padding: 1rem;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.a11y-code-block:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
 /* #0369a1: branco sobre ele dá 5,9:1 (o #0284c7 anterior dava 4,1:1, abaixo de 4,5:1) */
 .btn-a11y-speak {
   background-color: #0369a1 !important;
@@ -507,6 +580,22 @@ html.high-contrast .a11y-audiodesc-content {
   border-color: #ffff00 !important;
 }
 
+html.high-contrast .a11y-code-card {
+  background: #000000 !important;
+  border-color: #ffff00 !important;
+  color: #ffff00 !important;
+}
+
+html.high-contrast .a11y-code-tag {
+  color: #ffff00 !important;
+}
+
+html.high-contrast .a11y-code-block {
+  background: #000000 !important;
+  color: #ffff00 !important;
+  border: 1px solid #ffff00 !important;
+}
+
 /* Suporte de Modo Escuro (Dark Slate) para Audiodescrições */
 html.dark-slate-theme .btn-a11y-speak {
   background-color: #0369a1 !important;
@@ -529,6 +618,20 @@ html.dark-slate-theme .a11y-audiodesc-content {
   background: #0f172a !important;
   color: #e2e8f0 !important;
   border-color: #38bdf8 !important;
+}
+
+html.dark-slate-theme .a11y-code-card {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+html.dark-slate-theme .a11y-code-tag {
+  color: #818cf8 !important;
+}
+
+html.dark-slate-theme .a11y-code-block {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
 }
 
 /* PAINEL DE METADADOS DO CORE (DOCLING + PDDL + VLM) */

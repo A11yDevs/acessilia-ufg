@@ -908,24 +908,32 @@
     if (!contentEl) return;
     const cards = contentEl.querySelectorAll('.a11y-audiodesc-card');
     const bquotes = contentEl.querySelectorAll('.a11y-audiodesc-content');
+    const codeCards = contentEl.querySelectorAll('.a11y-code-card');
+    const codeBlocks = contentEl.querySelectorAll('.a11y-code-block');
     if (theme === 'yellow-black') {
       contentEl.style.background = '#000000';
       contentEl.style.color = '#ffff00';
       contentEl.style.borderColor = '#ffff00';
       cards.forEach(c => { c.style.background = '#000000'; c.style.borderColor = '#ffff00'; c.style.color = '#ffff00'; });
       bquotes.forEach(b => { b.style.background = '#111111'; b.style.borderColor = '#ffff00'; b.style.color = '#ffff00'; });
+      codeCards.forEach(c => { c.style.background = '#000000'; c.style.borderColor = '#ffff00'; c.style.color = '#ffff00'; });
+      codeBlocks.forEach(b => { b.style.background = '#111111'; b.style.borderColor = '#ffff00'; b.style.color = '#ffff00'; });
     } else if (theme === 'cyan-blue') {
       contentEl.style.background = '#001f3f';
       contentEl.style.color = '#7fdbff';
       contentEl.style.borderColor = '#7fdbff';
       cards.forEach(c => { c.style.background = '#001f3f'; c.style.borderColor = '#7fdbff'; c.style.color = '#7fdbff'; });
       bquotes.forEach(b => { b.style.background = '#002b55'; b.style.borderColor = '#7fdbff'; b.style.color = '#7fdbff'; });
+      codeCards.forEach(c => { c.style.background = '#001f3f'; c.style.borderColor = '#7fdbff'; c.style.color = '#7fdbff'; });
+      codeBlocks.forEach(b => { b.style.background = '#002b55'; b.style.borderColor = '#7fdbff'; b.style.color = '#7fdbff'; });
     } else {
       contentEl.style.background = 'var(--bg-primary)';
       contentEl.style.color = 'inherit';
       contentEl.style.borderColor = 'var(--border-color)';
       cards.forEach(c => { c.style.background = ''; c.style.borderColor = ''; c.style.color = ''; });
       bquotes.forEach(b => { b.style.background = ''; b.style.borderColor = ''; b.style.color = ''; });
+      codeCards.forEach(c => { c.style.background = ''; c.style.borderColor = ''; c.style.color = ''; });
+      codeBlocks.forEach(b => { b.style.background = ''; b.style.borderColor = ''; b.style.color = ''; });
     }
     announceA11y(`Tema visual do leitor atualizado`);
   }
@@ -1001,7 +1009,7 @@
     // sem trechos de menos de 2 caracteres, bloco dentro de outro bloco conta uma vez só e
     // cada tabela = a própria <table> (abertura) + uma entrada por linha de dados.
     const candidates = container.querySelectorAll(
-      'h1, h2, h3, h4, h5, h6, li, table, .a11y-audiodesc-card, p:not(.a11y-audiodesc-card *), blockquote:not(.a11y-audiodesc-card *)'
+      'h1, h2, h3, h4, h5, h6, li, table, .a11y-audiodesc-card, .a11y-code-card, pre:not(.a11y-code-card *), p:not(.a11y-audiodesc-card *, .a11y-code-card *), blockquote:not(.a11y-audiodesc-card *, .a11y-code-card *)'
     );
     const blocks = [];
     candidates.forEach(el => {
@@ -1013,7 +1021,7 @@
         return;
       }
       if (el.closest('table')) return;
-      if (el.parentElement && el.parentElement.closest('li, blockquote, p, h1, h2, h3, h4, h5, h6')) return;
+      if (el.parentElement && el.parentElement.closest('li, blockquote, p, h1, h2, h3, h4, h5, h6, .a11y-audiodesc-card, .a11y-code-card')) return;
       if (el.textContent.replace(/\s+/g, ' ').trim().length < 2) return;
       blocks.push(el);
     });
@@ -1327,6 +1335,113 @@
       setTimeout(() => {
         btn.textContent = originalText;
       }, 2000);
+    });
+  };
+
+  window.speakCode = async function(btn) {
+    const card = btn.closest('.a11y-code-card') || btn.parentElement;
+    const preEl = card ? card.querySelector('pre') : null;
+    const rawText = btn.getAttribute('data-code') || (preEl ? preEl.textContent : '');
+    if (!rawText.trim()) return;
+
+    let formatted = rawText
+      .replace(/\/\/\s*(.*)/g, ' comentário: $1 ')
+      .replace(/\/\*[\s\S]*?\*\//g, ' comentário ')
+      .replace(/\{/g, ' abre chaves, ')
+      .replace(/\}/g, ' fecha chaves. ')
+      .replace(/==/g, ' igual a ')
+      .replace(/!=/g, ' diferente de ')
+      .replace(/<=/g, ' menor ou igual a ')
+      .replace(/>=/g, ' maior ou igual a ')
+      .replace(/&&/g, ' e ')
+      .replace(/\|\|/g, ' ou ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/[.!?]+$/, '');
+
+    let textToSpeak = formatted;
+    if (!textToSpeak.toLowerCase().startsWith('início de código')) {
+      textToSpeak = `Início de código: ${formatted}. Fim de código.`;
+    }
+
+    const originalText = btn.textContent;
+    btn.textContent = '⏳ Gerando Áudio Neural...';
+    btn.disabled = true;
+
+    function fallbackSpeech() {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        utterance.lang = 'pt-BR';
+        btn.textContent = '🔊 Reproduzindo Código...';
+        utterance.onend = () => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        };
+        utterance.onerror = () => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        };
+        window.speechSynthesis.speak(utterance);
+        announceA11y('Reproduzindo código-fonte em voz alta');
+      } else {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    try {
+      const voice = document.getElementById('tts-voice-select')?.value || 'pt_BR-cadu-medium';
+      const rate = parseFloat(document.getElementById('tts-rate-select')?.value || '1.0');
+
+      const ttsUrl = buildApiUrl(['api', 'v1', 'tts', 'synthesize']);
+      const res = await fetch(ttsUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ text: textToSpeak, voice, rate })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const blobUrl = base64ToBlobUrl(data.audio);
+        const audio = new Audio(blobUrl);
+        btn.textContent = '🔊 Reproduzindo Código...';
+        audio.onended = () => {
+          if (blobUrl.startsWith('blob:')) URL.revokeObjectURL(blobUrl);
+          btn.textContent = originalText;
+          btn.disabled = false;
+        };
+        audio.onerror = () => {
+          if (blobUrl.startsWith('blob:')) URL.revokeObjectURL(blobUrl);
+          fallbackSpeech();
+        };
+        await audio.play();
+        announceA11y('Reproduzindo código-fonte com Piper-TTS');
+        return;
+      }
+    } catch (err) {
+      console.warn('[TTS] Falha ao sintetizar código no servidor:', err);
+    }
+
+    fallbackSpeech();
+  };
+
+  window.copyCode = function(btn) {
+    const card = btn.closest('.a11y-code-card') || btn.parentElement;
+    const preEl = card ? card.querySelector('pre') : null;
+    const codeText = preEl ? preEl.textContent : '';
+    if (!codeText) return;
+
+    navigator.clipboard.writeText(codeText).then(() => {
+      const originalText = btn.textContent;
+      btn.textContent = '✔ Copiado!';
+      announceA11y('Código copiado para a área de transferência');
+      setTimeout(() => {
+        btn.textContent = originalText;
+      }, 2000);
+    }).catch(err => {
+      console.error('Falha ao copiar código:', err);
     });
   };
 
