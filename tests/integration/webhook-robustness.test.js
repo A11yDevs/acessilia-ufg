@@ -3,16 +3,18 @@ import assert from 'node:assert/strict';
 import { buildApp } from '../../src/app.js';
 import { materialService } from '../../src/services/material.service.js';
 import { materialRepository } from '../../src/repositories/material.repository.js';
+import { createAcademicBase } from '../helpers/fixtures.js';
 
 // Aviso do Core (webhook): repetição, status desconhecido e falha técnica.
 test('Webhook do Core: idempotência, validação de status e falha técnica', async (t) => {
   const app = await buildApp({ logger: false });
   t.after(() => app.close());
   const teacherActor = { id: 2, roleCode: 'PROFESSOR' };
+  const { subject } = await createAcademicBase('HOOK');
 
   async function materialWithJob(label) {
     const { material, version } = await materialService.uploadMaterial({
-      subjectId: 1,
+      subjectId: subject.id,
       title: `Material para webhook (${label})`,
       category: 'SLIDE',
       originalFilename: 'aula_webhook.pdf',

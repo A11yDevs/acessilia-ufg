@@ -5,10 +5,14 @@ import { authService } from '../../src/services/auth.service.js';
 import { db } from '../../database/connection.js';
 import { materialService } from '../../src/services/material.service.js';
 import { materialRepository } from '../../src/repositories/material.repository.js';
+import { createAcademicBase, createMaterial } from '../helpers/fixtures.js';
 
 test('Testes de Homologação dos Achados de QA (G8, G10, M1, M2, M3, M10, B2, B6)', async (t) => {
   const app = await buildApp({ logger: false });
   const admin = await authService.authenticate('admin@acessilia.ufg.br', 'Temp@123456');
+  // Dados próprios do teste (antes: "o primeiro material do banco" e a disciplina 1)
+  const { subject } = await createAcademicBase('QA');
+  const fixture = await createMaterial({ subjectId: subject.id });
 
   app.addHook('preHandler', async (req) => {
     req.user = admin;
@@ -23,8 +27,7 @@ test('Testes de Homologação dos Achados de QA (G8, G10, M1, M2, M3, M10, B2, B
   });
 
   await t.test('2. G8: Tabela materials aceita status FALHA_PROCESSAMENTO sem violar CHECK constraint', async () => {
-    // Busca ou cria um material para teste
-    const mat = db.prepare('SELECT id FROM materials LIMIT 1').get();
+    const mat = fixture.material;
     assert.ok(mat, 'Deve existir ao menos um material no banco');
 
     // Atualiza status para FALHA_PROCESSAMENTO
@@ -35,7 +38,7 @@ test('Testes de Homologação dos Achados de QA (G8, G10, M1, M2, M3, M10, B2, B
 
   await t.test('3. M2: Iniciar revisão duplicada para a mesma versão é bloqueado (idempotente sem duplicar)', async () => {
     // Obter ou criar uma versão de teste
-    const version = db.prepare('SELECT id FROM material_versions ORDER BY id DESC LIMIT 1').get();
+    const version = fixture.version;
     assert.ok(version, 'Deve existir uma versão');
 
     // Fecha qualquer revisão ativa prévia para isolar o teste
@@ -60,7 +63,7 @@ test('Testes de Homologação dos Achados de QA (G8, G10, M1, M2, M3, M10, B2, B
     }, /Revisão não encontrada/i);
 
     // Cria revisão para teste
-    const version = db.prepare('SELECT id FROM material_versions ORDER BY id DESC LIMIT 1').get();
+    const version = fixture.version;
     db.prepare("UPDATE reviews SET status = 'APROVADO' WHERE material_version_id = ? AND status = 'EM_ANDAMENTO'").run(version.id);
     const rev = await materialService.startReview(version.id, admin);
 
@@ -119,7 +122,7 @@ test('Testes de Homologação dos Achados de QA (G8, G10, M1, M2, M3, M10, B2, B
     await assert.rejects(async () => {
       await materialService.uploadMaterial({
         title: '   ',
-        subjectId: 1,
+        subjectId: subject.id,
         category: 'SLIDE',
         originalFilename: 'aula.pdf'
       }, teacher);
@@ -139,7 +142,7 @@ test('Testes de Homologação dos Achados de QA (G8, G10, M1, M2, M3, M10, B2, B
     await assert.rejects(async () => {
       await materialService.uploadMaterial({
         title: 'Material Válido',
-        subjectId: 1,
+        subjectId: subject.id,
         category: 'CATEGORIA_INEXISTENTE',
         originalFilename: 'aula.pdf'
       }, teacher);

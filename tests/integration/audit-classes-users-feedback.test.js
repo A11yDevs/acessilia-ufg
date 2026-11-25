@@ -5,6 +5,7 @@ import { db } from '../../database/connection.js';
 import { academicService } from '../../src/services/academic.service.js';
 import { materialService } from '../../src/services/material.service.js';
 import { materialRepository } from '../../src/repositories/material.repository.js';
+import { createAcademicBase, createMaterial } from '../helpers/fixtures.js';
 
 test('Gestão de Turmas, Feedbacks Discentes, Edição de Materiais e Edição de Usuários', async (t) => {
   const app = await buildApp({ logger: false });
@@ -30,6 +31,10 @@ test('Gestão de Turmas, Feedbacks Discentes, Edição de Materiais e Edição d
   });
 
   const suffix = Date.now();
+  // Dados próprios do teste (antes: curso 1, disciplina 1 e material 9 do banco de desenvolvimento)
+  const base = await createAcademicBase('TURMA');
+  const { material: fixtureMaterial } = await createMaterial({ subjectId: base.subject.id });
+  const matId = fixtureMaterial.id;
 
   await t.test('1. Listagem e Criação de Turmas (/academico/turmas)', async () => {
     // GET /academico/turmas
@@ -54,7 +59,7 @@ test('Gestão de Turmas, Feedbacks Discentes, Edição de Materiais e Edição d
         'content-type': 'application/x-www-form-urlencoded',
         'cookie': cookieHeader
       },
-      payload: `courseId=1&subjectId=1&academicPeriodId=1&code=T-TEST-${suffix}&location=Lab+150&scheduleDescription=Terca+e+Quinta+14:00&_csrf=${encodeURIComponent(csrfToken)}`
+      payload: `courseId=${base.course.id}&subjectId=${base.subject.id}&academicPeriodId=1&code=T-TEST-${suffix}&location=Lab+150&scheduleDescription=Terca+e+Quinta+14:00&_csrf=${encodeURIComponent(csrfToken)}`
     });
     assert.equal(resCreate.statusCode, 302);
     assert.equal(resCreate.headers.location, '/academico/turmas');
@@ -89,10 +94,10 @@ test('Gestão de Turmas, Feedbacks Discentes, Edição de Materiais e Edição d
   });
 
   await t.test('2. Gestão de Feedback Discente (Atualização de Status)', async () => {
-    // GET /materiais/9 para obter token CSRF e cookie
+    // GET /materiais/:id para obter token CSRF e cookie
     const resMat = await app.inject({
       method: 'GET',
-      url: '/materiais/9'
+      url: `/materiais/${matId}`
     });
     assert.equal(resMat.statusCode, 200);
     const match = resMat.payload.match(/name="_csrf" value="([^"]+)"/);
@@ -102,7 +107,7 @@ test('Gestão de Turmas, Feedbacks Discentes, Edição de Materiais e Edição d
 
     // Criar feedback de teste
     const fb = materialRepository.createMaterialFeedback({
-      materialId: 9,
+      materialId: matId,
       studentUserId: 4,
       issueType: 'FORMULA',
       description: 'A fórmula da página 3 não está sendo lida pelo sintetizador.'
@@ -113,7 +118,7 @@ test('Gestão de Turmas, Feedbacks Discentes, Edição de Materiais e Edição d
     // Atualizar status para RESOLVIDO
     const resUpdate = await app.inject({
       method: 'POST',
-      url: `/materiais/9/feedbacks/${fb.id}/status`,
+      url: `/materiais/${matId}/feedbacks/${fb.id}/status`,
       headers: {
         'content-type': 'application/x-www-form-urlencoded',
         'cookie': cookieHeader
@@ -121,7 +126,7 @@ test('Gestão de Turmas, Feedbacks Discentes, Edição de Materiais e Edição d
       payload: `status=RESOLVIDO&_csrf=${encodeURIComponent(csrfToken)}`
     });
     assert.equal(resUpdate.statusCode, 302);
-    assert.equal(resUpdate.headers.location, '/materiais/9#sec-feedbacks');
+    assert.equal(resUpdate.headers.location, `/materiais/${matId}#sec-feedbacks`);
 
     const updatedFb = materialRepository.findFeedbackById(fb.id);
     assert.equal(updatedFb.status, 'RESOLVIDO');
@@ -130,18 +135,18 @@ test('Gestão de Turmas, Feedbacks Discentes, Edição de Materiais e Edição d
   await t.test('3. Edição de Metadados do Material (/materiais/:id/editar)', async () => {
     const resMat = await app.inject({
       method: 'GET',
-      url: '/materiais/9'
+      url: `/materiais/${matId}`
     });
     const match = resMat.payload.match(/name="_csrf" value="([^"]+)"/);
     const csrfToken = match[1];
     const cookieHeader = resMat.cookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-    const matBefore = materialRepository.findMaterialById(9);
+    const matBefore = materialRepository.findMaterialById(matId);
     assert.ok(matBefore);
 
     const resEdit = await app.inject({
       method: 'POST',
-      url: '/materiais/9/editar',
+      url: `/materiais/${matId}/editar`,
       headers: {
         'content-type': 'application/x-www-form-urlencoded',
         'cookie': cookieHeader
@@ -149,9 +154,9 @@ test('Gestão de Turmas, Feedbacks Discentes, Edição de Materiais e Edição d
       payload: `title=${encodeURIComponent('O que faz o Brasil, Brasil? - Edição Revisada')}&description=${encodeURIComponent('Ensaio de antropologia social brasileira.')}&category=LIVRO&subjectId=${matBefore.subject_id}&_csrf=${encodeURIComponent(csrfToken)}`
     });
     assert.equal(resEdit.statusCode, 302);
-    assert.equal(resEdit.headers.location, '/materiais/9');
+    assert.equal(resEdit.headers.location, `/materiais/${matId}`);
 
-    const matAfter = materialRepository.findMaterialById(9);
+    const matAfter = materialRepository.findMaterialById(matId);
     assert.equal(matAfter.title, 'O que faz o Brasil, Brasil? - Edição Revisada');
     assert.equal(matAfter.category, 'LIVRO');
   });
@@ -187,7 +192,7 @@ test('Gestão de Turmas, Feedbacks Discentes, Edição de Materiais e Edição d
   await t.test('5. Download do Formato Original (/materiais/:id/download?format=original)', async () => {
     const resOrig = await app.inject({
       method: 'GET',
-      url: '/materiais/9/download?format=original'
+      url: `/materiais/${matId}/download?format=original`
     });
     // Deve responder 200 (se existir arquivo físico) ou 404 claro se arquivo não estiver no disco de testes
     assert.ok(resOrig.statusCode === 200 || resOrig.statusCode === 404);
@@ -197,9 +202,9 @@ test('Gestão de Turmas, Feedbacks Discentes, Edição de Materiais e Edição d
     // Insere solicitação de teste
     const stmt = db.prepare(`
       INSERT INTO accessibility_requests (material_id, requester_user_id, priority, status, specific_notes)
-      VALUES (9, 4, 'ALTA', 'SOLICITADA', 'Adaptação teste')
+      VALUES (?, 4, 'ALTA', 'SOLICITADA', 'Adaptação teste')
     `);
-    const info = stmt.run();
+    const info = stmt.run(matId);
     const reqId = info.lastInsertRowid;
 
     const resSol = await app.inject({
