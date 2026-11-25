@@ -1,9 +1,10 @@
+<% const canManageCourses = user.roleCode === 'ADMINISTRADOR' || (user.permissions && user.permissions.includes('cursos.gerenciar')); %>
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
   <div>
     <h1 style="font-size: 1.75rem; font-weight: 700;">Catálogo de Disciplinas</h1>
     <p style="color: var(--text-muted);">Gestão acadêmica de disciplinas institucionais e matrizes</p>
   </div>
-  <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('cursos.gerenciar')) { %>
+  <% if (canManageCourses) { %>
     <button type="button" class="btn btn-primary" onclick="document.getElementById('modal-nova-disciplina').style.display='block'; document.getElementById('nome-disciplina').focus();">
       + Nova Disciplina
     </button>
@@ -64,6 +65,7 @@
   </table>
 </div>
 
+<% if (canManageCourses) { %>
 <!-- MODAL ACESSÍVEL DE CADASTRO DE DISCIPLINA -->
 <div id="modal-nova-disciplina" role="dialog" aria-modal="true" aria-labelledby="modal-disc-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
   <div class="auth-card" style="margin: 3rem auto; max-width: 500px;">
@@ -111,6 +113,7 @@
     </form>
   </div>
 </div>
+<% } %>
 
 <script>
   function filtrarDisciplinas(query) {

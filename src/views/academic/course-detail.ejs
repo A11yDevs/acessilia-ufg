@@ -15,7 +15,8 @@
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
     <h2 id="sec-matriz" style="font-size: 1.25rem; font-weight: 600;">Matriz Curricular</h2>
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-      <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('cursos.gerenciar')) { %>
+      <% const canManageCourses = user.roleCode === 'ADMINISTRADOR' || (user.permissions && user.permissions.includes('cursos.gerenciar')); %>
+      <% if (canManageCourses) { %>
         <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-nova-disciplina-curso').style.display='block'; document.getElementById('nome-disc-curso').focus();">
           + Cadastrar Nova Disciplina
         </button>
@@ -64,6 +65,7 @@
   </div>
 </section>
 
+<% if (canManageCourses) { %>
 <!-- MODAL VINCULAR DISCIPLINA -->
 <div id="modal-vincular-disciplina" role="dialog" aria-modal="true" aria-labelledby="modal-vinc-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
   <div class="auth-card" style="margin: 3rem auto; max-width: 500px;">
@@ -155,3 +157,4 @@
     </form>
   </div>
 </div>
+<% } %>

@@ -666,21 +666,50 @@ DATA DE EMISSÃO: ${new Date().toISOString()}
 
   // Editor/Validador de Alt-Texts (Human-in-the-Loop)
   fastify.post('/materiais/:id/alt-texts/:altId', {
-    preHandler: [fastify.requirePermission('revisoes.visualizar')]
+    preHandler: [fastify.requireAuth, fastify.csrfProtection]
   }, async (request, reply) => {
     const materialId = parseInt(request.params.id, 10);
     const altId = parseInt(request.params.altId, 10);
     const { humanReviewedAlt, status } = request.body || {};
+
+    const material = materialRepository.findMaterialById(materialId);
+    if (!material) {
+      return reply.status(404).send({ error: 'Material não encontrado.' });
+    }
+
+    const isOwner = material.teacher_user_id === request.user.id;
+    const canReview = request.user.roleCode === 'ADMINISTRADOR' ||
+                      request.user.roleCode === 'GESTOR_ACESSIBILIDADE' ||
+                      (request.user.permissions && request.user.permissions.includes('revisoes.avaliar')) ||
+                      isOwner;
+
+    if (!canReview) {
+      return reply.status(403).send({ error: 'Você não tem permissão para revisar textos alternativos deste material.' });
+    }
+
     try {
       const existingAlt = materialRepository.findAltTextById(altId);
-      if (!existingAlt) {
-        return reply.status(404).send({ error: 'Texto alternativo não encontrado.' });
+      if (!existingAlt || existingAlt.material_id !== materialId) {
+        return reply.status(404).send({ error: 'Texto alternativo não encontrado para este material.' });
       }
+
+      const validStatuses = ['PENDENTE', 'MODIFICADO', 'APROVADO'];
+      const newStatus = status && validStatuses.includes(status) ? status : 'MODIFICADO';
+
       materialRepository.updateAltText(altId, {
-        humanReviewedAlt,
-        status: status || 'MODIFICADO',
+        humanReviewedAlt: typeof humanReviewedAlt === 'string' ? humanReviewedAlt.trim() : (existingAlt.human_reviewed_alt || existingAlt.ai_suggested_alt),
+        status: newStatus,
         reviewedByUserId: request.user.id
       });
+
+      auditRepository.createLog({
+        userId: request.user.id,
+        action: 'REVISAR_ALT_TEXT',
+        resource: 'material_alt_texts',
+        resourceId: altId,
+        details: { materialId, status: newStatus }
+      });
+
       return reply.redirect(`/materiais/${materialId}#sec-alt-review`);
     } catch (err) {
       return reply.status(400).send({ error: err.message });
