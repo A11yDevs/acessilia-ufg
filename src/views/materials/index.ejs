@@ -95,7 +95,7 @@
               <%= m.title %>
               <% if (m.publish_at) { %>
                 <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">
-                  🗓 Agendado para: <%= new Date(m.publish_at).toLocaleString('pt-BR') %>
+                  🗓 Agendado para: <%= formatDateTime(m.publish_at) %>
                 </div>
               <% } %>
             </td>

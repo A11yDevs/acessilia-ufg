@@ -81,7 +81,7 @@
     <p style="color: var(--text-muted);">
       Disciplina: <%= material.subject_name %> | Docente: <%= material.teacher_name %> | Status: <strong><%= material.current_status %></strong>
       <% if (material.publish_at) { %>
-        | 🗓 Liberação Agendada: <strong><%= new Date(material.publish_at).toLocaleString('pt-BR') %></strong>
+        | 🗓 Liberação Agendada: <strong><%= formatDateTime(material.publish_at) %></strong>
       <% } %>
     </p>
   </div>
@@ -299,7 +299,7 @@
             <td style="padding: 1rem; word-break: break-word;"><%= v.original_filename %></td>
             <td style="padding: 1rem; white-space: nowrap;"><code style="font-size: 0.75rem; background: rgba(0,0,0,0.04); padding: 0.15rem 0.35rem; border-radius: 4px;"><%= v.sha256_hash.substring(0, 16) %>...</code></td>
             <td style="padding: 1rem; white-space: nowrap;"><%= v.uploader_name %></td>
-            <td style="padding: 1rem; font-size: 0.875rem; color: var(--text-muted); white-space: nowrap;"><%= new Date(v.created_at).toLocaleString('pt-BR') %></td>
+            <td style="padding: 1rem; font-size: 0.875rem; color: var(--text-muted); white-space: nowrap;"><%= formatDateTime(v.created_at) %></td>
             <td style="padding: 1rem; text-align: center; white-space: nowrap;">
               <a href="/materiais/<%= material.id %>/download?format=<%= v.version_type === 'ORIGINAL' ? 'original' : 'html' %>" class="btn btn-sm" style="border: 1px solid var(--border-color); font-size: 0.75rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.25rem;" download>
                 📥 Baixar
@@ -632,7 +632,7 @@
               </span>
               <strong style="margin-left: 0.5rem;"><%= fb.student_name || 'Estudante' %></strong>
               <span style="color: var(--text-muted); font-size: 0.8125rem; margin-left: 0.5rem;">
-                <%= new Date(fb.created_at).toLocaleString('pt-BR') %>
+                <%= formatDateTime(fb.created_at) %>
               </span>
             </div>
             <div>

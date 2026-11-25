@@ -6,6 +6,7 @@ import { academicRepository } from '../repositories/academic.repository.js';
 import { auditRepository } from '../repositories/audit.repository.js';
 import { notificationEvents } from '../routes/api/notifications.api.js';
 import { botAcessService } from '../integrations/bot-acess/service.js';
+import { parseDbTimestamp } from '../utils/datetime.js';
 
 export const materialService = {
   // Envio de Material (Cria v1 ORIGINAL) com suporte opcional a agendamento
@@ -115,7 +116,7 @@ export const materialService = {
       
       // Checagem de Agendamento: Se houver publish_at no futuro, ainda não está disponível para discentes
       if (material.publish_at) {
-        const publishDate = new Date(material.publish_at);
+        const publishDate = parseDbTimestamp(material.publish_at);
         if (publishDate > new Date()) {
           return false;
         }
@@ -152,7 +153,7 @@ export const materialService = {
 
       // Checagem de Agendamento
       if (material.publish_at) {
-        const publishDate = new Date(material.publish_at);
+        const publishDate = parseDbTimestamp(material.publish_at);
         if (publishDate > new Date()) {
           return false;
         }

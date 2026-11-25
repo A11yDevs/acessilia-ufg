@@ -12,6 +12,7 @@ import fastifyRateLimit from '@fastify/rate-limit';
 import fastifyCsrf from '@fastify/csrf-protection';
 import fastifyMultipart from '@fastify/multipart';
 import ejs from 'ejs';
+import { formatDateTime, formatDate } from './utils/datetime.js';
 
 import { env } from './config/env.js';
 import { SQLiteSessionStore } from './plugins/session-store.js';
@@ -116,7 +117,9 @@ export async function buildApp(opts = {}) {
     engine: {
       ejs
     },
-    root: path.resolve(__dirname, 'views')
+    root: path.resolve(__dirname, 'views'),
+    // Datas no fuso da instituição em todas as telas (o servidor roda em UTC)
+    defaultContext: { formatDateTime, formatDate }
   });
 
   // 8. Plugins Customizados de RBAC e Autenticacao

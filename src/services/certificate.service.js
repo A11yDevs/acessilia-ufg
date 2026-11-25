@@ -1,4 +1,5 @@
 import QRCode from 'qrcode';
+import { parseDbTimestamp, formatDateTime } from '../utils/datetime.js';
 import { materialRepository } from '../repositories/material.repository.js';
 
 export const certificateService = {
@@ -38,8 +39,9 @@ export const certificateService = {
     const isApproved = material.current_status === 'APROVADO' || material.current_status === 'PUBLICADO' || !!approvalReview;
     const isProcessed = !!botVersion || versions.some(v => v.version_type !== 'ORIGINAL');
 
-    const automaticDate = botVersion ? new Date(botVersion.created_at) : (latestVersion ? new Date(latestVersion.created_at) : new Date(material.created_at));
-    const approvalDate = (approvalReview && approvalReview.finished_at) ? new Date(approvalReview.finished_at) : null;
+    // created_at/finished_at vêm do SQLite em UTC sem fuso: parseDbTimestamp os lê como UTC
+    const automaticDate = parseDbTimestamp(botVersion ? botVersion.created_at : (latestVersion ? latestVersion.created_at : material.created_at));
+    const approvalDate = (approvalReview && approvalReview.finished_at) ? parseDbTimestamp(approvalReview.finished_at) : null;
     const reviewerName = (approvalReview && approvalReview.reviewer_name) ? approvalReview.reviewer_name : null;
 
     // Determina o prefixo de rota quando sob proxy reverso (ex: /gestor)
@@ -72,9 +74,9 @@ export const certificateService = {
       currentStatus: material.current_status,
       isApproved,
       isProcessed,
-      automaticDateFormatted: automaticDate ? automaticDate.toLocaleString('pt-BR') : null,
+      automaticDateFormatted: automaticDate ? formatDateTime(automaticDate) : null,
       automaticIsoDate: automaticDate ? automaticDate.toISOString() : null,
-      approvalDateFormatted: approvalDate ? approvalDate.toLocaleString('pt-BR') : null,
+      approvalDateFormatted: approvalDate ? formatDateTime(approvalDate) : null,
       reviewerName,
       sha256Hash: latestVersion ? latestVersion.sha256_hash : 'N/A',
       certificateUrl

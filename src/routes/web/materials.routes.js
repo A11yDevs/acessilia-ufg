@@ -9,6 +9,7 @@ import { certificateService } from '../../services/certificate.service.js';
 import { parseAcessiliaMetadata, enhanceAccessibleHtml } from '../../utils/meta-parser.js';
 import { loadProcessedHtml, resolveStoragePath } from '../../services/processed-document.service.js';
 import { auditRepository } from '../../repositories/audit.repository.js';
+import { parseLocalDateTimeInput } from '../../utils/datetime.js';
 
 export async function materialsWebRoutes(fastify, opts) {
   // Listagem de materiais respeitando escopo de permissão
@@ -95,8 +96,9 @@ export async function materialsWebRoutes(fastify, opts) {
 
       let parsedPublishAt = null;
       if (publishAt) {
-        const d = new Date(publishAt);
-        if (isNaN(d.getTime())) {
+        // datetime-local chega sem fuso ("2026-11-20T10:00"): é horário de Goiânia, não do servidor
+        const d = parseLocalDateTimeInput(publishAt);
+        if (!d) {
           return reply.status(400).send({ error: 'Data de publicação inválida.' });
         }
         parsedPublishAt = d.toISOString();
