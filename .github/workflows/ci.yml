@@ -1,0 +1,153 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_ENV: test
+  NODE_VERSION: '20.x'
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+        timeout-minutes: 2
+
+      - name: Run migrations and seed (isolated test database)
+        run: |
+          # The test setup handles migrations and seeding automatically
+          # This step verifies the scripts work
+          node database/migrate.js
+          node database/seed.js
+        timeout-minutes: 1
+
+      - name: Run test suite
+        run: npm test
+        timeout-minutes: 4
+        env:
+          NODE_ENV: test
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test-results/
+            coverage/
+          retention-days: 7
+
+  lint:
+    name: Lint & Syntax Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Run linter (warnings only)
+        run: npx eslint src/ tests/ --ext .js
+        timeout-minutes: 2
+        continue-on-error: true
+
+      - name: Check for syntax errors
+        run: node --check src/**/*.js tests/**/*.js
+        timeout-minutes: 1
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Check for vulnerable dependencies
+        run: npx audit-ci --config audit-ci.json
+        continue-on-error: true
+
+  build:
+    name: Build & Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    needs: [test, lint, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Build Docker image
+        run: |
+          docker build -t acessilia-gestor:${{ github.sha }} .
+          docker tag acessilia-gestor:${{ github.sha }} acessilia-gestor:latest
+        timeout-minutes: 2
+
+      - name: Run container smoke test
+        run: |
+          docker run -d --name smoke-test -p 3000:3000 -e NODE_ENV=production acessilia-gestor:latest
+          sleep 5
+          curl -f http://localhost:3000/healthz || (docker logs smoke-test && exit 1)
+          docker stop smoke-test && docker rm smoke-test
+        timeout-minutes: 2
+
+  notify:
+    name: Notify Status
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    needs: [test, lint, security, build]
+    if: always()
+    steps:
+      - name: Send notification
+        run: |
+          echo "Pipeline completed with status: ${{ needs.test.result }}, ${{ needs.lint.result }}, ${{ needs.security.result }}, ${{ needs.build.result }}"
+          if [ "${{ needs.test.result }}" != "success" ] || [ "${{ needs.lint.result }}" != "success" ]; then
+            exit 1
+          fi

@@ -85,35 +85,68 @@ export async function materialsWebRoutes(fastify, opts) {
     }
 
     try {
+      const acceptHeader = request.headers.accept;
+      const acceptsHtml = acceptHeader && acceptHeader.includes('text/html');
+
+      const commonViewData = {
+        title: 'Materiais Acadêmicos',
+        headerTitle: 'Repositório de Materiais',
+        currentPath: '/materiais',
+        user: request.user,
+        subjects: academicRepository.listSubjects(),
+        classes: academicRepository.listClasses(),
+        materials: materialRepository.listMaterialsForUser(request.user)
+      };
+      const commonOptions = {
+        formValues: { title, description, category, subjectId, classId, publishAt },
+        modalToOpen: 'novo-material'
+      };
+
       if (!title || !title.trim() || !subjectId) {
-        return reply.status(400).send({ error: 'Título e Disciplina são obrigatórios e não podem estar em branco.' });
+        const errorMsg = 'Título e Disciplina são obrigatórios e não podem estar em branco.';
+        if (acceptsHtml) {
+          return reply.formError('materials/index.ejs', commonViewData, errorMsg, commonOptions);
+        }
+        return reply.status(400).send({ error: errorMsg });
       }
 
       if (title.trim().length > 255) {
-        return reply.status(400).send({ error: 'O título do material não pode exceder 255 caracteres.' });
+        const errorMsg = 'O título do material não pode exceder 255 caracteres.';
+        if (acceptsHtml) {
+          return reply.formError('materials/index.ejs', commonViewData, errorMsg, commonOptions);
+        }
+        return reply.status(400).send({ error: errorMsg });
       }
 
       let parsedPublishAt = null;
       if (publishAt) {
         const d = new Date(publishAt);
         if (isNaN(d.getTime())) {
-          return reply.status(400).send({ error: 'Data de publicação inválida.' });
+          const errorMsg = 'Data de publicação inválida.';
+          if (acceptsHtml) {
+            return reply.formError('materials/index.ejs', commonViewData, errorMsg, commonOptions);
+          }
+          return reply.status(400).send({ error: errorMsg });
         }
         parsedPublishAt = d.toISOString();
       }
 
       if (!fileUploaded || !fileBuffer || fileBuffer.length === 0) {
-        return reply.status(400).send({
-          error: 'O arquivo para acessibilização é obrigatório e não pode estar vazio.'
-        });
+        const errorMsg = 'O arquivo para acessibilização é obrigatório e não pode estar vazio.';
+        if (acceptsHtml) {
+          return reply.formError('materials/index.ejs', commonViewData, errorMsg, commonOptions);
+        }
+        return reply.status(400).send({ error: errorMsg });
       }
 
       // Validação estrita de extensão (bloqueio de executáveis/arquivos perigosos)
       const allowedExtensions = /\.(pdf|docx|doc|pptx|ppt|txt|png|jpe?g|webp|html)$/i;
       if (!allowedExtensions.test(originalFilename)) {
-        return reply.status(400).send({
-          error: `Formato de arquivo não suportado ou inválido (${originalFilename}). Formatos permitidos: PDF, DOCX, DOC, PPTX, PPT, TXT, PNG, JPG/JPEG, WEBP, HTML.`
-        });
+        const errorMsg = `Formato de arquivo não suportado ou inválido (${originalFilename}). Formatos permitidos: PDF, DOCX, DOC, PPTX, PPT, TXT, PNG, JPG/JPEG, WEBP, HTML.`;
+        if (acceptsHtml) {
+          return reply.formError('materials/index.ejs', commonViewData, errorMsg, commonOptions);
+        }
+        return reply.status(400).send({ error: errorMsg });
       }
 
       // 1. Cria o registro acadêmico no Gestor com a Versão v1 (ORIGINAL)
@@ -148,6 +181,11 @@ export async function materialsWebRoutes(fastify, opts) {
 
       return reply.redirect(`/materiais/${material.id}`);
     } catch (err) {
+      const acceptHeader = request.headers.accept;
+      const acceptsHtml = acceptHeader && acceptHeader.includes('text/html');
+      if (acceptsHtml) {
+        return reply.formError('materials/index.ejs', commonViewData, err.message, commonOptions);
+      }
       return reply.status(400).send({ error: err.message });
     }
   });

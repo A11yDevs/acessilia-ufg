@@ -61,32 +61,50 @@
 </div>
 
 <!-- MODAL CADASTRAR USUÁRIO -->
-<div id="modal-novo-usuario" role="dialog" aria-modal="true" aria-labelledby="modal-u-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
+<div id="modal-novo-usuario" role="dialog" aria-modal="true" aria-labelledby="modal-u-titulo" style="display: <%= locals.formError && !locals.editUserId ? 'block' : 'none' %>; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000;">
   <div class="auth-card" style="margin: 3rem auto; max-width: 500px;">
     <h2 id="modal-u-titulo" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">Cadastrar Novo Usuário</h2>
+
+    <% if (locals.formError && !locals.editUserId) { %>
+      <div id="modal-usuario-error" class="alert alert-error" role="alert" aria-live="assertive" tabindex="-1" style="margin-bottom: 1.25rem; border-left: 4px solid var(--color-error); background: #fee2e2; color: #991b1b; padding: 0.75rem 1rem; border-radius: var(--border-radius);">
+        <strong>⚠️ Não foi possível cadastrar o usuário:</strong>
+        <p style="margin: 0.25rem 0 0 0;"><%= formError %></p>
+      </div>
+    <% } %>
+
     <form action="/usuarios" method="POST">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
       <div class="form-group">
         <label for="nome-user" class="form-label">Nome Completo <span class="required-indicator">*</span></label>
-        <input type="text" id="nome-user" name="name" class="form-input" required placeholder="Ex: Maria Pereira">
+        <input type="text" id="nome-user" name="name" class="form-input" required placeholder="Ex: Maria Pereira" value="<%= locals.formValues?.name || '' %>" <%- (locals.formError && locals.formError.toLowerCase().includes('nome')) ? 'aria-invalid="true" aria-describedby="err-nome-user"' : '' %>>
+        <% if (locals.formError && locals.formError.toLowerCase().includes('nome')) { %>
+          <span id="err-nome-user" class="form-error" role="alert" style="color: #dc2626; font-size: 0.8125rem; font-weight: 600; display: block; margin-top: 0.25rem;">
+            <%= formError %>
+          </span>
+        <% } %>
       </div>
 
       <div class="form-group">
         <label for="email-user" class="form-label">E-mail Institucional <span class="required-indicator">*</span></label>
-        <input type="email" id="email-user" name="email" class="form-input" required placeholder="maria@acessilia.ufg.br">
+        <input type="email" id="email-user" name="email" class="form-input" required placeholder="maria@acessilia.ufg.br" value="<%= locals.formValues?.email || '' %>" <%- (locals.formError && locals.formError.toLowerCase().includes('e-mail')) ? 'aria-invalid="true" aria-describedby="err-email-user"' : '' %>>
+        <% if (locals.formError && locals.formError.toLowerCase().includes('e-mail')) { %>
+          <span id="err-email-user" class="form-error" role="alert" style="color: #dc2626; font-size: 0.8125rem; font-weight: 600; display: block; margin-top: 0.25rem;">
+            <%= formError %>
+          </span>
+        <% } %>
       </div>
 
       <div class="form-group">
         <label for="matricula-user" class="form-label">Matrícula</label>
-        <input type="text" id="matricula-user" name="registrationNumber" class="form-input" placeholder="Ex: DOC-2026">
+        <input type="text" id="matricula-user" name="registrationNumber" class="form-input" placeholder="Ex: DOC-2026" value="<%= locals.formValues?.registrationNumber || '' %>">
       </div>
 
       <div class="form-group">
         <label for="role-user" class="form-label">Papel / Perfil de Acesso <span class="required-indicator">*</span></label>
         <select id="role-user" name="roleId" class="form-input" required>
           <% roles.forEach(r => { %>
-            <option value="<%= r.id %>"><%= r.name %></option>
+            <option value="<%= r.id %>" <%= (locals.formValues && locals.formValues.roleId == r.id) ? 'selected' : '' %>><%= r.name %></option>
           <% }) %>
         </select>
       </div>
@@ -104,32 +122,50 @@
 </div>
 
 <!-- MODAL EDITAR USUÁRIO -->
-<div id="modal-editar-usuario" role="dialog" aria-modal="true" aria-labelledby="modal-edit-u-titulo" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000; overflow-y: auto;">
+<div id="modal-editar-usuario" role="dialog" aria-modal="true" aria-labelledby="modal-edit-u-titulo" style="display: <%= locals.formError && locals.editUserId ? 'block' : 'none' %>; position: fixed; inset: 0; background: rgba(0,0,0,0.5); padding: 2rem; z-index: 1000; overflow-y: auto;">
   <div class="auth-card" style="margin: 2rem auto; max-width: 500px;">
     <h2 id="modal-edit-u-titulo" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">Editar Usuário</h2>
+
+    <% if (locals.formError && locals.editUserId) { %>
+      <div id="modal-edit-usuario-error" class="alert alert-error" role="alert" aria-live="assertive" tabindex="-1" style="margin-bottom: 1.25rem; border-left: 4px solid var(--color-error); background: #fee2e2; color: #991b1b; padding: 0.75rem 1rem; border-radius: var(--border-radius);">
+        <strong>⚠️ Não foi possível editar o usuário:</strong>
+        <p style="margin: 0.25rem 0 0 0;"><%= formError %></p>
+      </div>
+    <% } %>
+
     <form id="form-edit-user" method="POST">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
       <div class="form-group">
         <label for="edit-nome-user" class="form-label">Nome Completo <span class="required-indicator">*</span></label>
-        <input type="text" id="edit-nome-user" name="name" class="form-input" required>
+        <input type="text" id="edit-nome-user" name="name" class="form-input" required value="<%= locals.formValues?.name || '' %>" <%- (locals.formError && locals.formError.toLowerCase().includes('nome')) ? 'aria-invalid="true" aria-describedby="err-edit-nome-user"' : '' %>>
+        <% if (locals.formError && locals.formError.toLowerCase().includes('nome')) { %>
+          <span id="err-edit-nome-user" class="form-error" role="alert" style="color: #dc2626; font-size: 0.8125rem; font-weight: 600; display: block; margin-top: 0.25rem;">
+            <%= formError %>
+          </span>
+        <% } %>
       </div>
 
       <div class="form-group">
         <label for="edit-email-user" class="form-label">E-mail Institucional <span class="required-indicator">*</span></label>
-        <input type="email" id="edit-email-user" name="email" class="form-input" required>
+        <input type="email" id="edit-email-user" name="email" class="form-input" required value="<%= locals.formValues?.email || '' %>" <%- (locals.formError && locals.formError.toLowerCase().includes('e-mail')) ? 'aria-invalid="true" aria-describedby="err-edit-email-user"' : '' %>>
+        <% if (locals.formError && locals.formError.toLowerCase().includes('e-mail')) { %>
+          <span id="err-edit-email-user" class="form-error" role="alert" style="color: #dc2626; font-size: 0.8125rem; font-weight: 600; display: block; margin-top: 0.25rem;">
+            <%= formError %>
+          </span>
+        <% } %>
       </div>
 
       <div class="form-group">
         <label for="edit-matricula-user" class="form-label">Matrícula</label>
-        <input type="text" id="edit-matricula-user" name="registrationNumber" class="form-input">
+        <input type="text" id="edit-matricula-user" name="registrationNumber" class="form-input" value="<%= locals.formValues?.registrationNumber || '' %>">
       </div>
 
       <div class="form-group">
         <label for="edit-role-user" class="form-label">Papel / Perfil de Acesso <span class="required-indicator">*</span></label>
         <select id="edit-role-user" name="roleId" class="form-input" required>
           <% roles.forEach(r => { %>
-            <option value="<%= r.id %>"><%= r.name %></option>
+            <option value="<%= r.id %>" <%= (locals.formValues && locals.formValues.roleId == r.id) ? 'selected' : '' %>><%= r.name %></option>
           <% }) %>
         </select>
       </div>
@@ -165,4 +201,22 @@
     document.getElementById('modal-editar-usuario').style.display = 'block';
     document.getElementById('edit-nome-user').focus();
   }
+
+  <% if (locals.formError && !locals.editUserId) { %>
+  document.addEventListener('DOMContentLoaded', () => {
+    const errBox = document.getElementById('modal-usuario-error');
+    if (errBox) {
+      errBox.focus();
+    }
+  });
+  <% } %>
+
+  <% if (locals.formError && locals.editUserId) { %>
+  document.addEventListener('DOMContentLoaded', () => {
+    const errBox = document.getElementById('modal-edit-usuario-error');
+    if (errBox) {
+      errBox.focus();
+    }
+  });
+  <% } %>
 </script>

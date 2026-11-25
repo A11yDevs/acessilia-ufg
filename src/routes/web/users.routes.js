@@ -89,6 +89,28 @@ export async function usersWebRoutes(fastify, opts) {
 
       return reply.redirect('/usuarios');
     } catch (err) {
+      const acceptHeader = request.headers.accept;
+      const acceptsHtml = acceptHeader && acceptHeader.includes('text/html');
+      if (acceptsHtml) {
+        const users = db.prepare(`
+          SELECT u.*, r.name as role_name, r.code as role_code, r.id as role_id
+          FROM users u
+          LEFT JOIN user_roles ur ON ur.user_id = u.id AND ur.is_primary = 1
+          LEFT JOIN roles r ON r.id = ur.role_id
+          ORDER BY u.name ASC
+        `).all();
+        const roles = db.prepare('SELECT * FROM roles ORDER BY name ASC').all();
+        const csrfToken = reply.generateCsrf();
+        return reply.formError('users/index.ejs', {
+          title: 'Gestão de Usuários',
+          headerTitle: 'Usuários do Sistema',
+          currentPath: '/usuarios',
+          csrfToken,
+          user: request.user,
+          users,
+          roles
+        }, err.message, { formValues: { name, email, registrationNumber, roleId } });
+      }
       return reply.status(400).send({ error: err.message });
     }
   });
@@ -204,6 +226,28 @@ export async function usersWebRoutes(fastify, opts) {
 
       return reply.redirect('/usuarios');
     } catch (err) {
+      const acceptHeader = request.headers.accept;
+      const acceptsHtml = acceptHeader && acceptHeader.includes('text/html');
+      if (acceptsHtml) {
+        const users = db.prepare(`
+          SELECT u.*, r.name as role_name, r.code as role_code, r.id as role_id
+          FROM users u
+          LEFT JOIN user_roles ur ON ur.user_id = u.id AND ur.is_primary = 1
+          LEFT JOIN roles r ON r.id = ur.role_id
+          ORDER BY u.name ASC
+        `).all();
+        const roles = db.prepare('SELECT * FROM roles ORDER BY name ASC').all();
+        const csrfToken = reply.generateCsrf();
+        return reply.formError('users/index.ejs', {
+          title: 'Gestão de Usuários',
+          headerTitle: 'Usuários do Sistema',
+          currentPath: '/usuarios',
+          csrfToken,
+          user: request.user,
+          users,
+          roles
+        }, err.message, { formValues: { name, email, registrationNumber, roleId }, editUserId: targetUserId });
+      }
       return reply.status(400).send({ error: err.message });
     }
   });

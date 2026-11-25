@@ -40,6 +40,22 @@ export async function academicWebRoutes(fastify, opts) {
       }, request.user);
       return reply.redirect('/academico/cursos');
     } catch (err) {
+      const acceptHeader = request.headers.accept;
+      const acceptsHtml = acceptHeader && acceptHeader.includes('text/html');
+      if (acceptsHtml) {
+        const courses = await academicService.listCourses();
+        const departments = academicRepository.listDepartments();
+        const csrfToken = reply.generateCsrf();
+        return reply.formError('academic/courses.ejs', {
+          title: 'Gestão de Cursos',
+          headerTitle: 'Cursos da Instituição',
+          currentPath: '/academico/cursos',
+          csrfToken,
+          user: request.user,
+          courses,
+          departments
+        }, err.message, { formValues: { departmentId, code, name, modality, durationSemesters } });
+      }
       return reply.status(400).send({ error: err.message });
     }
   });
@@ -128,6 +144,22 @@ export async function academicWebRoutes(fastify, opts) {
       const cleanRedirectUrl = (redirectUrl || '/academico/disciplinas').replace(/^\/gestor/, '');
       return reply.redirect(cleanRedirectUrl);
     } catch (err) {
+      const acceptHeader = request.headers.accept;
+      const acceptsHtml = acceptHeader && acceptHeader.includes('text/html');
+      if (acceptsHtml) {
+        const subjects = await academicService.listSubjects();
+        const departments = academicRepository.listDepartments();
+        const csrfToken = reply.generateCsrf();
+        return reply.formError('academic/subjects.ejs', {
+          title: 'Catálogo de Disciplinas',
+          headerTitle: 'Disciplinas da Instituição',
+          currentPath: '/academico/disciplinas',
+          csrfToken,
+          user: request.user,
+          subjects,
+          departments
+        }, err.message, { formValues: { departmentId, code, name, description, workloadHours } });
+      }
       return reply.status(400).send({ error: err.message });
     }
   });
