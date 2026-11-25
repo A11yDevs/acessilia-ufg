@@ -1,4 +1,5 @@
 import { db } from '../../../database/connection.js';
+import { formatDate } from '../../utils/datetime.js';
 
 export async function reportsWebRoutes(fastify, opts) {
   // Exportar Auditoria em CSV
@@ -99,7 +100,7 @@ export async function reportsWebRoutes(fastify, opts) {
     `).all();
 
     return reply.view('reports/lbi-compliance.ejs', {
-      reportDate: new Date().toLocaleDateString('pt-BR', { dateStyle: 'full' }),
+      reportDate: formatDate(new Date(), { dateStyle: 'full' }),
       totalMaterials,
       approvedMaterials,
       totalSubjectsCovered,

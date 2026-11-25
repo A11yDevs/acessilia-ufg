@@ -108,7 +108,7 @@
                   <%= b.size %>
                 </td>
                 <td style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
-                  <%= new Date(b.created).toLocaleString('pt-BR') %>
+                  <%= formatDateTime(b.created) %>
                 </td>
                 <td style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
                   <a href="/monitoramento/backups/<%= b.name %>" class="btn btn-sm" style="border: 1px solid var(--border-color); font-size: 0.75rem;" download>

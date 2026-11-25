@@ -109,7 +109,7 @@
     <tbody>
       <% sampleMaterials.forEach(m => { %>
         <tr>
-          <td><%= new Date(m.created_at).toLocaleDateString('pt-BR') %></td>
+          <td><%= formatDate(m.created_at) %></td>
           <td><%= m.subject_name %></td>
           <td><strong><%= m.title %></strong></td>
           <td><%= m.teacher_name %></td>

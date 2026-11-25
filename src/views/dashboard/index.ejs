@@ -154,7 +154,7 @@
         <% recentLogs.forEach(log => { %>
           <tr style="border-bottom: 1px solid var(--border-color);">
             <td style="padding: 0.875rem 1rem; font-size: 0.875rem; color: var(--text-muted);">
-              <%= new Date(log.created_at).toLocaleString('pt-BR') %>
+              <%= formatDateTime(log.created_at) %>
             </td>
             <td style="padding: 0.875rem 1rem; font-weight: 500;">
               <%= log.user_name || 'Sistema' %>

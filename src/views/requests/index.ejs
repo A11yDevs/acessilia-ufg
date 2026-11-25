@@ -53,7 +53,7 @@
               </span>
             </td>
             <td style="padding: 1rem; font-size: 0.875rem; color: var(--text-muted);">
-              <%= new Date(r.created_at).toLocaleString('pt-BR') %>
+              <%= formatDateTime(r.created_at) %>
             </td>
             <td style="padding: 1rem;">
               <% if (user.roleCode === 'ADMINISTRADOR' || user.permissions.includes('solicitacoes.gerenciar')) { %>
