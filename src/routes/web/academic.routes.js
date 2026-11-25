@@ -206,9 +206,14 @@ export async function academicWebRoutes(fastify, opts) {
     preHandler: [fastify.requirePermission('turmas.visualizar')]
   }, async (request, reply) => {
     const classId = parseInt(request.params.id, 10);
-    const detail = await academicService.getClassDetail(classId);
+    const detail = await academicService.getClassDetail(classId, request.user);
     if (!detail) return reply.status(404).send({ error: 'Turma não encontrada' });
-    return reply.send(detail);
+    const canManage = detail.canManage;
+    const response = { ...detail };
+    if (canManage) {
+      response.csrfToken = reply.generateCsrf();
+    }
+    return reply.send(response);
   });
 
   // Atribuir Professor à Turma

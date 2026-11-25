@@ -1,4 +1,4 @@
-<% const canManageClasses = user.roleCode === 'ADMINISTRADOR' || (user.permissions && user.permissions.includes('turmas.gerenciar')) || user.roleCode === 'COORDENADOR'; %>
+<% const canManageClasses = user.roleCode === 'ADMINISTRADOR' || (user.permissions && user.permissions.includes('turmas.gerenciar')); %>
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
   <div>
     <h1 style="font-size: 1.75rem; font-weight: 700;">Gestão de Turmas</h1>
@@ -280,21 +280,24 @@
       if (!res.ok) throw new Error('Erro ao carregar dados');
       const data = await res.json();
 
+      const canManage = data.canManage;
+      const csrfToken = data.csrfToken;
+
       // Render teachers
       if (!data.teachers || data.teachers.length === 0) {
         listTeachersEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.875rem;">Nenhum docente vinculado a esta turma.</p>';
       } else {
         let tHtml = '<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">';
         data.teachers.forEach(t => {
-          const removeBtn = canManageClasses ? `
+          const removeBtn = canManage && csrfToken ? `
             <form action="/academico/turmas/${classId}/professores/${t.teacher_user_id}/remover" method="POST" style="display: inline;" onsubmit="return confirm('Deseja remover este professor da turma?');">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="_csrf" value="${csrfToken}">
               <button type="submit" class="btn btn-danger-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Remover</button>
             </form>
           ` : '';
           tHtml += `
             <li style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-primary); border-radius: var(--border-radius); font-size: 0.875rem;">
-              <span><strong>${t.teacher_name}</strong> <span class="role-tag">${t.role_in_class}</span> (${t.teacher_email})</span>
+              <span><strong>${t.teacher_name}</strong> <span class="role-tag">${t.role_in_class}</span> (${t.teacher_email || '—'})</span>
               ${removeBtn}
             </li>
           `;
@@ -309,15 +312,15 @@
       } else {
         let sHtml = '<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">';
         data.students.forEach(s => {
-          const removeBtn = canManageClasses ? `
+          const removeBtn = canManage && csrfToken ? `
             <form action="/academico/turmas/${classId}/alunos/${s.student_user_id}/remover" method="POST" style="display: inline;" onsubmit="return confirm('Deseja desvincular este estudante da turma?');">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="_csrf" value="${csrfToken}">
               <button type="submit" class="btn btn-danger-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Desvincular</button>
             </form>
           ` : '';
           sHtml += `
             <li style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--bg-primary); border-radius: var(--border-radius); font-size: 0.875rem;">
-              <span><strong>${s.student_name}</strong> ${s.registration_number ? `(${s.registration_number})` : ''} — ${s.student_email}</span>
+              <span><strong>${s.student_name}</strong> ${s.registration_number ? `(${s.registration_number})` : ''} — ${s.student_email || '—'}</span>
               ${removeBtn}
             </li>
           `;

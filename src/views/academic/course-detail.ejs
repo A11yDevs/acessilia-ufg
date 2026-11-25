@@ -1,3 +1,4 @@
+<% const canManageCourses = user.roleCode === 'ADMINISTRADOR' || (user.permissions && user.permissions.includes('cursos.gerenciar')); %>
 <div style="margin-bottom: 2rem;">
   <a href="/academico/cursos" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">
     &larr; Voltar para Lista de Cursos
@@ -15,7 +16,6 @@
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
     <h2 id="sec-matriz" style="font-size: 1.25rem; font-weight: 600;">Matriz Curricular</h2>
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-      <% const canManageCourses = user.roleCode === 'ADMINISTRADOR' || (user.permissions && user.permissions.includes('cursos.gerenciar')); %>
       <% if (canManageCourses) { %>
         <button type="button" class="btn" style="border: 1px solid var(--border-color);" onclick="document.getElementById('modal-nova-disciplina-curso').style.display='block'; document.getElementById('nome-disc-curso').focus();">
           + Cadastrar Nova Disciplina

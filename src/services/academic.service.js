@@ -96,15 +96,21 @@ export const academicService = {
     });
   },
 
-  async getClassDetail(classId) {
+  async getClassDetail(classId, user) {
     const turma = academicRepository.findClassById(classId);
     if (!turma) return null;
     const teachers = academicRepository.listClassTeachers(classId);
     const students = academicRepository.listClassStudents(classId);
+    const canManage = user && user.roleCode === 'ADMINISTRADOR' || (user && user.permissions && user.permissions.includes('turmas.gerenciar'));
+    
+    const sanitizeTeacher = (t) => canManage ? t : { ...t, teacher_email: undefined, registration_number: undefined };
+    const sanitizeStudent = (s) => canManage ? s : { ...s, student_email: undefined, registration_number: undefined };
+    
     return {
       ...turma,
-      teachers,
-      students
+      teachers: teachers.map(sanitizeTeacher),
+      students: students.map(sanitizeStudent),
+      canManage
     };
   },
 

@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildApp } from '../../src/app.js';
+import { academicRepository } from '../../src/repositories/academic.repository.js';
+import { db } from '../../database/connection.js';
 
 async function loginUser(app, email, password = 'Temp@123456') {
   const getLogin = await app.inject({ method: 'GET', url: '/login' });
@@ -28,9 +30,25 @@ async function loginUser(app, email, password = 'Temp@123456') {
   return { cookieHeader: sessionCookieHeader };
 }
 
+async function setupTestCourse() {
+  const adminUser = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@acessilia.ufg.br');
+  if (!adminUser) return null;
+  const course = academicRepository.createCourse({
+    name: 'Curso de Teste',
+    code: 'TESTE01',
+    departmentId: 1,
+    modality: 'PRESENCIAL',
+    durationSemesters: 8
+  });
+  return course;
+}
+
 test('Telas acadêmicas omitem formulários de cadastro para usuários sem permissão (Issue #8)', async (t) => {
   const app = await buildApp({ logger: false });
   t.after(() => app.close());
+
+  const testCourse = await setupTestCourse();
+  const courseId = testCourse ? testCourse.id : 1;
 
   await t.test('1. ALUNO não recebe modais ou formulários de criação em /academico/disciplinas, /cursos, /cursos/:id e /turmas', async () => {
     const { cookieHeader } = await loginUser(app, 'lucas.aluno@acessilia.ufg.br');
@@ -60,11 +78,11 @@ test('Telas acadêmicas omitem formulários de cadastro para usuários sem permi
     // 1.3 Detalhes do Curso (Matriz)
     const resCourseDetail = await app.inject({
       method: 'GET',
-      url: '/academico/cursos/1',
+      url: `/academico/cursos/${courseId}`,
       headers: { cookie: cookieHeader }
     });
     assert.equal(resCourseDetail.statusCode, 200);
-    assert.equal(resCourseDetail.payload.includes('action="/academico/cursos/1/disciplinas"'), false, 'Não deve conter form de vincular disciplina');
+    assert.equal(resCourseDetail.payload.includes(`action="/academico/cursos/${courseId}/disciplinas"`), false, 'Não deve conter form de vincular disciplina');
     assert.equal(resCourseDetail.payload.includes('id="modal-vincular-disciplina"'), false, 'Não deve conter modal de vincular disciplina');
     assert.equal(resCourseDetail.payload.includes('id="modal-nova-disciplina-curso"'), false, 'Não deve conter modal de nova disciplina no curso');
 
@@ -110,11 +128,11 @@ test('Telas acadêmicas omitem formulários de cadastro para usuários sem permi
     // 2.3 Detalhes do Curso (Matriz)
     const resCourseDetail = await app.inject({
       method: 'GET',
-      url: '/academico/cursos/1',
+      url: `/academico/cursos/${courseId}`,
       headers: { cookie: cookieHeader }
     });
     assert.equal(resCourseDetail.statusCode, 200);
-    assert.ok(resCourseDetail.payload.includes('action="/academico/cursos/1/disciplinas"'));
+    assert.ok(resCourseDetail.payload.includes(`action="/academico/cursos/${courseId}/disciplinas"`));
     assert.ok(resCourseDetail.payload.includes('id="modal-vincular-disciplina"'));
     assert.ok(resCourseDetail.payload.includes('id="modal-nova-disciplina-curso"'));
 
