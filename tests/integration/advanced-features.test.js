@@ -4,6 +4,7 @@ import { backupService } from '../../src/services/backup.service.js';
 import { buildApp } from '../../src/app.js';
 import { materialService } from '../../src/services/material.service.js';
 import { materialRepository } from '../../src/repositories/material.repository.js';
+import { createAcademicBase } from '../helpers/fixtures.js';
 
 test('Melhorias Avançadas: Backup do SQLite, Webhook do bot-acess e Barra de A11y', async (t) => {
   const app = await buildApp({ logger: false });
@@ -18,8 +19,9 @@ test('Melhorias Avançadas: Backup do SQLite, Webhook do bot-acess e Barra de A1
   await t.test('2. Webhook API do bot-acess atualiza job e cria versão processada v2', async () => {
     // 1. Criar material de teste
     const teacherActor = { id: 2, roleCode: 'PROFESSOR' };
+    const { subject } = await createAcademicBase('WEBHOOK');
     const { material, version } = await materialService.uploadMaterial({
-      subjectId: 1,
+      subjectId: subject.id,
       title: 'Material para Teste de Webhook',
       category: 'SLIDE',
       originalFilename: 'aula_webhook.pdf',

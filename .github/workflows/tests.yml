@@ -1,0 +1,34 @@
+name: Testes
+
+# Roda a suíte só com o que está versionado: migrações + seed. Antes, 20 testes dependiam
+# de dados do banco de desenvolvimento local e não passariam aqui.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: npm test (Node 22)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Banco de teste a partir das migrações e do seed
+        run: |
+          npm run migrate
+          npm run seed
+      - run: npm test

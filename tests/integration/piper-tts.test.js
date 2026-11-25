@@ -4,6 +4,7 @@ import { buildApp } from '../../src/app.js';
 import { authService } from '../../src/services/auth.service.js';
 import { piperTtsService } from '../../src/services/piper-tts.service.js';
 import { materialRepository } from '../../src/repositories/material.repository.js';
+import { createMaterial } from '../helpers/fixtures.js';
 
 test('Integração Piper-TTS Local: Chunks, Padrão CSS Speech, Léxicos de Pronúncia e Síntese Imune a Proxy', async (t) => {
   const app = await buildApp({ logger: false });
@@ -47,7 +48,8 @@ test('Integração Piper-TTS Local: Chunks, Padrão CSS Speech, Léxicos de Pron
   });
 
   await t.test('3. Rota /api/v1/materials/:id/tts/chunks responde 200 OK com lista de chunks e vozes Piper', async () => {
-    const material = materialRepository.findMaterialById(9) || db.prepare('SELECT * FROM materials LIMIT 1').get();
+    // Antes: material 9 ou "o primeiro do banco" (e `db` nem era importado)
+    const { material } = await createMaterial();
     assert.ok(material, 'Deve existir ao menos um material no banco');
 
     const res = await app.inject({
