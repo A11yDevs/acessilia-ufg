@@ -172,6 +172,27 @@
 
       <!-- LANDMARK DE CONTEÚDO PRINCIPAL -->
       <main id="conteudo-principal" class="app-content" role="main" tabindex="-1">
+        <% if (locals.formError || (locals.formErrors && locals.formErrors.length > 0)) { %>
+          <div id="form-error-summary" class="alert alert-error" role="alert" aria-live="assertive" tabindex="-1" style="margin-bottom: 1.5rem; outline: none; border-left: 5px solid var(--color-error); background: #fee2e2; color: #991b1b; padding: 1rem; border-radius: var(--border-radius);">
+            <h2 style="font-size: 1.05rem; font-weight: 700; margin: 0 0 0.5rem 0;">
+              ⚠️ Há erros no formulário que precisam de sua atenção:
+            </h2>
+            <ul style="margin: 0; padding-left: 1.25rem;">
+              <% (locals.formErrors || [{ message: locals.formError }]).forEach(err => { %>
+                <li><%= err.message || err %></li>
+              <% }) %>
+            </ul>
+          </div>
+          <script>
+            (function() {
+              const summary = document.getElementById('form-error-summary');
+              if (summary) {
+                summary.focus();
+              }
+            })();
+          </script>
+        <% } %>
+
         <% if (locals.flash && locals.flash.error) { %>
           <div class="alert alert-error" role="alert">
             <%= flash.error %>

@@ -84,36 +84,49 @@ export async function materialsWebRoutes(fastify, opts) {
       }
     }
 
+    const returnUploadError = async (errorMsg) => {
+      const materials = materialRepository.listMaterialsForUser(request.user);
+      const subjects = academicRepository.listSubjects();
+      const classes = academicRepository.listClasses();
+      return reply.formError('materials/index.ejs', {
+        materials,
+        subjects,
+        classes,
+        modalToOpen: 'novo-material'
+      }, errorMsg, {
+        title: 'Materiais Acadêmicos',
+        headerTitle: 'Repositório de Materiais',
+        currentPath: '/materiais',
+        formValues: { title, description, category, subjectId, classId, publishAt }
+      });
+    };
+
     try {
       if (!title || !title.trim() || !subjectId) {
-        return reply.status(400).send({ error: 'Título e Disciplina são obrigatórios e não podem estar em branco.' });
+        return returnUploadError('Título e Disciplina são obrigatórios e não podem estar em branco.');
       }
 
       if (title.trim().length > 255) {
-        return reply.status(400).send({ error: 'O título do material não pode exceder 255 caracteres.' });
+        return returnUploadError('O título do material não pode exceder 255 caracteres.');
       }
 
       let parsedPublishAt = null;
       if (publishAt) {
         const d = new Date(publishAt);
         if (isNaN(d.getTime())) {
-          return reply.status(400).send({ error: 'Data de publicação inválida.' });
+          return returnUploadError('Data de publicação inválida.');
         }
         parsedPublishAt = d.toISOString();
       }
 
       if (!fileUploaded || !fileBuffer || fileBuffer.length === 0) {
-        return reply.status(400).send({
-          error: 'O arquivo para acessibilização é obrigatório e não pode estar vazio.'
-        });
+        return returnUploadError('O arquivo para acessibilização é obrigatório e não pode estar vazio.');
       }
 
       // Validação estrita de extensão (bloqueio de executáveis/arquivos perigosos)
       const allowedExtensions = /\.(pdf|docx|doc|pptx|ppt|txt|png|jpe?g|webp|html)$/i;
       if (!allowedExtensions.test(originalFilename)) {
-        return reply.status(400).send({
-          error: `Formato de arquivo não suportado ou inválido (${originalFilename}). Formatos permitidos: PDF, DOCX, DOC, PPTX, PPT, TXT, PNG, JPG/JPEG, WEBP, HTML.`
-        });
+        return returnUploadError(`Formato de arquivo não suportado ou inválido (${originalFilename}). Formatos permitidos: PDF, DOCX, DOC, PPTX, PPT, TXT, PNG, JPG/JPEG, WEBP, HTML.`);
       }
 
       // 1. Cria o registro acadêmico no Gestor com a Versão v1 (ORIGINAL)
@@ -148,7 +161,7 @@ export async function materialsWebRoutes(fastify, opts) {
 
       return reply.redirect(`/materiais/${material.id}`);
     } catch (err) {
-      return reply.status(400).send({ error: err.message });
+      return returnUploadError(err.message);
     }
   });
 
